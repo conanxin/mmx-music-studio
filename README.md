@@ -1,5 +1,9 @@
 # MiniMax 音乐创作台 / mmx-music-studio
 
+[![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Phase](https://img.shields.io/badge/Phase-0.1.0--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
+
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
 > ⚠️ **免责声明**：这是一个非官方的开源项目，与 MiniMax 无任何关联。
@@ -11,7 +15,7 @@
 ### Docker（推荐，最快）
 
 ```bash
-git clone <repo> && cd mmx-music-studio
+git clone https://github.com/conanxin/mmx-music-studio.git && cd mmx-music-studio
 docker compose up -d
 # 访问 http://localhost:8787
 ```
