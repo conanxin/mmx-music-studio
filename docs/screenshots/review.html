@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mmx-music-studio · Phase 2A 设计评审</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #090A0C;
+    color: #F4F1EA;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 40px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+  h2 { font-size: 16px; font-weight: 600; color: #B8FF6A; margin: 32px 0 12px; }
+  h3 { font-size: 14px; font-weight: 600; color: #9BA1AA; margin: 20px 0 8px; }
+  p { font-size: 13px; color: #9BA1AA; max-width: 720px; margin-bottom: 12px; }
+  .badge { display: inline-block; background: #B8FF6A; color: #090A0C; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 16px; }
+  .card { background: #121419; border-radius: 20px; overflow: hidden; border: 1px solid #262A33; }
+  .card img { width: 100%; height: auto; display: block; }
+  .card-label { padding: 12px 16px; font-size: 12px; color: #9BA1AA; }
+  .card-label strong { color: #F4F1EA; font-weight: 600; display: block; margin-bottom: 2px; }
+  .section { background: #121419; border-radius: 20px; padding: 24px; border: 1px solid #262A33; margin-bottom: 16px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag { background: #181B21; border: 1px solid #262A33; color: #9BA1AA; font-size: 12px; padding: 4px 12px; border-radius: 999px; }
+  code { background: #181B21; color: #B8FF6A; font-size: 12px; padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', Consolas, monospace; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .highlight { color: #B8FF6A; }
+  ul { padding-left: 20px; }
+  li { font-size: 13px; color: #9BA1AA; margin-bottom: 4px; }
+  .status-row { display: flex; gap: 8px; margin-top: 16px; }
+  .status-chip { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; }
+  .status-pass { background: rgba(184,255,106,0.15); color: #B8FF6A; border: 1px solid rgba(184,255,106,0.3); }
+  .status-wip { background: rgba(138,124,255,0.15); color: #8A7CFF; border: 1px solid rgba(138,124,255,0.3); }
+  .status-note { background: rgba(255,107,107,0.1); color: #FF6B6B; border: 1px solid rgba(255,107,107,0.2); }
+</style>
+</head>
+<body>
+
+<h1>🎵 mmx-music-studio · Phase 2A 设计评审</h1>
+<p>版本：0.1.0 · Phase 2A：核心参数层 + Mock 生成闭环 · 2026-06-06</p>
+
+<div class="status-row">
+  <span class="status-chip status-pass">✓ UI 原型</span>
+  <span class="status-chip status-pass">✓ core 平台无关层</span>
+  <span class="status-chip status-pass">✓ 四种模式 payload builder</span>
+  <span class="status-chip status-pass">✓ Mock job system</span>
+  <span class="status-chip status-wip">Phase 2B：真实 API 接入</span>
+</div>
+
+<h2>首页 · Home</h2>
+<p>简洁 Landing 页面，中文界面，移动端优先。单按钮进入创作台。</p>
+<div class="grid">
+  <div class="card">
+    <img src="home-desktop.png" alt="首页 桌面端">
+    <div class="card-label"><strong>首页 · 桌面端</strong>1440×900</div>
+  </div>
+  <div class="card">
+    <img src="home-mobile.png" alt="首页 手机端">
+    <div class="card-label"><strong>首页 · 手机端</strong>390×844</div>
+  </div>
+</div>
+
+<h2>创作台 · 纯音乐模式（instrumental）</h2>
+<p>桌面端：左侧表单 + 右侧播放器双栏布局。手机端：单栏，生成按钮固定在表单下方。</p>
+<div class="grid">
+  <div class="card">
+    <img src="studio-desktop.png" alt="创作台 桌面端">
+    <div class="card-label"><strong>创作台 · 桌面端</strong>1440×900 · 纯音乐模式</div>
+  </div>
+  <div class="card">
+    <img src="studio-mobile.png" alt="创作台 手机端">
+    <div class="card-label"><strong>创作台 · 手机端</strong>390×844 · 纯音乐模式</div>
+  </div>
+</div>
+
+<h2>创作台 · 生成成功状态</h2>
+<p>Mock 生成完成后，播放器自动展示 Track 标题、时长、操作按钮。最近作品列表自动追加。</p>
+<div class="grid">
+  <div class="card">
+    <img src="studio-generated-desktop.png" alt="生成成功 桌面端">
+    <div class="card-label"><strong>生成成功 · 桌面端</strong>1440×900 · Mock 曲目「深夜编程」</div>
+  </div>
+  <div class="card">
+    <img src="studio-generated-mobile.png" alt="生成成功 手机端">
+    <div class="card-label"><strong>生成成功 · 手机端</strong>390×844 · Mock 曲目</div>
+  </div>
+</div>
+
+<h2>创作台 · 歌词成歌模式</h2>
+<p>支持歌词结构快捷标签（主歌/副歌/桥段/结尾），语言选择（中/英/日/韩）。</p>
+<div class="grid">
+  <div class="card">
+    <img src="studio-lyrics-desktop.png" alt="歌词成歌 桌面端">
+    <div class="card-label"><strong>歌词成歌 · 桌面端</strong>1440×900</div>
+  </div>
+</div>
+
+<h2>作品库 · Library</h2>
+<p>历史作品卡片列表，支持在线试听和下载。</p>
+<div class="grid">
+  <div class="card">
+    <img src="library-mobile.png" alt="作品库 手机端">
+    <div class="card-label"><strong>作品库 · 手机端</strong>390×844</div>
+  </div>
+</div>
+
+<h2>设置 · Settings</h2>
+<p>API Key 输入（不保存）、区域选择、后端模式、安全提示。</p>
+<div class="grid">
+  <div class="card">
+    <img src="settings-desktop.png" alt="设置 桌面端">
+    <div class="card-label"><strong>设置 · 桌面端</strong>1440×900</div>
+  </div>
+  <div class="card">
+    <img src="settings-mobile.png" alt="设置 手机端">
+    <div class="card-label"><strong>设置 · 手机端</strong>390×844</strong></div>
+  </div>
+</div>
+
+<h2>设计系统</h2>
+<div class="section">
+  <h3>色彩</h3>
+  <div class="tag-row">
+    <span class="tag" style="background:#090A0C;border-color:#B8FF6A;color:#B8FF6A">背景 #090A0C</span>
+    <span class="tag" style="background:#121419;border-color:#F4F1EA;color:#F4F1EA">面板 #121419</span>
+    <span class="tag" style="background:#181B21;border-color:#9BA1AA;color:#9BA1AA">次面板 #181B21</span>
+    <span class="tag" style="background:#262A33;color:#F4F1EA">边框 #262A33</span>
+    <span class="tag" style="background:#B8FF6A;color:#090A0C;font-weight:700">强调 #B8FF6A</span>
+    <span class="tag" style="background:#8A7CFF;color:#fff">辅助 #8A7CFF</span>
+    <span class="tag" style="background:#FF6B6B;color:#fff">错误 #FF6B6B</span>
+  </div>
+
+  <h3>字体</h3>
+  <p>系统字体栈（SF Pro / PingFang / Noto Sans SC / Roboto），无外部字体依赖。</p>
+
+  <h3>圆角</h3>
+  <p>卡片圆角 20px，按钮圆角 999px（胶囊形），输入框 12px。</p>
+
+  <h3>间距</h3>
+  <p>4px 为基础单位，常用：16px（space-4）、20px（space-5）、24px（space-6）。</p>
+
+  <h3>按钮触控区域</h3>
+  <p>所有按钮最小高度 44px，符合移动端无障碍标准。</p>
+</div>
+
+<h2>Phase 2A 验收清单</h2>
+<div class="section">
+  <ul>
+    <li><span class="highlight">✓</span> packages/core 平台无关（无 React/DOM/BOM 依赖）</li>
+    <li><span class="highlight">✓</span> 四种模式：instrumental / auto / lyrics / cover-url</li>
+    <li><span class="highlight">✓</span> instrumental → is_instrumental=true payload</li>
+    <li><span class="highlight">✓</span> auto → lyrics_optimizer=true payload</li>
+    <li><span class="highlight">✓</span> lyrics → payload.lyrics 字段</li>
+    <li><span class="highlight">✓</span> cover-url → payload.audio_url 字段</li>
+    <li><span class="highlight">✓</span> cover-file → needsUpload 标记（无 base64 时）</li>
+    <li><span class="highlight">✓</span> validateMusicInput 完整校验，中文错误文案</li>
+    <li><span class="highlight">✓</span> createMockTrack / createMockJob / advanceMockJob</li>
+    <li><span class="highlight">✓</span> UI 点击生成 → validate → mock job → success track</li>
+    <li><span class="highlight">✓</span> 错误显示（红色框），最近作品列表自动追加（最多 3 条）</li>
+    <li><span class="highlight">✓</span> npm run typecheck 通过</li>
+    <li><span class="highlight">✓</span> npm run build 通过（204KB JS）</li>
+    <li><span class="highlight">✓</span> smoke test 全部通过</li>
+    <li><span class="highlight">✓</span> 中文界面，简洁设计，移动端优先</li>
+    <li><span class="highlight">✓</span> 微信小程序准备：core 不依赖 Web API</li>
+    <li><span class="highlight">✓</span> 无 API key 读取、输出、保存</li>
+    <li><span class="highlight">✓</span> .env.example 只含占位符</li>
+  </ul>
+</div>
+
+<h2>下一步 · Phase 2B</h2>
+<div class="section">
+  <ul>
+    <li><code>packages/adapters/minimax-api/</code> — 真实 MiniMax API 调用</li>
+    <li><code>packages/adapters/minimax-cli/</code> — mmx CLI adapter</li>
+    <li><code>packages/adapters/storage/</code> — sessionStorage / localStorage adapter</li>
+    <li><code>packages/adapters/audio/</code> — HTMLAudioElement adapter</li>
+    <li>后端代理模式（自托管安全部署）</li>
+    <li>真实音频文件保存与下载</li>
+    <li>微信小程序 Taro/uni-app 入口</li>
+  </ul>
+</div>
+
+<p style="margin-top:40px;opacity:0.4;font-size:11px">
+Unofficial open-source project. Not affiliated with MiniMax. · MIT License
+</p>
+
+</body>
+</html>

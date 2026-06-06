@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+build/
+.next/
+out/
+.vercel/
+.netlify/
+
+# env
+.env
+.env.*
+!.env.example
+
+# local storage / generated media
+storage/tracks/*
+!storage/tracks/.gitkeep
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# temporary
+tmp/
+temp/
+.cache/
+storage/tracks/.tmp/

@@ -1,0 +1,239 @@
+.page {
+  flex: 1;
+  padding: var(--space-6);
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: var(--space-8);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-1);
+}
+
+.desc {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+/* Content */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section p {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+  margin-bottom: var(--space-3);
+}
+
+.section p:last-child {
+  margin-bottom: 0;
+}
+
+.section strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* Highlight box */
+.highlight {
+  padding: var(--space-4);
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.highlight p {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+/* Feature list */
+.featureList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.featureList li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.featureIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.featureList strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.featureList p {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 0;
+}
+
+/* Bullet list */
+.bulletList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bulletList li {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  padding-left: var(--space-4);
+  position: relative;
+  line-height: 1.6;
+}
+
+.bulletList li::before {
+  content: '·';
+  position: absolute;
+  left: var(--space-1);
+  color: var(--color-accent);
+}
+
+.bulletList code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--color-panel-secondary);
+  border-radius: 4px;
+  color: var(--color-secondary);
+}
+
+/* Tech grid */
+.techGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.techItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  background: var(--color-panel);
+  border-radius: var(--radius-md);
+}
+
+.techName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.techRole {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* Phase card */
+.phaseCard {
+  padding: var(--space-5);
+  background: var(--color-panel);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.phaseTag {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-accent);
+  color: #090A0C;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-3);
+}
+
+.phaseCard h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.phaseCard > p {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.phaseList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.phaseList li {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding-left: var(--space-3);
+  position: relative;
+}
+
+.phaseList li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+}
+
+.phaseList li:has(.phaseTag) {
+  padding-left: 0;
+}
+
+/* Mobile */
+@media (max-width: 639px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .techGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

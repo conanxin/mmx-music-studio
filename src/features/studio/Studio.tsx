@@ -1,0 +1,765 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import styles from './Studio.module.css';
+import WaveformPlayer from '../../components/WaveformPlayer';
+import { useSettings } from '../../lib/settingsStore';
+import { getHealth, generateTrack } from '../../lib/serverApi';
+import type { TrackLike } from '../../lib/serverApi';
+import { STYLE_TAGS } from '../../mock/data';
+import {
+  validateMusicInput,
+  createMockJob,
+  advanceMockJob,
+  MOCK_JOB_STEPS,
+  type MusicMode as CoreMode,
+  type MusicGenerationInput,
+  type Job,
+} from '../../../packages/core/src/index';
+
+const UI_TO_CORE_MODE: Record<string, CoreMode> = {
+  'pure-music': 'instrumental',
+  'auto-song': 'auto',
+  'lyric-song': 'lyrics',
+  'cover-url': 'cover-url' as CoreMode,
+  'cover-file': 'cover-file' as CoreMode,
+};
+
+const CORE_MODE_LABELS: Record<CoreMode, string> = {
+  instrumental: '纯音乐',
+  auto: '自动成歌',
+  lyrics: '歌词成歌',
+  'cover-url': '参考改编',
+  'cover-file': '参考改编',
+};
+
+const MODES: string[] = ['pure-music', 'auto-song', 'lyric-song', 'cover-url', 'cover-file'];
+const VISIBLE_TAGS = STYLE_TAGS.slice(0, 8);
+const LANG_OPTIONS = ['中文', '英文', '日文', '韩文'];
+const LANG_TO_CODE: Record<string, 'zh' | 'en' | 'ja' | 'ko'> = {
+  中文: 'zh', 英文: 'en', 日文: 'ja', 韩文: 'ko',
+};
+
+const LYRIC_STRUCTURES = [
+  { label: '+ 主歌', tag: '[Verse]' },
+  { label: '+ 副歌', tag: '[Chorus]' },
+  { label: '+ 桥段', tag: '[Bridge]' },
+  { label: '+ 结尾', tag: '[Outro]' },
+];
+
+const UI_MODE_LABELS: Record<string, string> = {
+  'pure-music': '纯音乐',
+  'auto-song': '自动成歌',
+  'lyric-song': '歌词成歌',
+  'cover-url': '参考改编',
+  'cover-file': '参考改编',
+};
+
+type UIMode = 'pure-music' | 'auto-song' | 'lyric-song' | 'cover-url' | 'cover-file';
+
+function resolveMode(): UIMode {
+  const hash = window.location.hash.replace('#', '');
+  const map: Record<string, UIMode> = {
+    instrumental: 'pure-music',
+    auto: 'auto-song',
+    lyrics: 'lyric-song',
+    'cover-url': 'cover-url',
+    'cover-file': 'cover-file',
+  };
+  return map[hash] ?? 'pure-music';
+}
+
+function buildCoreInput(
+  mode: UIMode,
+  prompt: string,
+  lyrics: string,
+  stylePrompt: string,
+  coverUrl: string,
+  language: string,
+  audioBase64?: string,
+  audioFileName?: string,
+  audioFileSize?: number,
+  audioMimeType?: string,
+): MusicGenerationInput {
+  const coreMode = UI_TO_CORE_MODE[mode];
+  const lang = LANG_TO_CODE[language] ?? 'zh';
+
+  if (coreMode === 'instrumental') {
+    return { mode: 'instrumental', prompt };
+  }
+  if (coreMode === 'auto') {
+    return { mode: 'auto', prompt, language: lang };
+  }
+  if (coreMode === 'lyrics') {
+    return { mode: 'lyrics', prompt, lyrics };
+  }
+  if (coreMode === 'cover-url') {
+    return { mode: 'cover-url', prompt: stylePrompt || prompt, audioUrl: coverUrl };
+  }
+  if (coreMode === 'cover-file') {
+    const input: MusicGenerationInput = {
+      mode: 'cover-file',
+      prompt: stylePrompt || prompt,
+      audioBase64: audioBase64 || '',
+      fileName: audioFileName,
+      fileSizeBytes: audioFileSize,
+      mimeType: audioMimeType,
+    };
+    if (audioBase64) input.audioBase64 = audioBase64;
+    return input;
+  }
+  return { mode: 'instrumental', prompt };
+}
+
+// Convert durationText "2:31" → seconds
+function durationTextToSeconds(text?: string): number {
+  if (!text) return 0;
+  const parts = text.split(':').map(Number);
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return 0;
+}
+
+// Map server TrackLike → UI display Track
+interface DisplayTrack {
+  id: string;
+  title: string;
+  mode: string;
+  durationText: string;
+  audioUrl?: string;
+  downloadUrl?: string;
+}
+
+function serverTrackToDisplay(t: TrackLike): DisplayTrack {
+  return {
+    id: t.id,
+    title: t.title,
+    mode: t.mode,
+    durationText: t.durationText || '?:??',
+    audioUrl: t.audioUrl,
+    downloadUrl: t.downloadUrl,
+  };
+}
+
+export default function Studio() {
+  const { settings } = useSettings();
+
+  const [activeMode, setActiveMode] = useState<UIMode>(resolveMode);
+  const [prompt, setPrompt] = useState('');
+  const [lyrics, setLyrics] = useState('');
+  const [stylePrompt, setStylePrompt] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [language, setLanguage] = useState('中文');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Cover-file state
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverFileBase64, setCoverFileBase64] = useState('');
+  const [coverFileSize, setCoverFileSize] = useState<number>(0);
+  const [coverFileName, setCoverFileName] = useState('');
+  const [coverFileMime, setCoverFileMime] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [apiFallbackHint, setApiFallbackHint] = useState<string | null>(null);
+  const [generationSource, setGenerationSource] = useState<'mock' | 'minimax' | 'mmx-cli' | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<DisplayTrack | null>(null);
+  const [recentTracks, setRecentTracks] = useState<DisplayTrack[]>([]);
+
+  // Sync hash → state on mount
+  useEffect(() => {
+    const m = resolveMode();
+    if (m !== activeMode) setActiveMode(m);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleModeChange = (mode: UIMode) => {
+    setActiveMode(mode);
+    setGenError(null);
+    setApiFallbackHint(null);
+    const map: Record<UIMode, string> = {
+      'pure-music': 'instrumental',
+      'auto-song': 'auto',
+      'lyric-song': 'lyrics',
+      'cover-url': 'cover-url',
+      'cover-file': 'cover-file',
+    };
+    window.history.replaceState(null, '', `#${map[mode]}`);
+  };
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      setGenError('参考音频最大 50MB');
+      return;
+    }
+    setCoverFile(file);
+    setCoverFileName(file.name);
+    setCoverFileSize(file.size);
+    setCoverFileMime(file.type);
+    setGenError(null);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      // Strip data URL prefix
+      const base64 = result.replace(/^data:[^;]+;base64,/, '');
+      setCoverFileBase64(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerate = async () => {
+    setGenError(null);
+    setApiFallbackHint(null);
+
+    const input = buildCoreInput(
+      activeMode,
+      prompt,
+      lyrics,
+      stylePrompt,
+      coverUrl,
+      language,
+      coverFileBase64 || undefined,
+      coverFileName || undefined,
+      coverFileSize || undefined,
+      coverFileMime || undefined,
+    );
+
+    // Validate with core
+    const validation = validateMusicInput(input);
+    if (!validation.ok) {
+      setGenError(validation.errors.map(e => e.message).join('；'));
+      return;
+    }
+    if (validation.warnings.length > 0) {
+      // Show first warning as hint, not blocking
+      const hint = validation.warnings.map(w => w.message).join('；');
+      setApiFallbackHint(hint);
+    }
+
+    setIsGenerating(true);
+    setGenerationSource(null);
+
+    // Check if API server is available
+    let useApi = false;
+
+    try {
+      const health = await getHealth();
+
+      if (health.ok && health.realGenerationEnabled) {
+        // REAL_GENERATION_ENABLED=true: use real API
+        useApi = true;
+      } else if (health.ok && !health.realGenerationEnabled) {
+        // Safe mode: API server is up but real generation is disabled
+        setApiFallbackHint('当前为安全模式（REAL_GENERATION_ENABLED=false），使用本地模拟音频，未消耗 MiniMax 额度');
+        useApi = true; // Still use API server but it will return mock audio
+      } else {
+        setApiFallbackHint('未连接本地服务，使用客户端模拟生成');
+        useApi = false;
+      }
+    } catch {
+      setApiFallbackHint('无法连接本地服务，使用客户端模拟生成');
+      useApi = false;
+    }
+
+    if (useApi) {
+      // Real API call
+      try {
+        const result = await generateTrack(input, {
+          keyMode: settings.keyMode,
+          region: settings.region,
+          apiKey: settings.apiKey,
+        });
+
+        if (result.ok && result.track) {
+          const display = serverTrackToDisplay(result.track);
+          setCurrentTrack(display);
+          setRecentTracks(prev => [display, ...prev].slice(0, 3));
+          setGenerationSource(result.generationSource ?? null);
+          setIsGenerating(false);
+          return;
+        }
+
+        if (result.error) {
+          if (result.error.type === 'missing_api_key') {
+            setGenError('请先在设置中填写 Key，或选择服务器环境变量模式');
+          } else if (result.error.type === 'minimax_api') {
+            setGenError('MiniMax 返回错误，请检查 Key、区域、额度或内容限制');
+          } else if (result.error.type === 'audio_download') {
+            setGenError('音频生成成功，但下载保存失败');
+          } else if (result.error.type === 'storage') {
+            setGenError('音频保存失败，请检查服务器存储目录权限');
+          } else {
+            setGenError(result.error.message);
+          }
+          setIsGenerating(false);
+          return;
+        }
+      } catch (err) {
+        setGenError('生成失败，请稍后重试');
+        setIsGenerating(false);
+        return;
+      }
+    }
+
+    // Fallback: mock generation
+    let job: Job = createMockJob(input);
+    let stepIndex = 0;
+
+    const tick = () => {
+      stepIndex++;
+      if (stepIndex < MOCK_JOB_STEPS.length) {
+        job = advanceMockJob(job, MOCK_JOB_STEPS[stepIndex]);
+        if (job.status === 'success' && job.track) {
+          const display: DisplayTrack = {
+            id: job.track.id,
+            title: job.track.title,
+            mode: job.track.mode,
+            durationText: job.track.durationText || '2:31',
+          };
+          setCurrentTrack(display);
+          setRecentTracks(prev => [display, ...prev].slice(0, 3));
+          setIsGenerating(false);
+        } else {
+          setTimeout(tick, 500);
+        }
+      }
+    };
+    setTimeout(tick, 500);
+  };
+
+  const handleLyricInsert = (tag: string) => {
+    setLyrics(prev => {
+      const sep = prev ? '\n\n' : '';
+      return prev + sep + tag + '\n';
+    });
+  };
+
+  const getPlaceholder = () => {
+    switch (activeMode) {
+      case 'pure-music': return '描述你想要的音乐，如：深夜编程、专注、爵士';
+      case 'auto-song': return '输入主题和风格，AI 会自动写词并生成歌曲';
+      case 'lyric-song': return '在此输入你的歌词...';
+      case 'cover-url': return '描述目标风格，如：Lo-fi jazz，夜晚、萨克斯';
+      case 'cover-file': return '上传或描述目标风格，如：Lo-fi jazz，夜晚';
+    }
+  };
+
+  const getButtonLabel = () => {
+    switch (activeMode) {
+      case 'pure-music': return '生成纯音乐';
+      case 'auto-song': return '生成歌曲';
+      case 'lyric-song': return '按歌词生成';
+      case 'cover-url': return '生成改编';
+      case 'cover-file': return '生成改编';
+    }
+  };
+
+  const getModeHint = () => {
+    switch (activeMode) {
+      case 'pure-music': return '无歌词 · 无人声 · 适合 BGM / 配乐';
+      case 'auto-song': return '自动写歌词 · 自动生成旋律与人声';
+      case 'lyric-song': return '输入歌词 · AI 配曲生成完整歌曲';
+      case 'cover-url': return '参考音频改编 · 保持原曲结构，换风格演绎';
+      case 'cover-file': return '上传音频文件进行风格改编';
+    }
+  };
+
+  const getInputLabel = () => {
+    switch (activeMode) {
+      case 'pure-music': return '音乐描述';
+      case 'auto-song': return '歌曲主题';
+      case 'lyric-song': return '音乐风格';
+      case 'cover-url': return '目标风格';
+      case 'cover-file': return '目标风格';
+    }
+  };
+
+  const getMainInputValue = () => {
+    if (activeMode === 'cover-url' || activeMode === 'cover-file') return stylePrompt;
+    if (activeMode === 'lyric-song') return '';
+    return prompt;
+  };
+
+  const handleMainInputChange = (val: string) => {
+    if (activeMode === 'cover-url' || activeMode === 'cover-file') setStylePrompt(val);
+    else setPrompt(val);
+  };
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.container}>
+        {/* ── LEFT: Form ── */}
+        <div className={styles.formCol}>
+
+          <div className={styles.header}>
+            <h1 className={styles.pageTitle}>今天想创作什么音乐？</h1>
+          </div>
+
+          {/* Mode tabs */}
+          <div className={styles.modeTabs}>
+            {MODES.map(mode => (
+              <button
+                key={mode}
+                className={`${styles.modeTab} ${activeMode === mode ? styles.active : ''}`}
+                onClick={() => handleModeChange(mode as UIMode)}
+              >
+                {UI_MODE_LABELS[mode]}
+              </button>
+            ))}
+          </div>
+
+          {/* Main input label */}
+          <label className={styles.inputLabel}>{getInputLabel()}</label>
+
+          {/* Main text input */}
+          <textarea
+            className={styles.textarea}
+            placeholder={getPlaceholder()}
+            value={getMainInputValue()}
+            onChange={e => handleMainInputChange(e.target.value)}
+            rows={3}
+          />
+
+          {/* auto-song: language selector */}
+          {activeMode === 'auto-song' && (
+            <div className={styles.langRow}>
+              <span className={styles.subLabel}>语言</span>
+              <div className={styles.langTabs}>
+                {LANG_OPTIONS.map(lang => (
+                  <button
+                    key={lang}
+                    className={`${styles.langTab} ${language === lang ? styles.active : ''}`}
+                    onClick={() => setLanguage(lang)}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* lyric-song: lyrics textarea */}
+          {activeMode === 'lyric-song' && (
+            <>
+              <label className={styles.inputLabel}>歌词</label>
+              <textarea
+                className={styles.textarea}
+                placeholder={`[Verse]\n星光落在肩上\n风吹过旧操场\n\n[Chorus]\n不怕黑暗\n因为我们就是光`}
+                value={lyrics}
+                onChange={e => setLyrics(e.target.value)}
+                rows={6}
+              />
+              <div className={styles.lyricStructRow}>
+                {LYRIC_STRUCTURES.map(s => (
+                  <button
+                    key={s.tag}
+                    className={styles.lyricStructBtn}
+                    onClick={() => handleLyricInsert(s.tag)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* cover-url: reference audio URL */}
+          {activeMode === 'cover-url' && (
+            <>
+              <label className={styles.inputLabel}>参考音频 URL</label>
+              <input
+                className={styles.urlInput}
+                placeholder="粘贴音频 URL，如 https://..."
+                value={coverUrl}
+                onChange={e => setCoverUrl(e.target.value)}
+              />
+              <p className={styles.uploadHint}>参考音频建议 6 秒–6 分钟，最大 50MB</p>
+            </>
+          )}
+
+          {/* cover-file: file upload */}
+          {activeMode === 'cover-file' && (
+            <>
+              <label className={styles.inputLabel}>上传参考音频</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/mp3,audio/mpeg,audio/wav,audio/flac,audio/aac"
+                className={styles.fileInput}
+                onChange={handleFileChange}
+              />
+              <div
+                className={styles.uploadArea}
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter') fileInputRef.current?.click(); }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span>{coverFile ? coverFileName : '点击上传参考音频文件'}</span>
+                {coverFile && (
+                  <span className={styles.fileSize}>
+                    {(coverFile.size / 1024 / 1024).toFixed(1)} MB
+                  </span>
+                )}
+              </div>
+              <p className={styles.uploadHint}>支持 MP3、WAV、FLAC、AAC，最大 50MB</p>
+            </>
+          )}
+
+          {/* Style tags */}
+          <div className={styles.tagsSection}>
+            <div className={styles.tagList}>
+              {VISIBLE_TAGS.map(tag => (
+                <button
+                  key={tag}
+                  className={`${styles.tag} ${selectedTags.includes(tag) ? styles.selected : ''}`}
+                  onClick={() => handleTagToggle(tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced toggle */}
+          <button
+            className={styles.advancedBtn}
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            {showAdvanced ? '收起高级设置' : '高级设置'}
+          </button>
+
+          {showAdvanced && (
+            <div className={styles.advancedNote}>
+              模型：music-2.6 · 输出：MP3 · 音质：44.1kHz / 256kbps
+            </div>
+          )}
+
+          {/* API fallback hint */}
+          {apiFallbackHint && (
+            <div className={styles.apiHint}>{apiFallbackHint}</div>
+          )}
+
+          {/* Validation / error */}
+          {genError && (
+            <div className={styles.errorBox}>{genError}</div>
+          )}
+
+          {/* Generate button */}
+          <button
+            className={styles.generateBtn}
+            onClick={handleGenerate}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <>
+                <span className={styles.spinner} />
+                生成中...
+              </>
+            ) : getButtonLabel()}
+          </button>
+
+          {/* Mode hint */}
+          <p className={styles.modeHint}>{getModeHint()}</p>
+
+          {/* Mobile: player below form */}
+          <div className={styles.mobilePlayer}>
+            {currentTrack ? (
+              <div className={styles.playerCard}>
+                <WaveformPlayer
+                  duration={durationTextToSeconds(currentTrack.durationText)}
+                  durationText={currentTrack.durationText}
+                  audioUrl={currentTrack.audioUrl}
+                  modeLabel={UI_MODE_LABELS[currentTrack.mode] || CORE_MODE_LABELS[currentTrack.mode as CoreMode]}
+                />
+                <div className={styles.playerMeta}>
+                  <span className={styles.trackTitle}>{currentTrack.title}</span>
+                  <span className={styles.trackTime}>{currentTrack.durationText}</span>
+                  {generationSource && (
+                    <span className={`${styles.sourceTag} ${generationSource === 'mock' ? styles.mockTag : generationSource === 'mmx-cli' ? styles.cliTag : styles.minimaxTag}`}>
+                      {generationSource === 'mock' ? '本地模拟' : generationSource === 'mmx-cli' ? 'MMX CLI' : 'MiniMax 生成'}
+                    </span>
+                  )}
+                </div>
+                <div className={styles.playerActions}>
+                  {currentTrack.downloadUrl ? (
+                    <a
+                      href={currentTrack.downloadUrl}
+                      download
+                      className={styles.actionBtn}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      下载
+                    </a>
+                  ) : (
+                    <span className={`${styles.actionBtn} ${styles.disabled}`}>下载</span>
+                  )}
+                  <button
+                    className={`${styles.actionBtn} ${styles.secondary}`}
+                    onClick={() => { setCurrentTrack(null); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="23 4 23 10 17 10"/>
+                      <polyline points="1 20 1 14 7 14"/>
+                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                    清除
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.emptyPlayer}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9 8l6 4-6 4V8z"/>
+                </svg>
+                <span>生成音乐后即可试听</span>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile: recent works */}
+          <div className={styles.mobileRecent}>
+            {recentTracks.length > 0 && (
+              <div className={styles.recentCard}>
+                <div className={styles.recentHeader}>最近作品</div>
+                {recentTracks.map(track => (
+                  <div key={track.id} className={styles.recentItem}>
+                    <div className={styles.recentLeft}>
+                      <span className={styles.recentTitle}>{track.title}</span>
+                      <span className={styles.recentMeta}>{track.durationText} · {UI_MODE_LABELS[track.mode] || track.mode}</span>
+                    </div>
+                    <button className={styles.recentPlay} aria-label="播放">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <Link to="/library" className={styles.viewAll}>查看全部 →</Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── RIGHT: Desktop output ── */}
+        <div className={styles.outputCol}>
+          {/* Status bar */}
+          <div className={styles.statusBar}>
+            <span className={styles.statusDot} />
+            <span>
+              {settings.keyMode === 'server'
+                ? '服务器 Key'
+                : settings.apiKey ? 'Key 已连接'
+                : 'Key 未设置'}
+            </span>
+            <span className={styles.statusSep}>·</span>
+            <span>{settings.region === 'cn' ? '中国区' : 'Global'}</span>
+            <span className={styles.statusSep}>·</span>
+            <span>API Adapter</span>
+          </div>
+
+          {/* Player */}
+          <div className={styles.playerCard}>
+            {currentTrack ? (
+              <>
+                <WaveformPlayer
+                  duration={durationTextToSeconds(currentTrack.durationText)}
+                  durationText={currentTrack.durationText}
+                  audioUrl={currentTrack.audioUrl}
+                  modeLabel={UI_MODE_LABELS[currentTrack.mode] || CORE_MODE_LABELS[currentTrack.mode as CoreMode]}
+                />
+                <div className={styles.playerMeta}>
+                  <span className={styles.trackTitle}>{currentTrack.title}</span>
+                  <span className={styles.trackTime}>{currentTrack.durationText}</span>
+                  {generationSource && (
+                    <span className={`${styles.sourceTag} ${generationSource === 'mock' ? styles.mockTag : generationSource === 'mmx-cli' ? styles.cliTag : styles.minimaxTag}`}>
+                      {generationSource === 'mock' ? '本地模拟' : generationSource === 'mmx-cli' ? 'MMX CLI' : 'MiniMax 生成'}
+                    </span>
+                  )}
+                </div>
+                <div className={styles.playerActions}>
+                  {currentTrack.downloadUrl ? (
+                    <a
+                      href={currentTrack.downloadUrl}
+                      download
+                      className={styles.actionBtn}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      下载 MP3
+                    </a>
+                  ) : (
+                    <span className={`${styles.actionBtn} ${styles.disabled}`}>下载 MP3</span>
+                  )}
+                  <button
+                    className={`${styles.actionBtn} ${styles.secondary}`}
+                    onClick={() => { setCurrentTrack(null); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="23 4 23 10 17 10"/>
+                      <polyline points="1 20 1 14 7 14"/>
+                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                    清除
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className={styles.emptyPlayer}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9 8l6 4-6 4V8z"/>
+                </svg>
+                <span>生成音乐后即可试听</span>
+              </div>
+            )}
+          </div>
+
+          {/* Recent */}
+          {recentTracks.length > 0 && (
+            <div className={styles.recentCard}>
+              <div className={styles.recentHeader}>最近作品</div>
+              {recentTracks.map(track => (
+                <div key={track.id} className={styles.recentItem}>
+                  <div className={styles.recentLeft}>
+                    <span className={styles.recentTitle}>{track.title}</span>
+                    <span className={styles.recentMeta}>{track.durationText} · {UI_MODE_LABELS[track.mode] || track.mode}</span>
+                  </div>
+                  <button className={styles.recentPlay} aria-label="播放">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <Link to="/library" className={styles.viewAll}>查看全部 →</Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
