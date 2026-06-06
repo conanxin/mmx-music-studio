@@ -1,0 +1,49 @@
+# ============================================================
+# mmx-music-studio — Docker Compose
+# ============================================================
+#
+# Default: SAFE MODE (no real generation, mock only)
+#
+# To enable real CLI generation:
+#   - Install mmx CLI in the container or use a custom image
+#   - Run `mmx auth login` on the host or inside the container
+#   - Set REAL_GENERATION_ENABLED=true
+#   - Set MINIMAX_BACKEND=cli
+#
+# To enable API adapter with real key:
+#   - Use server-side env var MINIMAX_API_KEY
+#   - Or use the web UI session key input (recommended for shared deployments)
+#   - NEVER put real keys in this file
+#
+# To enable real generation (CAUTION — consumes MiniMax credits):
+#   REAL_GENERATION_ENABLED=true
+#   MINIMAX_BACKEND=cli  # or "api"
+#
+# ============================================================
+
+services:
+  mmx-music-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mmx-music-studio
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      # Persist generated tracks across container restarts
+      - ./storage/tracks:/app/storage/tracks
+    environment:
+      PORT: 8787
+      PUBLIC_DEMO_MODE: "true"
+      REAL_GENERATION_ENABLED: "false"
+      MOCK_GENERATION_ENABLED: "true"
+      MINIMAX_BACKEND: mock
+      MINIMAX_REGION: cn
+      MUSIC_OUTPUT_DIR: /app/storage/tracks
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8787/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

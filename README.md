@@ -4,9 +4,40 @@
 
 > ⚠️ **免责声明**：这是一个非官方的开源项目，与 MiniMax 无任何关联。
 
-## 项目目标
+---
 
-打造一个简约、有设计感、中文界面的音乐创作工具，让用户通过自己的 MiniMax Token Plan Key 生成音乐、在线试听、下载 MP3、管理历史作品。
+## 快速开始
+
+### Docker（推荐，最快）
+
+```bash
+git clone <repo> && cd mmx-music-studio
+docker compose up -d
+# 访问 http://localhost:8787
+```
+
+> 默认安全模式，无需 API Key，不消耗额度。
+
+### 本地开发
+
+```bash
+npm install
+npm run dev:full
+# Web: http://localhost:5174
+# API:  http://localhost:8787
+```
+
+### 生产构建
+
+```bash
+npm install
+npm run build
+npm run start
+# API: http://localhost:8787
+# 前端: dist/（需配置 Nginx 托管）
+```
+
+---
 
 ## 功能规划
 
@@ -18,6 +49,34 @@
 - 💾 **下载 MP3** — 一键保存高质量 MP3 文件
 - 📚 **作品库** — 历史作品管理，随时回听
 
+---
+
+## 后端模式
+
+| 模式 | 真实生成 | 额度消耗 | 用途 |
+|------|----------|----------|------|
+| `mock` | ❌ | ❌ | 默认安全模式，本地模拟 |
+| `cli` | ✅ | ✅ | 需服务器 `mmx` 已登录（推荐） |
+| `api` | ✅ | ✅ | 需 `MINIMAX_API_KEY` 环境变量（实验性） |
+
+详见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
+---
+
+## 安全默认值
+
+默认配置为**安全模式**，不消耗额度：
+
+```bash
+REAL_GENERATION_ENABLED=false  # 不调用真实 API
+MOCK_GENERATION_ENABLED=true   # 使用本地模拟
+MINIMAX_BACKEND=mock           # 后端模式
+```
+
+真实生成需要显式开启（⚠️ 会消耗 MiniMax Token Plan 额度）。
+
+---
+
 ## 当前状态
 
 | 模块 | 状态 |
@@ -25,87 +84,74 @@
 | UI | ✅ PASS |
 | Mock generation | ✅ PASS |
 | MMX CLI adapter | ✅ PASS |
-| MMX CLI 真实生成 | ✅ PASS（Phase 2D-B，2次instrumental）|
+| MMX CLI 真实生成 | ✅ PASS（2次instrumental） |
 | MMX API adapter | 🔧 实验性 |
-| API 真实生成 | 🔧 待 Phase 3 完善 |
+| Docker 部署 | ✅ PASS |
 | 微信小程序 | 📋 规划中 |
+
+---
 
 ## 当前阶段
 
-**Phase 2D.1 + 2D-B：CLI 真实生成链路完成** ✅
+**Phase 2F：Docker 部署与 GitHub Release 准备** ✅
 
-- ✅ 真实 CLI 生成成功 2 次（7.3MB + 6.2MB MP3）
-- ✅ `generationSource: "mmx-cli"` 返回正确
-- ✅ Download endpoint HTTP 200，Content-Length 正确
-- ✅ EISDIR 修复：`--out <file>` 而非 `--out <dir>`
-- ✅ Proxy bypass 修复：清空 ALL_PROXY/all_proxy 等代理变量
-- ✅ track id 与文件名一致性：server 生成 `${id}.mp3`，CLI adapter 直接输出
-- ✅ manifest 一致性：`manifest:audit` 0 issues
-- ✅ `manifest:audit` + `manifest:fix` 工具完成
-- ✅ `verify-existing-cli-track.sh` 验证现有 mmx-cli 作品可播放/可下载
-- ✅ Settings「生成后端」区域显示 CLI 状态
-- ✅ 前端 `mmx-cli` 标签支持（Studio + Library）
-- ✅ CLI adapter smoke test 通过
+- ✅ Dockerfile（多阶段构建，默认安全模式）
+- ✅ docker-compose.yml（默认安全模式）
+- ✅ .dockerignore
+- ✅ `docs/DEPLOYMENT.md`（本地/Docker/生产部署指南）
+- ✅ `CONTRIBUTING.md`（贡献指南）
+- ✅ `CHANGELOG.md`（版本记录）
+- ✅ `docs/release/RELEASE_NOTES_v0.1.0-alpha.md`（发布说明）
+- ✅ `docs/OPEN_SOURCE_CHECKLIST.md`（开源检查清单）
+- ✅ `scripts/release-check.sh`（11 项发布前检查）
 
-**Phase 2E：收口与开源发布准备** — 进行中
-
-- ✅ manifest 一致性修复
-- ✅ `manifest:audit` + `manifest:fix` 脚本
-- ✅ 文档更新
-- ⏳ 截图 + 打包
-
-参见 [docs/CLI-ADAPTER.md](docs/CLI-ADAPTER.md) |
-[docs/PHASE_2D_REAL_CLI_GENERATION_REPORT.md](docs/PHASE_2D_REAL_CLI_GENERATION_REPORT.md)
+---
 
 ## 技术栈
 
 - React 18 + TypeScript
-- Vite 5
-- React Router v6
-- CSS Modules / Vanilla CSS（无 Tailwind，无复杂依赖）
+- Vite 5（构建工具）
+- React Router v6（路由）
+- CSS Modules（样式）
+- Node.js 22 + tsx（API Server）
+- Docker + Docker Compose（容器化）
 
-## 快速启动
-
-```bash
-# 安装依赖
-pnpm install
-
-# 启动开发服务器
-pnpm dev
-
-# 构建生产版本
-pnpm build
-```
-
-本地访问地址：http://localhost:5174
-
-## 界面预览
-
-本阶段为静态 UI 原型，截图均为 Mock 页面，不调用真实 API，不包含任何真实密钥。
-
-| 资源 | 路径 |
-|------|------|
-| 设计评审页（HTML） | `docs/screenshots/review.html` |
-| 截图拼贴总览图 | `docs/screenshots/contact-sheet.png` |
-| 截图源文件 | `docs/screenshots/*.png` |
-| 设计评审打包 | `docs/mmx-music-studio-ui-review.zip` |
-
-> ⚠️ 截图为 Mock UI，不调用真实 MiniMax API。真实 API 接入将在后续阶段完成。
+---
 
 ## 项目结构
 
 ```
 mmx-music-studio/
-├── apps/
-│   └── web/              # Web 前端应用
+├── src/                     # Web 前端（React）
+├── server/                  # API Server（TypeScript + tsx）
 ├── packages/
-│   ├── core/             # 平台无关核心逻辑
-│   ├── adapters/         # 平台适配器（storage/audio/api）
-│   └── ui-tokens/        # 设计令牌
-├── docs/                 # 项目文档
-├── storage/              # 本地存储（作品文件）
-└── README.md
+│   ├── core/               # 平台无关核心逻辑
+│   ├── adapters/           # 平台适配器（API/CLI/Mock）
+│   └── ui-tokens/          # UI 设计令牌
+├── scripts/
+│   ├── release-check.sh    # 发布前检查（必跑）
+│   ├── manifest-audit.ts   # manifest 审计
+│   └── manifest-fix.ts     # manifest 修复
+├── docs/                    # 项目文档
+├── storage/tracks/          # 生成的音频（git 忽略）
+├── Dockerfile               # 多阶段构建镜像
+├── docker-compose.yml       # Docker Compose 部署
+└── .dockerignore
 ```
+
+---
+
+## 界面预览
+
+截图位于 `docs/screenshots/`，包含创作台/作品库/设置页的移动端和桌面端截图。
+
+| 资源 | 路径 |
+|------|------|
+| 设计评审页 | `docs/screenshots/review.html` |
+| 截图拼贴图 | `docs/screenshots/contact-sheet.png` |
+| 截图源文件 | `docs/screenshots/*.png` |
+
+---
 
 ## 微信小程序准备
 
@@ -116,34 +162,50 @@ mmx-music-studio/
 - UI 组件小程序端用 Taro / uni-app 接入
 - 不依赖浏览器专有 API
 
-详见 [docs/MINIPROGRAM-READY.md](./docs/MINIPROGRAM-READY.md)
+详见 [docs/MINIPROGRAM-READY.md](docs/MINIPROGRAM-READY.md)
+
+---
+
+## Roadmap
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| Phase 1 | UI 原型 + 项目文档 | ✅ 完成 |
+| Phase 2A–F | Mock / API / CLI / Docker / 发布准备 | ✅ 完成 |
+| Phase 3 | 微信小程序（Taro / uni-app） | 📋 规划 |
+| Phase 4 | API Adapter 完善（稳定性、错误处理） | 📋 规划 |
+| Phase 5 | 公共多用户部署（认证、额度限制） | 📋 规划 |
+
+---
 
 ## 安全原则
 
-### 开发模式（默认）
+### 默认安全模式
 
-默认 `REAL_GENERATION_ENABLED=false`，即使配置了 `MINIMAX_API_KEY` 也不会调用真实 MiniMax API，而是使用本地 Mock 生成（sine wave WAV 文件）。所有 smoke test 均在此模式下运行，**不消耗额度**。
+默认 `REAL_GENERATION_ENABLED=false`，即使配置了 `MINIMAX_API_KEY` 也不会调用真实 MiniMax API，而是使用本地 Mock 生成。所有 smoke test 均在此模式下运行，**不消耗额度**。
 
 ### 真实生成模式
 
-需要显式开启：
+需要显式开启（⚠️ 会消耗 MiniMax Token Plan 额度）：
 
 ```bash
 REAL_GENERATION_ENABLED=true
 MINIMAX_BACKEND=cli   # 推荐：使用 mmx CLI（需先 mmx auth login）
 # 或
-MINIMAX_BACKEND=api   # 实验性：直接调用 MiniMax API（Phase 2C 发现服务可能返回错误）
+MINIMAX_BACKEND=api   # 实验性：直接调用 MiniMax API
 PUBLIC_DEMO_MODE=false
 MINIMAX_API_KEY=***
 ```
 
 CLI Adapter 推荐原因：不通过 HTTP 直连 MiniMax，由 mmx CLI 管理认证和请求。
 
-详见 [docs/SECURITY.md](./docs/SECURITY.md)
+详见 [docs/SECURITY.md](docs/SECURITY.md)
+
+---
 
 ## 开源协议
 
-MIT License
+MIT License — 可自由使用、修改、分发，包括商业用途，但需保留原作者署名和版权声明。
 
 ---
 

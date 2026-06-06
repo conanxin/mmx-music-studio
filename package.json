@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "manifest:audit": "tsx scripts/manifest-audit.ts",
     "manifest:fix": "tsx scripts/manifest-fix.ts",
+    "release:check": "bash scripts/release-check.sh",
     "preview": "vite preview"
   },
   "dependencies": {
