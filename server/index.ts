@@ -904,12 +904,21 @@ async function handleTrackDownload(
   const filePath = getTrackFilePath(config.outputDir, track.audioFileName);
   if (!fs.existsSync(filePath)) { res.writeHead(404); res.end('File not found'); return; }
   const safeName = track.title.replace(/[^\w\u4e00-\u9fff\-_. ]/g, '_') + `.${track.audioFormat || 'mp3'}`;
-  res.writeHead(200, {
-    'Content-Type': track.audioMimeType || 'audio/mpeg',
-    'Content-Disposition': safeContentDisposition(safeName),
-    'Content-Length': fs.statSync(filePath).size,
-  });
-  fs.createReadStream(filePath).pipe(res);
+  try {
+    const stat = fs.statSync(filePath);
+    res.writeHead(200, {
+      'Content-Type': track.audioMimeType || 'audio/mpeg',
+      'Content-Disposition': safeContentDisposition(safeName),
+      'Content-Length': stat.size,
+    });
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    console.error(`[server] download stream error:`, (err as Error).message);
+    if (!res.writableEnded) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: { type: 'download', message: (err as Error).message } }));
+    }
+  }
 }
 
 async function handleDeleteTrack(
@@ -1162,8 +1171,10 @@ function main() {
     }
   });
 
-  server.listen(config.port, () => {
-    console.log(`[server] mmx-music-studio API 运行于 http://localhost:${config.port}`);
+  const host = process.env.HOST || '0.0.0.0';
+
+  server.listen(config.port, host, () => {
+    console.log(`[server] mmx-music-studio API 运行于 http://${host}:${config.port}`);
   });
 
   process.on('SIGTERM', () => { server.close(); process.exit(0); });

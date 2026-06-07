@@ -101,6 +101,56 @@ docker compose up -d
 - 不消耗 Token Plan 额度
 - 使用本地模拟音频
 
+---
+
+## 安全公网预览（推荐）
+
+### 启动命令
+
+```bash
+cd /home/ubuntu/projects/mmx-music-studio
+
+PUBLIC_DEMO_MODE=true \
+REAL_GENERATION_ENABLED=false \
+MOCK_GENERATION_ENABLED=true \
+MINIMAX_BACKEND=mock \
+MINIMAX_REGION=cn \
+PORT=8787 \
+HOST=0.0.0.0 \
+MUSIC_OUTPUT_DIR=./storage/tracks \
+npm run start
+```
+
+### 访问
+
+`http://<服务器公网IP>:8787`
+
+### 当前预览地址
+
+> **注意**：以下地址需要云厂商安全组已开放 TCP 8787 入站。
+>
+> 若访问失败，请在云厂商控制台（腾讯云 / 阿里云等）开放 **TCP 8787** 入站规则。
+>
+> 地址：`http://154.17.0.147:8787`
+
+### 安全模式说明
+
+该模式只使用本地 mock 音频：
+- ❌ 不调用 MiniMax API
+- ❌ 不调用 mmx CLI 真实生成
+- ❌ 不消耗 MiniMax Token Plan 额度
+-❌ 不需要配置 MiniMax Key
+- ✅ 使用本地模拟音频，适合 UI 演示和公网预览
+
+### ⚠️ 安全警告
+
+- **不要**把 `REAL_GENERATION_ENABLED=true` 的真实生成服务裸露到公网
+- 真实生成公网部署前**必须**增加：登录鉴权、速率限制、额度限制
+- **不要**把 API Key 写入前端、Dockerfile、docker-compose.yml 或公开文档
+- 公网 HTTPS 推荐使用 **Caddy** 或 **Nginx** 反向代理（HTTP 明文传输存在中间人攻击风险）
+
+---
+
 ### 启用真实 CLI 生成（⚠️ 消耗额度）
 
 需要在容器中或宿主机安装并登录 `mmx` CLI：

@@ -47,10 +47,15 @@ export function isSafeAudioUrl(url: string): boolean {
 
 /**
  * Sanitize a title for use in Content-Disposition header.
+ * Uses RFC 5987 encoding for non-ASCII characters so Node.js doesn't reject
+ * the header (which only accepts ASCII in header values by default).
  */
 export function safeContentDisposition(fileName: string): string {
-  const sanitized = fileName.replace(/[^\w\u4e00-\u9fff\-_. ]/g, '_');
-  return `attachment; filename="${sanitized}"`;
+  // ASCII-safe name for the filename* parameter (RFC 5987)
+  const asciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/__+/g, '_');
+  // Encode the original for filename* (UTF-8 percent-encoding)
+  const encoded = encodeURIComponent(fileName);
+  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encoded}`;
 }
 
 /**

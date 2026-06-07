@@ -81,6 +81,16 @@ MINIMAX_BACKEND=mock           # 后端模式
 
 ---
 
+## Online Preview
+
+**Safe demo preview**: http://154.17.0.147:8787
+
+> ⚠️ Requires cloud security group to open TCP 8787 inbound. If the address is not reachable, open TCP 8787 in your cloud provider's security group settings (Tencent Cloud / Alibaba Cloud / etc.).
+
+This preview runs in safe mock mode — it does not call MiniMax, does not use any API Key, and does not consume Token Plan credits.
+
+---
+
 ## 当前状态
 
 | 模块 | 状态 |
