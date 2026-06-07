@@ -48,4 +48,6 @@ test-results/
 tmp/
 temp/
 .cache/
-storage/tracks/.tmp/
+
+# TypeScript build cache
+*.tsbuildinfo

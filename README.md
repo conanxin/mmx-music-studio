@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-0.1.0--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
+[![Phase](https://img.shields.io/badge/Phase-v0.2.0--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
@@ -99,6 +99,16 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 - 小程序不存储 MiniMax key
 
 ---
+
+## Current Status
+
+- **Web 公网预览**：`http://118.195.129.137:8787`（mock 模式）
+- **Web 真实生成**：✅ 已验证（MMX CLI，需 auth login）
+- **微信小程序**：Phase 3C/3D 就绪（Taro v4，mock API，音频/下载 adapter）
+- **HTTPS 域名**：⏳ Phase 3E 待办（需用户提供域名）
+- **公网真实生成**：⚠️ 需要登录鉴权 + 额度限制
+
+**完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ---
 
