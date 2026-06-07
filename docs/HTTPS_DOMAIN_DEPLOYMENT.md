@@ -18,7 +18,7 @@ mmx-music-studio server
 MiniMax Token Plan / MMX CLI / Mock
 ```
 
-**域名：** `music.yourdomain.com`（占位符，用户提供后替换）  
+**域名：** `music.conanxin.com`（占位符，用户提供后替换）  
 **公网 IP：** `118.195.129.137`
 
 ---
@@ -72,7 +72,7 @@ sudo apt update && sudo apt install caddy
 cp deploy/Caddyfile.safe-preview.example Caddyfile
 
 # 2. 修改域名
-# 编辑 Caddyfile，将 music.yourdomain.com 替换为真实域名
+# 编辑 Caddyfile，将 music.conanxin.com 替换为真实域名
 
 # 3. 运行（开发测试）
 caddy run --config Caddyfile
@@ -98,10 +98,10 @@ sudo systemctl enable --now caddy
 sudo apt install -y nginx certbot
 
 # 申请 Let's Encrypt 证书
-sudo certbot --nginx -d music.yourdomain.com
+sudo certbot --nginx -d music.conanxin.com
 
 # 或手动申请
-sudo certbot certonly --standalone -d music.yourdomain.com
+sudo certbot certonly --standalone -d music.conanxin.com
 ```
 
 **Nginx 配置模板位置：** `deploy/nginx.mmx-music-studio.conf.example`  
@@ -122,11 +122,11 @@ sudo certbot certonly --standalone -d music.yourdomain.com
 ### 验证 DNS 解析
 
 ```bash
-nslookup music.yourdomain.com
+nslookup music.conanxin.com
 # 期望：Address: 118.195.129.137
 
 # 或
-python3 -c "import socket; print(socket.gethostbyname('music.yourdomain.com'))"
+python3 -c "import socket; print(socket.gethostbyname('music.conanxin.com'))"
 ```
 
 ---
@@ -201,9 +201,9 @@ sudo systemctl enable --now mmx-music-studio
 
 | 域名类型 | 配置值 |
 |---------|--------|
-| request 合法域名 | `https://music.yourdomain.com` |
-| downloadFile 合法域名 | `https://music.yourdomain.com` |
-| uploadFile 合法域名 | `https://music.yourdomain.com`（cover 场景需要）|
+| request 合法域名 | `https://music.conanxin.com` |
+| downloadFile 合法域名 | `https://music.conanxin.com` |
+| uploadFile 合法域名 | `https://music.conanxin.com`（cover 场景需要）|
 
 **域名配置后通常次日生效（首次配置）。**
 
@@ -239,7 +239,7 @@ sudo systemctl enable --now mmx-music-studio
 bash scripts/domain-readiness-check.sh
 
 # 含域名检查
-DOMAIN=music.yourdomain.com bash scripts/domain-readiness-check.sh
+DOMAIN=music.conanxin.com bash scripts/domain-readiness-check.sh
 ```
 
 检查项目：
@@ -262,7 +262,7 @@ curl https://getcaddy.com | bash -s personal
 
 # 4. 配置
 cp deploy/Caddyfile.safe-preview.example Caddyfile
-# 编辑 Caddyfile，将 music.yourdomain.com 替换为真实域名
+# 编辑 Caddyfile，将 music.conanxin.com 替换为真实域名
 
 # 5. 只监听本机
 bash scripts/run-local-behind-proxy.sh &
@@ -271,7 +271,7 @@ bash scripts/run-local-behind-proxy.sh &
 caddy run --config Caddyfile
 
 # 7. 验证
-curl https://music.yourdomain.com/api/health
+curl https://music.conanxin.com/api/health
 ```
 
 ---

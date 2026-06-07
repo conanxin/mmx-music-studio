@@ -1,8 +1,26 @@
+
+
+---
+
+## 正式生产地址（Phase 4E-B 实装）
+
+**HTTPS 地址：** https://music.conanxin.com
+
+| 域名类型 | 配置值 | 状态 |
+|---------|--------|------|
+| request 合法域名 | `https://music.conanxin.com` | ✅ 可配置 |
+| downloadFile 合法域名 | `https://music.conanxin.com` | ✅ 可配置 |
+| uploadFile 合法域名 | `https://music.conanxin.com` | ✅ 可配置 |
+
+> ⚠️ 微信公众平台域名配置通常次日生效（首次配置）。
+
+---
+
 # 微信小程序 HTTPS 域名配置指南
 
-> Phase 3E 文档 · mmx-music-studio
-> 本阶段仅做配置准备，不真实安装 HTTPS。
-> 当前 HTTP IP `http://118.195.129.137:8787` 仅适合开发者工具调试。
+> Phase 4E-B 文档 · mmx-music-studio
+> **HTTPS 已实装：** https://music.conanxin.com
+> 当前 HTTP IP `http://118.195.129.137:8787` 建议关闭公网，由 Caddy 统一对外。
 
 ---
 
@@ -34,7 +52,7 @@
 
 - 需要准备 HTTPS 域名
 - 微信公众平台 → 开发管理 → 开发设置 → 服务器域名 → 添加合法域名
-- 小程序代码中的 API Base 改为 `https://music.yourdomain.com`
+- 小程序代码中的 API Base 改为 `https://music.conanxin.com`
 - 开发者工具也需要更新 API Base 并关闭合法域名校验
 
 ---
@@ -44,7 +62,7 @@
 > ⚠️ 以下为占位符域名，请替换为你的真实域名。
 
 ```
-API Base（生产）：https://music.yourdomain.com
+API Base（生产）：https://music.conanxin.com
 ```
 
 ---
@@ -55,9 +73,9 @@ API Base（生产）：https://music.yourdomain.com
 
 | 域名类型 | 配置值 | 说明 |
 |----------|--------|------|
-| request 合法域名 | `https://music.yourdomain.com` | API 请求（health、generate、tracks 等） |
-| downloadFile 合法域名 | `https://music.yourdomain.com` | 音频文件下载 |
-| uploadFile 合法域名 | `https://music.yourdomain.com` | cover 参考音频上传（如需要） |
+| request 合法域名 | `https://music.conanxin.com` | API 请求（health、generate、tracks 等） |
+| downloadFile 合法域名 | `https://music.conanxin.com` | 音频文件下载 |
+| uploadFile 合法域名 | `https://music.conanxin.com` | cover 参考音频上传（如需要） |
 | socket 合法域名 | 不需要 | 当前无 WebSocket 用例 |
 
 > 注意：域名必须备案（国内服务器）；配置后次日生效（首次配置）。
@@ -70,7 +88,7 @@ API Base（生产）：https://music.yourdomain.com
 
 ### 1. 域名准备
 
-- [ ] 已有可用的域名（如 `music.yourdomain.com`）
+- [ ] 已有可用的域名（如 `music.conanxin.com`）
 - [ ] 域名已完成 ICP 备案（微信要求）
 - [ ] 域名解析 A 记录指向服务器 IP：`118.195.129.137`
 - [ ] 等待 DNS 生效（通常 10 分钟~48 小时）
@@ -79,7 +97,7 @@ API Base（生产）：https://music.yourdomain.com
 
 - [ ] 腾讯云安全组开放 **TCP 80**（HTTP，用于 Let's Encrypt 证书申请）
 - [ ] 腾讯云安全组开放 **TCP 443**（HTTPS）
-- [ ] 确认 `curl http://music.yourdomain.com` 能访问到服务器
+- [ ] 确认 `curl http://music.conanxin.com` 能访问到服务器
 
 ### 3. 反向代理配置
 
@@ -89,18 +107,18 @@ API Base（生产）：https://music.yourdomain.com
 
 ### 4. 验证 HTTPS
 
-- [ ] `curl https://music.yourdomain.com/api/health` 返回 JSON
-- [ ] 浏览器访问 `https://music.yourdomain.com` 无证书警告
+- [ ] `curl https://music.conanxin.com/api/health` 返回 JSON
+- [ ] 浏览器访问 `https://music.conanxin.com` 无证书警告
 
 ### 5. 微信公众平台配置
 
-- [ ] 在 request 合法域名中添加 `https://music.yourdomain.com`
-- [ ] 在 downloadFile 合法域名中添加 `https://music.yourdomain.com`
+- [ ] 在 request 合法域名中添加 `https://music.conanxin.com`
+- [ ] 在 downloadFile 合法域名中添加 `https://music.conanxin.com`
 - [ ] 等待域名审核生效（通常次日）
 
 ### 6. 小程序更新
 
-- [ ] 将 `apps/weapp/src/config/api.ts` 中的 `apiBase` 更新为 `https://music.yourdomain.com`
+- [ ] 将 `apps/weapp/src/config/api.ts` 中的 `apiBase` 更新为 `https://music.conanxin.com`
 - [ ] 或在设置页面填写新的 API Base
 - [ ] 重新编译：`npm run weapp:build`
 - [ ] 在开发者工具中验证请求正常
@@ -114,7 +132,7 @@ API Base（生产）：https://music.yourdomain.com
 配置文件：`deploy/Caddyfile.example`
 
 ```bash
-music.yourdomain.com {
+music.conanxin.com {
     encode gzip
     reverse_proxy 127.0.0.1:8787
     header {
@@ -135,14 +153,14 @@ music.yourdomain.com {
 # HTTP → HTTPS 重定向
 server {
     listen 80;
-    server_name music.yourdomain.com;
+    server_name music.conanxin.com;
     return 301 https://$host$request_uri;
 }
 
 # HTTPS 反代
 server {
     listen 443 ssl http2;
-    server_name music.yourdomain.com;
+    server_name music.conanxin.com;
 
     ssl_certificate     /path/to/fullchain.pem;
     ssl_certificate_key /path/to/privkey.pem;
@@ -168,7 +186,7 @@ export const API_CONFIG = {
   // 开发默认：HTTP IP + 微信开发者工具关闭合法域名校验
   defaultApiBase: 'http://118.195.129.137:8787',
   // 生产占位符（用户提供域名后替换）
-  productionApiBase: 'https://music.yourdomain.com',
+  productionApiBase: 'https://music.conanxin.com',
 }
 ```
 

@@ -90,7 +90,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 **当前 API Base**：
 - 开发：`http://118.195.129.137:8787`（仅开发者工具调试）
-- 生产占位符：`https://music.yourdomain.com`（用户提供域名后替换）
+- 生产占位符：`https://music.conanxin.com`（用户提供域名后替换）
 
 **正式发布要求**：
 - HTTPS 域名（必须）
@@ -201,7 +201,7 @@ MINIMAX_BACKEND=mock           # 后端模式
 
 ## Online Preview
 
-**Live preview**: http://118.195.129.137:8787
+**Live preview**: https://music.conanxin.com
 
 > ⚠️ **当前为真实生成模式（MMX CLI）** — 此预览后端使用 `MINIMAX_BACKEND=cli` + `REAL_GENERATION_ENABLED=true`，会真实调用 MiniMax mmx CLI 并消耗 Token Plan 额度。
 >
