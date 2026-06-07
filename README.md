@@ -216,8 +216,33 @@ REAL_GENERATION_ENABLED=true
 MINIMAX_BACKEND=cli   # 推荐：使用 mmx CLI（需先 mmx auth login）
 # 或
 MINIMAX_BACKEND=api   # 实验性：直接调用 MiniMax API
-PUBLIC_DEMO_MODE=false
 MINIMAX_API_KEY=***
+```
+
+### 安全预览模式（Safe Preview Mode）
+
+安全预览模式不依赖单一 `demoMode` 字段，而是由以下三个条件共同保证：
+
+| 条件 | 说明 |
+|------|------|
+| `REAL_GENERATION_ENABLED=false` | 禁止调用 MiniMax |
+| `MINIMAX_BACKEND=mock` | 使用本地模拟后端 |
+| `MOCK_GENERATION_ENABLED=true` | 本地模拟生成可用 |
+
+只要这三个条件同时满足，无论 `PUBLIC_DEMO_MODE` 是什么值，都是安全预览模式：
+
+```bash
+# 安全预览模式（默认）
+REAL_GENERATION_ENABLED=false
+MINIMAX_BACKEND=mock
+MOCK_GENERATION_ENABLED=true
+PUBLIC_DEMO_MODE=true # 可选，仅作为额外保护层
+
+# 安全预览模式（不设置 PUBLIC_DEMO_MODE 也安全）
+REAL_GENERATION_ENABLED=false
+MINIMAX_BACKEND=mock
+MOCK_GENERATION_ENABLED=true
+# PUBLIC_DEMO_MODE 未设置
 ```
 
 CLI Adapter 推荐原因：不通过 HTTP 直连 MiniMax，由 mmx CLI 管理认证和请求。

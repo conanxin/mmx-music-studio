@@ -53,15 +53,19 @@ export default function Settings() {
   // Backend helpers
   const backend = health?.backend ?? 'mock';
   const backendLabel = backend === 'mock' ? '本地模拟' : backend === 'api' ? 'MiniMax API（实验）' : 'MMX CLI（推荐）';
-  const safeMode = !health?.realGenerationEnabled;
+  // Safe Preview Mode: real generation disabled + mock backend + mock generation enabled
+  const safePreviewMode =
+    health?.realGenerationEnabled === false &&
+    backend === 'mock' &&
+    health?.mockGenerationEnabled === true;
   const cliAvailable = health?.cliAvailable ?? false;
   const cliAuth = health?.cliAuthenticated ?? null;
   const cliRegion = health?.cliRegion ?? null;
 
   // Determine hint message
   let hint: { type: 'safe' | 'warn' | 'info'; text: string } | null = null;
-  if (safeMode) {
-    hint = { type: 'safe', text: '当前为安全模式，生成会使用本地模拟音频，不消耗额度。' };
+  if (safePreviewMode) {
+    hint = { type: 'safe', text: '安全预览模式已开启：当前后端为本地模拟，不会调用 MiniMax，也不会消耗额度。' };
   } else if (backend === 'cli' && !cliAuth) {
     hint = { type: 'warn', text: '检测到 MMX CLI，但当前认证或配置异常。请在服务器终端修复 mmx auth 后再进行真实 CLI 生成。' };
   } else if (backend === 'cli' && !cliAvailable) {
@@ -235,9 +239,9 @@ export default function Settings() {
                   <div className={styles.statusValue}>{backendLabel}</div>
                 </div>
                 <div className={styles.statusCard}>
-                  <div className={styles.statusLabel}>安全模式</div>
-                  <div className={`${styles.statusValue} ${safeMode ? styles.statusOk : styles.statusWarn}`}>
-                    {safeMode ? '已开启' : '已关闭'}
+                  <div className={styles.statusLabel}>安全预览模式</div>
+                  <div className={`${styles.statusValue} ${safePreviewMode ? styles.statusOk : styles.statusWarn}`}>
+                    {safePreviewMode ? '已开启' : '未开启'}
                   </div>
                 </div>
                 <div className={styles.statusCard}>
