@@ -1,0 +1,41 @@
+# Caddyfile — mmx-music-studio Safe Preview Mode
+#
+# 用途：Demo Preview 模式（mock 生成，不消耗额度）
+#       或 Production Locked 模式（真实生成前加一层 PIN 保护）
+#
+# 特点：
+#   - 自动申请/续期 HTTPS 证书（Let's Encrypt）
+#   - 自动 gzip/zstd 压缩
+#   - 基础安全响应头
+#   - 无需手动管理证书
+#
+# 用法：
+#   1. 将此文件复制为 Caddyfile（去除 .example）
+#   2. 修改 music.yourdomain.com 为你的真实域名
+#   3. 确保 server 运行在 localhost:8787
+#   4. 运行: caddy run --config Caddyfile
+#   5. 生产环境建议用 systemd 管理: sudo systemctl enable --now caddy
+#
+# 详细部署指南：docs/HTTPS_DOMAIN_DEPLOYMENT.md
+
+music.yourdomain.com {
+
+    # 启用 gzip + zstd 压缩
+    encode gzip zstd
+
+    # 反向代理到本地 server
+    reverse_proxy 127.0.0.1:8787
+
+    # 基础安全响应头
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -X-XSS-Protection
+    }
+
+    # 日志（生产环境建议开启）
+    # log {
+    #     output file /var/log/caddy/mmx-music-studio.log
+    # }
+}
