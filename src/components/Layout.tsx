@@ -4,6 +4,7 @@ import styles from './Layout.module.css'
 const navItems = [
   { path: '/studio', label: '创作' },
   { path: '/library', label: '作品' },
+  { path: '/jobs', label: '任务' },
   { path: '/settings', label: '设置' },
   { path: '/docs', label: '文档' },
 ]

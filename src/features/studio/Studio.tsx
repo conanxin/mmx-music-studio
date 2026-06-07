@@ -249,7 +249,7 @@ export default function Studio() {
 
       setCurrentJob(fresh);
 
-      if (fresh.status === 'completed') {
+      if (fresh.status === 'succeeded') {
         stopJobTimer();
         if (fresh.track) {
           const display = serverTrackToDisplay(fresh.track);
@@ -419,7 +419,7 @@ export default function Studio() {
       const job = result.job;
 
       // Instant success (sync mock / already completed)
-      if (job.status === 'completed' && job.track) {
+      if (job.status === 'succeeded' && job.track) {
         const display = serverTrackToDisplay(job.track);
         setCurrentTrack(display);
         setRecentTracks(prev => [display, ...prev].slice(0, 3));
@@ -882,6 +882,13 @@ export default function Studio() {
                     </svg>
                     清除
                   </button>
+                  <Link to="/jobs" className={`${styles.actionBtn} ${styles.secondary}`}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 6v6l4 2"/>
+                    </svg>
+                    任务历史
+                  </Link>
                 </div>
               </>
             ) : (

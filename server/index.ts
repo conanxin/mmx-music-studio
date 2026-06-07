@@ -96,7 +96,13 @@ import {
   enqueueAndRun,
   getQueuedCount,
   isWorkerBusy,
+  deleteJob,
+  retryJob,
+  getJobStats,
+  getTotalJobCount,
   type GenerateJob,
+  type GenerateJobStatus,
+  type ListJobsFilters,
 } from './jobs.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -1062,12 +1068,32 @@ async function handleDeleteTrack(
 // ── Job queue handlers ───────────────────────────────────────────────────────
 
 async function handleListJobs(
-  _req: http.IncomingMessage,
+  req: http.IncomingMessage,
   res: http.ServerResponse,
   _config: ServerConfig,
 ): Promise<void> {
-  const jobs = listJobs();
-  sendJson(res, 200, { ok: true, jobs });
+  // Phase 4D: support query params
+  const url = new URL(req.url!, 'http://localhost');
+  const status = url.searchParams.get('status') as GenerateJobStatus | null;
+  const search = url.searchParams.get('search') || undefined;
+  const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
+  const offset = url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : undefined;
+  const rawSort = url.searchParams.get('sort') || 'newest';
+  // Normalise sort values to what listJobs() expects: 'createdAt_desc' | 'createdAt_asc'
+  const sort = rawSort === 'oldest' ? 'createdAt_asc'
+    : rawSort === 'newest' || rawSort === 'createdAt_desc' ? 'createdAt_desc'
+    : 'createdAt_desc';
+
+  const filters: ListJobsFilters = {};
+  if (status) filters.status = status;
+  if (search) filters.search = search;
+  if (limit) filters.limit = limit;
+  if (offset) filters.offset = offset;
+  if (sort) filters.sort = sort;
+
+  const result = listJobs(filters);
+  const total = getTotalJobCount();
+  sendJson(res, 200, { ok: true, jobs: result, total });
 }
 
 async function handleGetJob(
@@ -1096,6 +1122,47 @@ async function handleCancelJob(
     return;
   }
   sendJson(res, 200, { ok: true, jobId, cancelled: true });
+}
+
+async function handleDeleteJob(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  const match = req.url!.match(/^\/api\/jobs\/([^/]+)$/);
+  if (!match) { sendError(res, 'validation', '无效的 job ID', 400); return; }
+  const jobId = match[1];
+  const ok = deleteJob(jobId);
+  if (!ok) {
+    sendError(res, 'validation', '任务不存在或当前状态不能删除', 400);
+    return;
+  }
+  sendJson(res, 200, { ok: true, deleted: true, jobId });
+}
+
+async function handleRetryJob(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  const match = req.url!.match(/^\/api\/jobs\/([^/]+)\/retry$/);
+  if (!match) { sendError(res, 'validation', '无效的 job ID', 400); return; }
+  const jobId = match[1];
+  const newJob = retryJob(jobId, config);
+  if (!newJob) {
+    sendError(res, 'validation', '该任务不能重试', 400);
+    return;
+  }
+  sendJson(res, 200, { ok: true, job: newJob, message: '任务已重新提交' });
+}
+
+async function handleJobStats(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  const stats = getJobStats();
+  sendJson(res, 200, { ok: true, stats });
 }
 
 // ── Shared track response mapper ───────────────────────────────────────────────
@@ -1214,12 +1281,18 @@ async function routeHandler(
     await handleDebugPayload(req, res, config);
   } else if (url === '/api/debug/cli' && req.method === 'GET') {
     await handleDebugCli(req, res, config);
-  } else if (url === '/api/jobs' && req.method === 'GET') {
-    await handleListJobs(req, res, config);
-  } else if (url.match(/^\/api\/jobs\/([^/]+)$/) && req.method === 'GET') {
-    await handleGetJob(req, res, config);
+  } else if (url === '/api/jobs/stats' && req.method === 'GET') {
+    await handleJobStats(req, res, config);
+  } else if (url.match(/^\/api\/jobs\/([^/]+)\/retry$/) && req.method === 'POST') {
+    await handleRetryJob(req, res, config);
   } else if (url.match(/^\/api\/jobs\/([^/]+)\/cancel$/) && req.method === 'POST') {
     await handleCancelJob(req, res, config);
+  } else if (url.match(/^\/api\/jobs\/([^/]+)$/) && req.method === 'DELETE') {
+    await handleDeleteJob(req, res, config);
+  } else if (url.match(/^\/api\/jobs\/([^/]+)$/) && req.method === 'GET') {
+    await handleGetJob(req, res, config);
+  } else if (url === '/api/jobs' && req.method === 'GET') {
+    await handleListJobs(req, res, config);
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ ok: false, code: 'not_found', message: '未找到对应接口' }));

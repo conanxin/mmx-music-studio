@@ -183,7 +183,7 @@ function pruneOldJobs(manifest?: JobsManifest): void {
 
 // ── Job CRUD ──────────────────────────────────────────────────────────────────
 
-export function createJob(input: MusicGenerationInput, backend: BackendMode): GenerateJob {
+export function createJob(input: MusicGenerationInput, backend: BackendMode, generationSource?: GenerationSource): GenerateJob {
   const now = new Date().toISOString();
   const job: GenerateJob = {
     id: `job_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`,
@@ -204,10 +204,104 @@ export function getJob(id: string): GenerateJob | null {
   return jobStore.get(id) ?? null;
 }
 
-export function listJobs(limit = 20): GenerateJob[] {
-  return Array.from(jobStore.values())
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, limit);
+export interface ListJobsFilters {
+  status?: GenerateJobStatus;
+  limit?: number;
+  offset?: number;
+  search?: string;
+  sort?: 'createdAt_desc' | 'createdAt_asc';
+}
+
+export interface JobStats {
+  total: number;
+  queued: number;
+  running: number;
+  succeeded: number;
+  failed: number;
+  cancelled: number;
+  workerBusy: boolean;
+  queueLength: number;
+}
+
+export function listJobs(filters: ListJobsFilters = {}): GenerateJob[] {
+  const { status, search, sort = 'createdAt_desc' } = filters;
+  let jobs = Array.from(jobStore.values());
+
+  if (status) {
+    jobs = jobs.filter(j => j.status === status);
+  }
+  if (search) {
+    const q = search.toLowerCase();
+    jobs = jobs.filter(j =>
+      (j.input.prompt ?? '').toLowerCase().includes(q) ||
+      (j.id ?? '').toLowerCase().includes(q)
+    );
+  }
+
+  if (sort === 'createdAt_asc') {
+    jobs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  } else {
+    jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  const offset = filters.offset ?? 0;
+  const limit = filters.limit ?? 50;
+  return jobs.slice(offset, offset + limit);
+}
+
+export function getTotalJobCount(filters: ListJobsFilters = {}): number {
+  const { status, search } = filters;
+  let jobs = Array.from(jobStore.values());
+  if (status) jobs = jobs.filter(j => j.status === status);
+  if (search) {
+    const q = search.toLowerCase();
+    jobs = jobs.filter(j =>
+      (j.input.prompt ?? '').toLowerCase().includes(q) ||
+      (j.id ?? '').toLowerCase().includes(q)
+    );
+  }
+  return jobs.length;
+}
+
+export function getJobStats(): JobStats {
+  const jobs = Array.from(jobStore.values());
+  const stats: JobStats = {
+    total: jobs.length,
+    queued: jobs.filter(j => j.status === 'queued').length,
+    running: jobs.filter(j => j.status === 'running').length,
+    succeeded: jobs.filter(j => j.status === 'succeeded').length,
+    failed: jobs.filter(j => j.status === 'failed').length,
+    cancelled: jobs.filter(j => j.status === 'cancelled').length,
+    workerBusy: isWorkerBusy(),
+    queueLength: getQueuedCount(),
+  };
+  return stats;
+}
+
+export function deleteJob(id: string): boolean {
+  if (!jobStore.has(id)) return false;
+  const job = jobStore.get(id)!;
+  if (job.status === 'running' || job.status === 'queued') return false;
+  jobStore.delete(id);
+  try {
+    const jobFile = path.join(process.cwd(), '.jobs', `${id}.json`);
+    if (fs.existsSync(jobFile)) fs.unlinkSync(jobFile);
+  } catch { /* ignore */ }
+  return true;
+}
+
+export function retryJob(
+  id: string,
+  config: Pick<ServerConfig, 'outputDir' | 'mockGenerationEnabled' | 'realGenerationEnabled' | 'previewAccess' | 'generationAccess' | 'rateLimit' | 'dailyQuota' | 'backend'>,
+): GenerateJob | null {
+  const original = jobStore.get(id);
+  if (!original) return null;
+  if (original.status !== 'failed' && original.status !== 'cancelled') return null;
+
+  const newJob = createJob(original.input, original.backend);
+  // Enqueue the new job so it runs
+  // createJob already enqueues and persists;
+  return newJob;
 }
 
 export function updateJob(id: string, patch: Partial<GenerateJob>): GenerateJob | null {

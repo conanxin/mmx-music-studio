@@ -109,7 +109,7 @@ export interface GenerateResult {
 
 // ── Job queue types ──────────────────────────────────────────────────────────
 
-export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 export interface GenerateJob {
   id: string;
@@ -120,6 +120,10 @@ export interface GenerateJob {
   error?: { type?: string; message: string; hint?: string };
   createdAt?: string;
   updatedAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+  input?: { prompt?: string; mode?: string; lyrics?: string };
 }
 
 export interface CreateJobResult {
@@ -131,6 +135,47 @@ export interface CreateJobResult {
 export interface ListJobsResult {
   ok: boolean;
   jobs: GenerateJob[];
+  total?: number;
+  filters?: ListJobsFilters;
+}
+
+export interface ListJobsFilters {
+  status?: JobStatus;
+  search?: string;
+  limit?: number;
+  offset?: number;
+  sort?: 'newest' | 'oldest';
+}
+
+export interface DeleteJobResult {
+  ok: boolean;
+  deleted?: boolean;
+  jobId?: string;
+  error?: { type?: string; message: string };
+}
+
+export interface RetryJobResult {
+  ok: boolean;
+  job?: GenerateJob;
+  message?: string;
+  error?: { type?: string; message: string };
+}
+
+export interface JobStats {
+  total: number;
+  queued: number;
+  running: number;
+  succeeded: number;
+  failed: number;
+  cancelled: number;
+  workerBusy: boolean;
+  queueLength: number;
+}
+
+export interface JobStatsResult {
+  ok: boolean;
+  stats?: JobStats;
+  error?: { type?: string; message: string };
 }
 
 export interface CancelJobResult {
@@ -420,7 +465,7 @@ export async function createGenerateJob(
         ok: true,
         job: {
           id: raw.track.id,
-          status: 'completed',
+          status: 'succeeded',
           track: raw.track,
           createdAt: raw.track.createdAt as string | undefined,
         },
@@ -449,13 +494,86 @@ export async function getJob(jobId: string): Promise<GenerateJob | null> {
 /** List all jobs. */
 export async function listJobs(): Promise<ListJobsResult> {
   try {
-    const raw = await apiFetch<{ ok: boolean; jobs: GenerateJob[] }>(
+    const raw = await apiFetch<{ ok: boolean; jobs: GenerateJob[]; total?: number }>(
       '/api/jobs',
       { method: 'GET' },
     );
-    return { ok: true, jobs: raw.jobs ?? [] };
+    return { ok: true, jobs: raw.jobs ?? [], total: raw.total };
   } catch {
     return { ok: false, jobs: [] };
+  }
+}
+
+/** List jobs with optional filters. */
+export async function listJobsFiltered(filters: ListJobsFilters = {}): Promise<ListJobsResult> {
+  try {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.limit) params.set('limit', String(filters.limit));
+    if (filters.offset) params.set('offset', String(filters.offset));
+    if (filters.sort) params.set('sort', filters.sort);
+    const qs = params.toString();
+    const raw = await apiFetch<{ ok: boolean; jobs: GenerateJob[]; total?: number }>(
+      `/api/jobs${qs ? `?${qs}` : ''}`,
+      { method: 'GET' },
+    );
+    return { ok: true, jobs: raw.jobs ?? [], total: raw.total, filters };
+  } catch {
+    return { ok: false, jobs: [] };
+  }
+}
+
+/** Get single job detail. */
+export async function getJobDetail(jobId: string): Promise<GenerateJob | null> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; job: GenerateJob }>(
+      `/api/jobs/${jobId}`,
+      { method: 'GET' },
+    );
+    return raw.job ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Delete a job record (does not delete audio files). */
+export async function deleteJob(jobId: string): Promise<DeleteJobResult> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; deleted?: boolean; jobId?: string }>(
+      `/api/jobs/${jobId}`,
+      { method: 'DELETE' },
+    );
+    return { ok: true, deleted: raw.deleted, jobId: raw.jobId };
+  } catch (err) {
+    return { ok: false, error: safeApiError(err) };
+  }
+}
+
+/** Retry a failed or cancelled job. */
+export async function retryJob(jobId: string): Promise<RetryJobResult> {
+  try {
+    const raw = await apiFetch<{
+      ok: boolean;
+      job?: GenerateJob;
+      message?: string;
+    }>(`/api/jobs/${jobId}/retry`, { method: 'POST' });
+    return { ok: true, job: raw.job, message: raw.message };
+  } catch (err) {
+    return { ok: false, error: safeApiError(err) };
+  }
+}
+
+/** Get job queue statistics. */
+export async function getJobStats(): Promise<JobStatsResult> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; stats: JobStats }>(
+      '/api/jobs/stats',
+      { method: 'GET' },
+    );
+    return { ok: true, stats: raw.stats };
+  } catch (err) {
+    return { ok: false, error: safeApiError(err) };
   }
 }
 

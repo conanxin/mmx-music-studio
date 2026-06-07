@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.2.0--alpha--4C-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
+[![Phase](https://img.shields.io/badge/Phase-v0.2.0--alpha--4D-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
@@ -113,6 +113,9 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **三种运行模式** | ✅ Phase 4A 新增 |
 | **Systemd 部署模板** | ✅ Phase 4A 新增 |
 | **生产发布检查** | ✅ Phase 4A 新增 |
+| **Job Queue** | ✅ PASS |
+| **Job History Admin** | ✅ PASS |
+| **Access Control / Quota** | ✅ PASS |
 | 微信小程序 | 📋 Phase 3E（待 HTTPS 域名） |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
@@ -314,9 +317,10 @@ mmx-music-studio/
 | Phase 2A–F | Mock / API / CLI / Docker / 发布准备 | ✅ 完成 |
 | Phase 3A–E | 微信小程序接入（Taro v4, mock API, HTTPS 就绪） | ✅ 完成 |
 | **Phase 4A** | **三种运行模式 + 生产发布检查 + Systemd 部署** | **✅ 当前** |
-| Phase 4B | 生成任务队列（后台异步处理 + Web 轮询 UI） | ✅ 完成 |
-| **Phase 4C** | **访问鉴权 + 速率限制 + 每日额度保护** | **✅ 当前** |
-| Phase 4D | 域名 HTTPS 正式实装 | 📋 规划 |
+| **Phase 4B** | **生成任务队列（后台异步处理 + Web 轮询 UI）** | ✅ 完成 |
+| **Phase 4C** | **访问鉴权 + 速率限制 + 每日额度保护** | ✅ 完成 |
+| **Phase 4D** | **任务历史管理后台（统计/筛选/详情/取消/删除/重试）** | ✅ 完成 |
+| Phase 4E | 域名 HTTPS 正式实装 | 📋 规划 |
 | Phase 5 | 正式 Release v0.2.0-alpha | 📋 规划 |
 
 ---

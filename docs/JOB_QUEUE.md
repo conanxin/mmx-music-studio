@@ -210,11 +210,47 @@ Phase 4B is compatible. Phase 4C/D will add WeApp-specific UI components for job
 - **No persistent retry.** Failed jobs are marked failed, not retried. Phase 4C may add retry logic.
 - **Cancel is cooperative.** Running jobs check `isCancelled()` between mock "work" intervals, but forcefully terminated calls may still complete.
 
-## Future: Phase 4C
+## Phase 4C — Completed
 
-- User authentication (session/JWT)
-- Per-user rate limiting and quota tracking
-- WebSocket push for job progress (alternative to 2s polling)
-- Retry logic for transient failures
-- Job TTL and automatic cleanup
-- Admin dashboard for job monitoring
+- ✅ User authentication (session cookies, Generation Access PIN)
+- ✅ Per-user rate limiting and quota tracking
+- ✅ Retry logic for failed/cancelled jobs
+- ✅ WebSocket push for job progress — not yet implemented (polling remains)
+- ⬜ Job TTL and automatic cleanup — pending
+- ✅ Admin dashboard for job monitoring — see Phase 4D
+
+## Phase 4D — Completed
+
+### Job History Admin (`/jobs` page)
+
+Web 端支持任务历史管理面板，用于排查失败任务和查看生成状态。
+
+**新增 API 端点：**
+- `GET /api/jobs/stats` — 返回任务统计（total/queued/running/succeeded/failed/cancelled/workerBusy/queueLength）
+- `DELETE /api/jobs/:id` — 删除已完成/失败/已取消的任务记录（running 状态拒绝删除）
+- `POST /api/jobs/:id/retry` — 重新提交 failed/cancelled 任务为新任务
+
+**前端页面：**
+- 统计概览（6 张状态卡片）
+- 状态标签筛选（全部/排队中/运行中/已完成/失败）
+- 关键词搜索
+- 任务详情面板（底部抽屉）
+- 取消/重试/删除操作
+- 移动端响应式布局
+
+**安全说明：**
+- Job record 不保存 API key / Authorization header / PIN
+- Retry 真实生成仍受 Generation Access PIN + Rate Limit + Daily Quota 保护
+- 删除 job record 默认不删除对应的音频文件（storage/tracks/）
+
+## Limitations
+
+- **Single worker.** Only 1 generation runs at a time. Queue is FIFO.
+- **No multi-user isolation.** All jobs share the same queue. Phase 5 may add multi-user support.
+- **Cancel is cooperative.** Running jobs check `isCancelled()` between mock "work" intervals, but forcefully terminated calls may still complete.
+
+## Future: Phase 4E
+
+- HTTPS 域名正式实装
+- 外部可访问的生产部署
+- 微信小程序正式上线

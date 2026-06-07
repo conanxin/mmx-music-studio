@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useSettings, maskKey } from '../../lib/settingsStore';
-import { checkKey, getHealth, getGenAccessStatus, unlockGenAccess, logoutGenAccess, type HealthInfo } from '../../lib/serverApi';
+import { checkKey, getHealth, getGenAccessStatus, unlockGenAccess, logoutGenAccess, getJobStats, type HealthInfo } from '../../lib/serverApi';
 import styles from './Settings.module.css';
 
 export default function Settings() {
@@ -18,15 +19,20 @@ export default function Settings() {
   const [genPinMsg, setGenPinMsg] = useState('');
 
   // Fetch server health and generation access status on mount
+  const [jobStatsSummary, setJobStatsSummary] = useState<{ total: number; queued: number; running: number } | null>(null);
   useEffect(() => {
     Promise.all([
       getHealth().catch(() => null),
       getGenAccessStatus().catch(() => null),
-    ]).then(([h, ga]) => {
+      getJobStats().catch(() => null),
+    ]).then(([h, ga, js]) => {
       if (h) setHealth(h);
       if (ga) {
         setGenAccessEnabled(ga.enabled);
         setGenAccessUnlocked(ga.unlocked);
+      }
+      if (js?.ok && js.stats) {
+        setJobStatsSummary({ total: js.stats.total, queued: js.stats.queued, running: js.stats.running });
       }
     }).finally(() => {
       setHealthLoading(false);
@@ -547,6 +553,24 @@ export default function Settings() {
               <span>真实生成已开启，但生成访问保护未开启。公网部署可能消耗额度。</span>
             </div>
           )}
+
+          {/* Job history quick link */}
+          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Link to="/jobs" className={styles.genAccessUnlockBtn} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', fontSize: '13px', padding: '6px 14px', borderRadius: '999px', fontWeight: 500 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              打开任务历史
+            </Link>
+            {jobStatsSummary && (
+              <span style={{ fontSize: '12px', color: '#9BA1AA' }}>
+                共 {jobStatsSummary.total} 个任务
+                {jobStatsSummary.queued > 0 && ` · ${jobStatsSummary.queued} 排队中`}
+                {jobStatsSummary.running > 0 && ` · ${jobStatsSummary.running} 运行中`}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Security notice */}

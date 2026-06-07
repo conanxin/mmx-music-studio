@@ -26,8 +26,9 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 微信小程序 | ✅ Phase 3C/3D | Taro v4，mock API，音频播放/下载 adapter |
 | HTTPS 域名 | ⏳ 待办 | Phase 3E：需用户提供域名 |
 | 微信合法域名 | ⏳ 待办 | Phase 3E：request + downloadFile |
-| 多用户鉴权 | ⏳ 待办 | Phase 4：公网真实生成前必须 |
-| 额度限制/限流 | ⏳ 待办 | Phase 4：防滥用 |
+| 多用户鉴权 | ✅ 完成 | Phase 4C：Generation Access PIN |
+| 额度限制/限流 | ✅ 完成 | Phase 4C：Rate Limit + Daily Quota |
+| 任务历史管理 | ✅ 完成 | Phase 4D：Jobs 页面 + delete/retry/stats API |
 
 ---
 
@@ -265,8 +266,10 @@ npm run weapp:typecheck     # ✓ 小程序 TS 类型检查
 npm run weapp:build         # ✓ 小程序编译
 
 # API 测试
-bash scripts/weapp-api-smoke-test.sh         # ✓ 3/3 PASS
-bash scripts/weapp-audio-url-smoke-test.sh   # ✓ 8/8 PASS
+bash scripts/job-queue-smoke-test.sh         # ✓ PASS
+bash scripts/job-history-admin-smoke-test.sh # ✓ 14/14 PASS
+bash scripts/auth-quota-smoke-test.sh        # ✓ 31/31 PASS
+bash scripts/web-api-smoke-test.sh           # ✓ PASS
 
 # 域名就绪（用户提供域名后）
 DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
@@ -280,8 +283,10 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 |------|------|----------|
 | **Phase 3E** | HTTPS 域名实装 + 微信合法域名 | 用户提供域名 |
 | **Phase 3F** | 微信小程序真机预览 | Phase 3E 完成 |
-| **Phase 4** | 多用户鉴权 + 额度限制 + 速率限制 | Phase 3E + HTTPS |
-| **Phase 5** | API adapter 生产化 | Phase 4 |
+| **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
+| **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
+| Phase 4E | API adapter 生产化 + HTTPS 域名实装 | Phase 3E 后 |
+| Phase 5 | 正式 Release v0.2.0-alpha | 规划 |
 
 ---
 

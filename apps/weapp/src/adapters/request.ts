@@ -117,12 +117,50 @@ export interface GetJobResponse {
 export interface ListJobsResponse {
   ok: boolean;
   jobs: JobJob[];
+  total?: number;
 }
 
 export interface CancelJobResponse {
   ok: boolean;
   jobId: string;
   cancelled: boolean;
+}
+
+// Phase 4D types
+export interface ListJobsFilters {
+  status?: JobStatus;
+  search?: string;
+  limit?: number;
+  offset?: number;
+  sort?: 'newest' | 'oldest';
+}
+
+export interface DeleteJobResponse {
+  ok: boolean;
+  deleted?: boolean;
+  jobId?: string;
+}
+
+export interface RetryJobResponse {
+  ok: boolean;
+  job?: JobJob;
+  message?: string;
+}
+
+export interface JobStats {
+  total: number;
+  queued: number;
+  running: number;
+  succeeded: number;
+  failed: number;
+  cancelled: number;
+  workerBusy: boolean;
+  queueLength: number;
+}
+
+export interface JobStatsResponse {
+  ok: boolean;
+  stats: JobStats;
 }
 
 // ── Core request ─────────────────────────────────────────────────────────────
@@ -285,6 +323,48 @@ export async function getTrack(id: string): Promise<ServerTrack | null> {
   } catch {
     return null;
   }
+}
+
+/** Phase 4D: GET /api/jobs?status&search&limit&offset&sort */
+export async function listJobsFiltered(filters: ListJobsFilters = {}): Promise<{ ok: boolean; jobs: JobJob[]; total?: number }> {
+  try {
+    const params: string[] = [];
+    if (filters.status) params.push(`status=${filters.status}`);
+    if (filters.search) params.push(`search=${encodeURIComponent(filters.search)}`);
+    if (filters.limit) params.push(`limit=${filters.limit}`);
+    if (filters.offset) params.push(`offset=${filters.offset}`);
+    if (filters.sort) params.push(`sort=${filters.sort}`);
+    const qs = params.length > 0 ? `?${params.join('&')}` : '';
+    const res = await requestJson<ListJobsResponse>(`/api/jobs${qs}`);
+    return { ok: true, jobs: res.jobs ?? [], total: res.total };
+  } catch {
+    return { ok: false, jobs: [] };
+  }
+}
+
+/** Phase 4D: DELETE /api/jobs/:id — delete job record (not audio) */
+export async function deleteJob(jobId: string): Promise<{ ok: boolean; deleted?: boolean }> {
+  try {
+    const res = await requestJson<DeleteJobResponse>(`/api/jobs/${jobId}`, { method: 'DELETE' });
+    return { ok: true, deleted: res.deleted };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** Phase 4D: POST /api/jobs/:id/retry — retry failed/cancelled job */
+export async function retryJob(jobId: string): Promise<{ ok: boolean; job?: JobJob }> {
+  try {
+    const res = await requestJson<RetryJobResponse>(`/api/jobs/${jobId}/retry`, { method: 'POST' });
+    return { ok: true, job: res.job };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** Phase 4D: GET /api/jobs/stats */
+export async function getJobStats(): Promise<JobStatsResponse> {
+  return requestJson<JobStatsResponse>('/api/jobs/stats');
 }
 
 /** 获取 track 音频 URL（相对路径 → 拼接 apiBase） */

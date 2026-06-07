@@ -1,0 +1,584 @@
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+
+.page {
+  min-height: 100vh;
+  background: #090A0C;
+  padding: 0 16px 80px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32px 0 24px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #F4F1EA;
+  margin: 0;
+}
+
+.studioLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #B8FF6A;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.studioLink:hover {
+  opacity: 0.8;
+}
+
+/* ── Stats ────────────────────────────────────────────────────────────────── */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+@media (min-width: 480px) {
+  .statsGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.statCard {
+  background: #121419;
+  border: 1px solid #262A33;
+  border-radius: 12px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  color: inherit;
+  font: inherit;
+}
+
+.statCard:hover {
+  border-color: #B8FF6A;
+}
+
+.statActive {
+  border-color: #B8FF6A;
+  background: #1a1f2a;
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: #F4F1EA;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: #9BA1AA;
+}
+
+/* ── Filter ───────────────────────────────────────────────────────────────── */
+
+.filterBar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 20px;
+  scrollbar-width: none;
+}
+
+.filterBar::-webkit-scrollbar {
+  display: none;
+}
+
+.filterTab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9BA1AA;
+  background: #121419;
+  border: 1px solid #262A33;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  font-family: inherit;
+}
+
+.filterTab:hover {
+  color: #F4F1EA;
+  border-color: #3a4050;
+}
+
+.filterActive {
+  color: #090A0C;
+  background: #B8FF6A;
+  border-color: #B8FF6A;
+  font-weight: 600;
+}
+
+/* ── Job List ─────────────────────────────────────────────────────────────── */
+
+.jobList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Job Card ─────────────────────────────────────────────────────────────── */
+
+.card {
+  background: #121419;
+  border: 1px solid #262A33;
+  border-radius: 16px;
+  padding: 14px 16px;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: #3a4050;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jobId {
+  font-size: 11px;
+  color: #9BA1AA;
+  font-family: monospace;
+}
+
+.cardTime {
+  font-size: 11px;
+  color: #9BA1AA;
+  flex-shrink: 0;
+}
+
+.cardBody {
+  margin-bottom: 10px;
+}
+
+.prompt {
+  font-size: 13px;
+  color: #F4F1EA;
+  margin: 0 0 6px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progressMsg {
+  font-size: 12px;
+  color: #9BA1AA;
+  margin: 4px 0 0;
+}
+
+.errorMsg {
+  font-size: 12px;
+  color: #FF6B6B;
+  margin: 4px 0 0;
+}
+
+.progressBar {
+  height: 3px;
+  background: #262A33;
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: #B8FF6A;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.modeLabel {
+  font-size: 12px;
+  color: #9BA1AA;
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.badge_queued {
+  background: rgba(138, 124, 255, 0.15);
+  color: #8A7CFF;
+}
+
+.badge_running {
+  background: rgba(184, 255, 106, 0.1);
+  color: #B8FF6A;
+}
+
+.badge_succeeded,
+.badge_completed {
+  background: rgba(184, 255, 106, 0.1);
+  color: #B8FF6A;
+}
+
+.badge_failed {
+  background: rgba(255, 107, 107, 0.15);
+  color: #FF6B6B;
+}
+
+.badge_cancelled {
+  background: rgba(155, 161, 170, 0.15);
+  color: #9BA1AA;
+}
+
+.sourceTag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(155, 161, 170, 0.1);
+  color: #9BA1AA;
+}
+
+/* ── Action Buttons ──────────────────────────────────────────────────────── */
+
+.viewBtn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9BA1AA;
+  background: #181B21;
+  border: 1px solid #262A33;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.viewBtn:hover {
+  color: #F4F1EA;
+  border-color: #3a4050;
+}
+
+.cancelBtn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #FF6B6B;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.cancelBtn:hover {
+  background: rgba(255, 107, 107, 0.2);
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.retryBtn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #B8FF6A;
+  background: rgba(184, 255, 106, 0.1);
+  border: 1px solid rgba(184, 255, 106, 0.2);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.retryBtn:hover {
+  background: rgba(184, 255, 106, 0.2);
+  border-color: rgba(184, 255, 106, 0.4);
+}
+
+.deleteBtn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9BA1AA;
+  background: transparent;
+  border: 1px solid #262A33;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.deleteBtn:hover {
+  color: #FF6B6B;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+/* ── Detail Panel ────────────────────────────────────────────────────────── */
+
+.panelOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+@media (min-width: 600px) {
+  .panelOverlay {
+    align-items: center;
+  }
+}
+
+.panel {
+  background: #121419;
+  border: 1px solid #262A33;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 600px) {
+  .panel {
+    border-radius: 20px;
+    max-height: 80vh;
+  }
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+  position: sticky;
+  top: 0;
+  background: #121419;
+  z-index: 1;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #F4F1EA;
+  margin: 0;
+}
+
+.panelClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9BA1AA;
+  padding: 4px;
+  display: flex;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.panelClose:hover {
+  color: #F4F1EA;
+  background: #181B21;
+}
+
+.panelBody {
+  padding: 16px 20px;
+}
+
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.infoKey {
+  font-size: 12px;
+  color: #9BA1AA;
+  flex-shrink: 0;
+  min-width: 64px;
+}
+
+.infoVal {
+  font-size: 13px;
+  color: #F4F1EA;
+  word-break: break-all;
+}
+
+.audioLinks {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.downloadLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #B8FF6A;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.downloadLink:hover {
+  opacity: 0.8;
+}
+
+.panelFooter {
+  padding: 16px 20px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid #262A33;
+}
+
+.deleteHint {
+  font-size: 11px;
+  color: #9BA1AA;
+  margin: 0;
+  width: 100%;
+}
+
+/* ── States ───────────────────────────────────────────────────────────────── */
+
+.actionMsg {
+  background: #1a1f2a;
+  border: 1px solid #262A33;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #B8FF6A;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #9BA1AA;
+  font-size: 14px;
+}
+
+.spinner {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #262A33;
+  border-top-color: #B8FF6A;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorBox {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  color: #FF6B6B;
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 0;
+  color: #9BA1AA;
+  text-align: center;
+}
+
+.empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #F4F1EA;
+  margin: 0;
+}
+
+.empty p {
+  font-size: 13px;
+  margin: 0;
+}
+
+.emptyBtn {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #090A0C;
+  background: #B8FF6A;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.emptyBtn:hover {
+  opacity: 0.85;
+}

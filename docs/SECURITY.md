@@ -240,3 +240,12 @@ let apiKey = ''  // 内存变量，页面销毁即消失
 - [ ] 没有硬编码的 API Key
 - [ ] 小程序端不使用 wx.setStorageSync 存储 Key
 - [ ] PIN 不写入代码/git/文档（只通过环境变量配置）
+
+### 8.1 任务历史安全（Phase 4D）
+
+Job History Admin 遵循以下安全原则：
+
+- **不保存敏感信息。** Job record 不保存 API key / Authorization header / PIN
+- **Retry 保护。** Retry 操作仍受 Generation Access PIN + Rate Limit + Daily Quota 保护，真实生成不会绕过后端防护
+- **运行中任务不可删除。** DELETE 只允许对 succeeded/failed/cancelled 状态的任务执行
+- **操作可溯源。** 所有 DELETE / RETRY 操作均通过 HTTP method 区分，日志可查

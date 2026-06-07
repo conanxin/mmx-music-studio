@@ -396,3 +396,13 @@ mmx auth login
 - 检查 `MINIMAX_API_KEY` 是否正确
 - 检查区域设置（`cn` vs `global`）
 - 检查网络是否能访问 `api.minimaxi.com`（中国区）或 `api.minimax.io`（全球）
+
+### 任务历史管理（Phase 4D）
+
+任务历史管理页面可以用于排查失败任务和查看生成状态。
+
+- 访问 `/jobs` 查看所有任务
+- 统计概览显示 total/queued/running/succeeded/failed/cancelled
+- 删除 job record 默认不删除对应的音频文件（`storage/tracks/` 下文件保留）
+- Retry 操作会创建新任务，原任务记录保留
+- Running 状态的任务不能直接删除，需要先 Cancel
