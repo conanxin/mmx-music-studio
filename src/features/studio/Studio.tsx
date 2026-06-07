@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import styles from './Studio.module.css';
 import WaveformPlayer from '../../components/WaveformPlayer';
 import { useSettings } from '../../lib/settingsStore';
-import { getHealth, generateTrack } from '../../lib/serverApi';
-import type { TrackLike } from '../../lib/serverApi';
+import { getHealth, createGenerateJob, getJob, cancelJob } from '../../lib/serverApi';
+import type { TrackLike, GenerateJob } from '../../lib/serverApi';
 import { STYLE_TAGS } from '../../mock/data';
 import {
   validateMusicInput,
@@ -196,11 +196,12 @@ export default function Studio() {
   const [currentTrack, setCurrentTrack] = useState<DisplayTrack | null>(null);
   const [recentTracks, setRecentTracks] = useState<DisplayTrack[]>([]);
 
-  // Generation progress UI
-  const [progressMessage, setProgressMessage] = useState<string | null>(null);
-  const [progressElapsed, setProgressElapsed] = useState(0);
-  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const progressStartRef = useRef<number>(0);
+  // Job queue state
+  const [currentJob, setCurrentJob] = useState<GenerateJob | null>(null);
+  const [jobElapsed, setJobElapsed] = useState(0);
+  const jobTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const jobStartRef = useRef<number>(0);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Health info state
   const [healthInfo, setHealthInfo] = useState<{
@@ -210,48 +211,78 @@ export default function Studio() {
     previewAccessEnabled?: boolean;
   } | null>(null);
 
-  function startProgressTracking() {
-    // Clear any existing timer
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
+  // ── Job queue helpers ─────────────────────────────────────────────────────────
+
+  function stopJobTimer() {
+    if (jobTimerRef.current) {
+      clearInterval(jobTimerRef.current);
+      jobTimerRef.current = null;
     }
-    progressStartRef.current = Date.now();
-    setProgressMessage('正在提交任务…');
-    setProgressElapsed(0);
-    progressTimerRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - progressStartRef.current) / 1000);
-      setProgressElapsed(elapsed);
+  }
+
+  function jobElapsedMessage(elapsed: number): string {
+    if (elapsed >= 120) return '生成时间较长，请继续等待或取消…';
+    if (elapsed >= 60)  return 'MiniMax 正在生成音乐，通常需要 30–90 秒…';
+    if (elapsed >= 30)  return '仍在生成中，请不要重复点击…';
+    if (elapsed >= 10)  return '正在调用 MMX CLI，请稍候…';
+    return currentJob?.progressMessage ?? '已加入生成队列…';
+  }
+
+  function startJobPolling(job: GenerateJob) {
+    stopJobTimer();
+    setCurrentJob(job);
+    setJobElapsed(0);
+    setIsGenerating(true);
+    jobStartRef.current = Date.now();
+
+    jobTimerRef.current = setInterval(async () => {
+      const elapsed = Math.floor((Date.now() - jobStartRef.current) / 1000);
+      setJobElapsed(elapsed);
+
       if (elapsed >= 120) {
-        setProgressMessage('生成时间较长，仍在等待服务器返回…');
-      } else if (elapsed >= 60) {
-        setProgressMessage('MiniMax 正在生成音乐，通常需要 30–90 秒…');
-      } else if (elapsed >= 30) {
-        setProgressMessage('仍在生成中，请不要重复点击…');
-      } else if (elapsed >= 10) {
-        setProgressMessage('正在调用 MMX CLI，请稍候…');
+        // Don't stop, just update message
       }
-    }, 1000);
+
+      // Poll server for job status
+      const fresh = await getJob(job.id);
+      if (!fresh) return; // still polling
+
+      setCurrentJob(fresh);
+
+      if (fresh.status === 'completed') {
+        stopJobTimer();
+        if (fresh.track) {
+          const display = serverTrackToDisplay(fresh.track);
+          setCurrentTrack(display);
+          setRecentTracks(prev => [display, ...prev].slice(0, 3));
+          setGenerationSource(fresh.track.generationSource as 'mock' | 'minimax' | 'mmx-cli' ?? null);
+        }
+        setIsGenerating(false);
+        setCurrentJob(null);
+        return;
+      }
+
+      if (fresh.status === 'failed') {
+        stopJobTimer();
+        const msg = fresh.error?.message ?? '生成失败，请稍后重试';
+        setGenError(msg);
+        setIsGenerating(false);
+        setCurrentJob(null);
+        return;
+      }
+
+      if (fresh.status === 'cancelled') {
+        stopJobTimer();
+        setGenError('已取消生成');
+        setIsGenerating(false);
+        setCurrentJob(null);
+        return;
+      }
+
+      // queued / running — keep polling
+    }, 2000);
   }
 
-  function clearProgress(successMsg?: string) {
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-    if (successMsg) {
-      setProgressMessage(successMsg);
-      setTimeout(() => {
-        setProgressMessage(null);
-        setProgressElapsed(0);
-      }, 4000);
-    } else {
-      setProgressMessage(null);
-      setProgressElapsed(0);
-    }
-  }
-
-  // Fetch health on mount
   useEffect(() => {
     getHealth().then(h => {
       setHealthInfo({
@@ -337,28 +368,19 @@ export default function Studio() {
       return;
     }
     if (validation.warnings.length > 0) {
-      // Show first warning as hint, not blocking
       const hint = validation.warnings.map(w => w.message).join('；');
       setApiFallbackHint(hint);
     }
 
-    setIsGenerating(true);
-    setGenerationSource(null);
-    startProgressTracking();
-
-    // Check if API server is available
+    // Check server availability
     let useApi = false;
-
     try {
       const health = await getHealth();
-
       if (health.ok && health.realGenerationEnabled) {
-        // REAL_GENERATION_ENABLED=true: use real API
         useApi = true;
       } else if (health.ok && !health.realGenerationEnabled) {
-        // Safe mode: API server is up but real generation is disabled
         setApiFallbackHint('当前为安全模式（REAL_GENERATION_ENABLED=false），使用本地模拟音频，未消耗 MiniMax 额度');
-        useApi = true; // Still use API server but it will return mock audio
+        useApi = true;
       } else {
         setApiFallbackHint('未连接本地服务，使用客户端模拟生成');
         useApi = false;
@@ -369,49 +391,42 @@ export default function Studio() {
     }
 
     if (useApi) {
-      // Real API call
-      try {
-        const result = await generateTrack(input, {
-          keyMode: settings.keyMode,
-          region: settings.region,
-          apiKey: settings.apiKey,
-        });
+      // API path: submit job and start polling
+      const result = await createGenerateJob(input, {
+        keyMode: settings.keyMode,
+        region: settings.region,
+        apiKey: settings.apiKey,
+      });
 
-        if (result.ok && result.track) {
-          const display = serverTrackToDisplay(result.track);
-          setCurrentTrack(display);
-          setRecentTracks(prev => [display, ...prev].slice(0, 3));
-          setGenerationSource(result.generationSource ?? null);
-          clearProgress(`生成完成，用时 ${formatElapsed(progressElapsed)}`);
-          setIsGenerating(false);
-          return;
+      if (!result.ok || !result.job) {
+        const err = result.error;
+        if (err?.type === 'missing_api_key') {
+          setGenError('请先在设置中填写 Key，或选择服务器环境变量模式');
+        } else if (err?.type === 'minimax_api') {
+          setGenError('MiniMax 返回错误，请检查 Key、区域、额度或内容限制');
+        } else {
+          setGenError(err?.message ?? '提交生成任务失败，请稍后重试');
         }
-
-        if (result.error) {
-          if (result.error.type === 'missing_api_key') {
-            setGenError('请先在设置中填写 Key，或选择服务器环境变量模式');
-          } else if (result.error.type === 'minimax_api') {
-            setGenError('MiniMax 返回错误，请检查 Key、区域、额度或内容限制');
-          } else if (result.error.type === 'audio_download') {
-            setGenError('音频生成成功，但下载保存失败');
-          } else if (result.error.type === 'storage') {
-            setGenError('音频保存失败，请检查服务器存储目录权限');
-          } else {
-            setGenError(result.error.message);
-          }
-          clearProgress();
-          setIsGenerating(false);
-          return;
-        }
-      } catch (err) {
-        setGenError('生成失败，请稍后重试');
-        clearProgress();
-        setIsGenerating(false);
         return;
       }
+
+      const job = result.job;
+
+      // Instant success (sync mock / already completed)
+      if (job.status === 'completed' && job.track) {
+        const display = serverTrackToDisplay(job.track);
+        setCurrentTrack(display);
+        setRecentTracks(prev => [display, ...prev].slice(0, 3));
+        setGenerationSource(job.track.generationSource as 'mock' | 'minimax' | 'mmx-cli' ?? null);
+        return;
+      }
+
+      // Start polling for queued / running jobs
+      startJobPolling(job);
+      return;
     }
 
-    // Fallback: mock generation
+    // Fallback: client-side mock job (no server)
     let job: Job = createMockJob(input);
     let stepIndex = 0;
 
@@ -428,14 +443,22 @@ export default function Studio() {
           };
           setCurrentTrack(display);
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
-          clearProgress();
-          setIsGenerating(false);
         } else {
           setTimeout(tick, 500);
         }
       }
     };
+    setIsGenerating(true);
     setTimeout(tick, 500);
+  };
+
+  // ── Cancel job ──────────────────────────────────────────────────────────────
+
+  const handleCancel = async () => {
+    if (!currentJob) return;
+    setIsCancelling(true);
+    await cancelJob(currentJob.id);
+    // The polling loop will pick up 'cancelled' status
   };
 
   const handleLyricInsert = (tag: string) => {
@@ -675,14 +698,29 @@ export default function Studio() {
             ) : getButtonLabel()}
           </button>
 
-          {/* Progress UI */}
-          {isGenerating && progressMessage && (
+          {/* Progress UI: job polling */}
+          {isGenerating && currentJob && (
             <div className={styles.progressCard}>
-              <div className={styles.progressMessage}>{progressMessage}</div>
-              {progressElapsed > 0 && (
+              <div className={styles.jobStatusBadge} data-status={currentJob.status}>
+                {currentJob.status === 'queued' ? '排队中' :
+                 currentJob.status === 'running' ? '生成中' : currentJob.status}
+              </div>
+              <div className={styles.progressMessage}>
+                {jobElapsedMessage(jobElapsed)}
+              </div>
+              {jobElapsed > 0 && (
                 <div className={styles.progressElapsed}>
-                  已等待 {formatElapsed(progressElapsed)}
+                  已等待 {formatElapsed(jobElapsed)}
                 </div>
+              )}
+              {(currentJob.status === 'queued' || currentJob.status === 'running') && (
+                <button
+                  className={styles.cancelBtn}
+                  onClick={handleCancel}
+                  disabled={isCancelling}
+                >
+                  {isCancelling ? '取消中…' : '取消生成'}
+                </button>
               )}
             </div>
           )}

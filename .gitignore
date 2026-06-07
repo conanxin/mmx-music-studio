@@ -21,6 +21,8 @@ out/
 # local storage / generated media
 storage/tracks/*
 !storage/tracks/.gitkeep
+storage/jobs/
+storage/logs/
 *.mp3
 *.wav
 *.flac

@@ -58,6 +58,9 @@ export interface HealthInfo {
   cliAvailable?: boolean;
   cliAuthenticated?: boolean;
   cliRegion?: 'cn' | 'global' | null;
+  jobQueueEnabled?: boolean;
+  queuedJobs?: number;
+  workerBusy?: boolean;
 }
 
 export interface CheckKeyResult {
@@ -89,6 +92,39 @@ export interface GenerateResult {
   ok: boolean;
   track?: TrackLike;
   generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+  error?: { type?: string; message: string };
+}
+
+// ── Job queue types ──────────────────────────────────────────────────────────
+
+export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface GenerateJob {
+  id: string;
+  status: JobStatus;
+  progress?: number;
+  progressMessage?: string;
+  track?: TrackLike;
+  error?: { type?: string; message: string; hint?: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateJobResult {
+  ok: boolean;
+  job?: GenerateJob;
+  error?: { type?: string; message: string };
+}
+
+export interface ListJobsResult {
+  ok: boolean;
+  jobs: GenerateJob[];
+}
+
+export interface CancelJobResult {
+  ok: boolean;
+  jobId?: string;
+  cancelled?: boolean;
   error?: { type?: string; message: string };
 }
 
@@ -297,5 +333,101 @@ export async function deleteTrack(trackId: string): Promise<{ ok: boolean; messa
     return { ok: true, message: result.deleted ? '已删除' : '删除完成' };
   } catch (err) {
     return { ok: false, message: safeApiError(err).message };
+  }
+}
+
+// ── Job queue API ─────────────────────────────────────────────────────────────
+
+/**
+ * Submit a generation job. Returns immediately with job.id for polling.
+ * Compatible with both async (job) and sync (track) server responses.
+ */
+export async function createGenerateJob(
+  input: MusicGenerationInput,
+  settings: { keyMode: 'session' | 'server'; region?: 'cn' | 'global'; apiKey?: string },
+): Promise<CreateJobResult> {
+  const body: Record<string, unknown> = {
+    input,
+    keyMode: settings.keyMode,
+    region: settings.region,
+  };
+
+  const noKey = settings.keyMode === 'server' || !settings.apiKey;
+  const sessionKey = !noKey ? settings.apiKey : undefined;
+
+  try {
+    const raw = await apiFetch<{
+      ok: boolean;
+      job?: GenerateJob;
+      jobId?: string;
+      track?: TrackLike;
+      generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+    }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      noKey,
+    }, sessionKey);
+
+    // Async mode: server returned { ok: true, job: { id, status, ... } }
+    if (raw.job) {
+      return { ok: true, job: raw.job };
+    }
+
+    // Sync/legacy mode: server returned { ok: true, track: { ... } }
+    // Wrap into a pseudo-completed job for compatibility
+    if (raw.track) {
+      return {
+        ok: true,
+        job: {
+          id: raw.track.id,
+          status: 'completed',
+          track: raw.track,
+          createdAt: raw.track.createdAt as string | undefined,
+        },
+      };
+    }
+
+    return { ok: false, error: { type: 'unknown', message: '服务器响应格式异常' } };
+  } catch (err) {
+    return { ok: false, error: safeApiError(err) };
+  }
+}
+
+/** Poll a job by ID to check status. */
+export async function getJob(jobId: string): Promise<GenerateJob | null> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; job: GenerateJob }>(
+      `/api/jobs/${jobId}`,
+      { method: 'GET' },
+    );
+    return raw.job ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** List all jobs. */
+export async function listJobs(): Promise<ListJobsResult> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; jobs: GenerateJob[] }>(
+      '/api/jobs',
+      { method: 'GET' },
+    );
+    return { ok: true, jobs: raw.jobs ?? [] };
+  } catch {
+    return { ok: false, jobs: [] };
+  }
+}
+
+/** Cancel a running/queued job. */
+export async function cancelJob(jobId: string): Promise<CancelJobResult> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; jobId: string; cancelled: boolean }>(
+      `/api/jobs/${jobId}/cancel`,
+      { method: 'POST' },
+    );
+    return { ok: true, jobId: raw.jobId, cancelled: raw.cancelled };
+  } catch (err) {
+    return { ok: false, error: safeApiError(err) };
   }
 }

@@ -144,18 +144,52 @@ else
   echo "  ✗ ok should be true"; exit 1
 fi
 
-TRACK_ID=$(json_get_nested "id" "$GEN_RESP")
-if [ -n "$TRACK_ID" ]; then
-  echo "  ✓ track.id=$TRACK_ID"
+# Phase 4B: /api/generate returns {ok, job:{id, status}} (async)
+# Older sync format returned {ok, track:{id}, generationSource} (backward compat)
+JOB_ID=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('id',''))" 2>/dev/null)
+TRACK_ID=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('track',{}).get('id',''))" 2>/dev/null)
+
+if [ -n "$JOB_ID" ]; then
+  echo "  ✓ job.id=$JOB_ID (async format — Phase 4B)"
+  echo "  ✓ status=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status','?'))")"
+elif [ -n "$TRACK_ID" ]; then
+  echo "  ✓ track.id=$TRACK_ID (sync format — backward compatible)"
 else
-  echo "  ✗ track.id not found"; exit 1
+  echo "  ✗ neither job.id nor track.id found"; exit 1
 fi
 
-SOURCE=$(json_get "generationSource" "$GEN_RESP")
-if [ "$SOURCE" = "mock" ]; then
-  echo "  ✓ generationSource=mock"
-else
-  echo "  ✗ generationSource should be mock"; exit 1
+SOURCE=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('generationSource','') or d.get('job',{}).get('generationSource',''))" 2>/dev/null)
+if [ -n "$SOURCE" ]; then
+  if [ "$SOURCE" = "mock" ]; then
+    echo "  ✓ generationSource=mock"
+  else
+    echo "  ✓ generationSource=$SOURCE"
+  fi
+fi
+
+# ── Test 4: resolve track ID (async job → poll; sync → use directly) ────────
+if [ -n "$JOB_ID" ]; then
+  echo ""
+  echo "─── Resolving track from async job ───"
+  echo "  Waiting for job $JOB_ID to complete..."
+  for i in $(seq 1 15); do
+    sleep 2
+    JOB_STATUS=$(curl -sf "${API_BASE}/api/jobs/${JOB_ID}" \
+      | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status','?'))" 2>/dev/null)
+    echo "  [${i}] status=$JOB_STATUS"
+    case "$JOB_STATUS" in
+      succeeded)
+        TRACK_ID=$(curl -sf "${API_BASE}/api/jobs/${JOB_ID}" \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('trackId',''))" 2>/dev/null)
+        echo "  ✓ job succeeded, trackId=$TRACK_ID"
+        break
+        ;;
+      failed|cancelled)
+        echo "  ✗ job ended with status=$JOB_STATUS — cannot test audio endpoint"; exit 1
+        ;;
+    esac
+    if [ "$i" -eq 15 ]; then echo "  ✗ timeout waiting for job"; exit 1; fi
+  done
 fi
 
 # ── Test 4: GET /api/tracks/:id/audio ───────────────────────────────────────

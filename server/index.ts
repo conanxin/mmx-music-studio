@@ -55,6 +55,7 @@ import { mockMiniMaxGenerate } from './mock-minimax.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
 import { MmxCliError } from './adapters/minimax-cli/errors.js';
 import type { MmxCliDiagnostics } from './adapters/minimax-cli/types.js';
+import { callMiniMaxApi } from './call-minimax.js';
 import type {
   ServerConfig,
   GenerationSource,
@@ -64,6 +65,19 @@ import type {
   ServerErrorType,
   BackendMode,
 } from './types.js';
+import {
+  createJob,
+  getJob,
+  listJobs,
+  updateJob,
+  cancelJob,
+  loadJobs,
+  startWorker,
+  enqueueAndRun,
+  getQueuedCount,
+  isWorkerBusy,
+  type GenerateJob,
+} from './jobs.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -267,111 +281,7 @@ async function parseBody<T>(req: http.IncomingMessage, maxMb: number): Promise<T
   });
 }
 
-// ── MiniMax API call ──────────────────────────────────────────────────────────
-
-const MINIMAX_ENDPOINTS = {
-  cn: 'https://api.minimaxi.com/v1/music_generation',
-  global: 'https://api.minimax.io/v1/music_generation',
-};
-
-async function callMiniMaxApi(params: {
-  apiKey: string;
-  region: 'cn' | 'global';
-  payload: ReturnType<typeof buildMiniMaxMusicPayload>;
-  signal?: AbortSignal;
-  timeoutMs?: number;
-}): Promise<{
-  audioKind: 'url' | 'hex' | 'unknown';
-  audioValue: string;
-  durationMs?: number;
-  sampleRate?: number;
-  bitrate?: number;
-  sizeBytes?: number;
-  traceId?: string;
-}> {
-  const endpoint = MINIMAX_ENDPOINTS[params.region];
-  // params.payload is BuildMusicPayloadResult — extract only the inner payload object
-  const body: Record<string, unknown> = { ...params.payload.payload, output_format: 'url' };
-
-  let response: Response;
-  try {
-    const controller = new AbortController();
-    const timeout = params.timeoutMs ?? 120000; // default 2min
-    const timer = setTimeout(() => controller.abort(), timeout);
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${params.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: params.signal ?? controller.signal as AbortSignal,
-    });
-    clearTimeout(timer);
-  } catch (err) {
-    throw Object.assign(
-      new Error(`网络请求失败: ${(err as Error).message}`),
-      { code: 'NETWORK_ERROR' },
-    );
-  }
-
-  if (!response.ok) {
-    let msg = `HTTP ${response.status}`;
-    try {
-      const b = await response.json() as Record<string, unknown>;
-      msg = (b.base_resp as Record<string, unknown>)?.status_msg as string || msg;
-    } catch { /* ignore */ }
-    const e = new Error(`MiniMax API 错误: ${msg}`) as Error & { code: string; statusCode: number };
-    e.code = 'HTTP_ERROR';
-    e.statusCode = response.status;
-    throw e;
-  }
-
-  let raw: unknown;
-  try {
-    raw = await response.json();
-  } catch {
-    throw Object.assign(new Error('响应解析失败'), { code: 'PARSE_ERROR' });
-  }
-
-  const obj = raw as Record<string, unknown>;
-  const baseResp = obj.base_resp as Record<string, unknown> | undefined;
-  if (baseResp && baseResp.status_code !== 0) {
-    throw Object.assign(
-      new Error(`MiniMax 返回错误: ${baseResp.status_msg}`),
-      { code: 'MINIMAX_ERROR', traceId: obj.trace_id as string | undefined },
-    );
-  }
-
-  const data = (obj.data || obj) as Record<string, unknown>;
-  let audioKind: 'url' | 'hex' | 'unknown' = 'unknown';
-  let audioValue = '';
-  if (typeof data.audio === 'string') {
-    audioValue = data.audio;
-    if (audioValue.startsWith('http')) audioKind = 'url';
-    else if (/^[0-9a-fA-F\s]+$/.test(audioValue) && audioValue.length > 32) audioKind = 'hex';
-  } else if (typeof data.audio_url === 'string') {
-    audioValue = data.audio_url; audioKind = 'url';
-  } else if (typeof data.url === 'string') {
-    audioValue = data.url; audioKind = 'url';
-  }
-
-  const extra = data.extra_info as Record<string, unknown> | undefined;
-  const durRaw = extra?.music_duration ?? extra?.duration;
-  const durationMs = typeof durRaw === 'number' ? Math.round(durRaw * 1000) : undefined;
-
-  return {
-    audioKind,
-    audioValue,
-    durationMs,
-    sampleRate: extra?.music_sample_rate as number | undefined,
-    bitrate: extra?.bitrate as number | undefined,
-    sizeBytes: extra?.music_size as number | undefined,
-    traceId: typeof obj.trace_id === 'string' ? obj.trace_id : undefined,
-  };
-}
-
-// ── Route handlers ────────────────────────────────────────────────────────────
+// ── Route handlers ───────────────────────────────────────────────────────────
 
 /**
  * POST /api/debug/payload
@@ -555,6 +465,10 @@ async function handleHealth(
     config.backend === 'mock' &&
     config.mockGenerationEnabled === true;
 
+  // Job queue status (Phase 4B)
+  const queuedJobs = getQueuedCount();
+  const workerBusy = isWorkerBusy();
+
   sendJson(res, 200, {
     ok: true,
     service: 'mmx-music-studio',
@@ -572,6 +486,10 @@ async function handleHealth(
     cliAvailable,
     cliAuthenticated: cliDiagnostics?.authStatus === 'authenticated' || undefined,
     cliRegion: cliDiagnostics?.region ?? undefined,
+    // Job queue (Phase 4B)
+    jobQueueEnabled: true,
+    queuedJobs,
+    workerBusy,
   });
 }
 
@@ -636,114 +554,85 @@ async function handleGenerate(
     return;
   }
   const { input, keyMode, region } = body;
-  const requestId = `req_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
 
-  // ── Guard: REAL_GENERATION_ENABLED=false → mock adapter only ──────────────
-  // Even if MINIMAX_API_KEY is set in env, we MUST NOT call MiniMax API
-  if (!config.realGenerationEnabled) {
-    // Input validation still runs
-    const validation = validateMusicInput(input as Parameters<typeof validateMusicInput>[0]);
-    if (!validation.ok) {
-      sendError(res, 'validation', validation.errors.map((e) => e.message).join('；'), 400);
-      return;
-    }
-
-    // Mock mode: generate WAV buffer
-    let mockResult: Awaited<ReturnType<typeof mockMiniMaxGenerate>>;
-    try {
-      mockResult = await mockMiniMaxGenerate({
-        mode: input.mode,
-        prompt: input.prompt,
-        lyrics: input.lyrics,
-        audioUrl: input.audioUrl,
-        audioBase64: input.audioBase64,
-        model: input.model,
-        outputFormat: input.outputFormat,
-      });
-    } catch (err) {
-      console.error('[server] mock generation failed:', redactSecrets((err as Error).message));
-      sendError(res, 'unknown', '模拟生成失败', 500, '请检查服务器日志');
-      return;
-    }
-
-    // Save to storage
-    try {
-      ensureOutputDir(config.outputDir);
-    } catch {
-      sendError(res, 'storage', '无法创建存储目录', 500);
-      return;
-    }
-
-    const id = generateTrackId();
-    const title = (input.prompt || '模拟音乐').slice(0, 80);
-    const fileName = `mock_${id.slice(0, 8)}_${Date.now()}.wav`;
-    const filePath = getTrackFilePath(config.outputDir, fileName);
-
-    try {
-      fs.writeFileSync(filePath, mockResult.audioBuffer);
-    } catch {
-      sendError(res, 'storage', '无法写入音频文件', 500);
-      return;
-    }
-
-    const track = createTrackRecord({
-      id,
-      title,
-      mode: input.mode,
-      model: (input as Record<string, unknown>).model as string || 'music-2.6',
-      prompt: input.prompt || '',
-      lyrics: input.lyrics,
-      audioFileName: fileName,
-      audioMimeType: 'audio/wav',
-      audioFormat: 'wav',
-      durationMs: mockResult.extraInfo.durationMs,
-      durationText: formatDuration(mockResult.extraInfo.durationMs),
-      sampleRate: mockResult.extraInfo.sampleRate,
-      bitrate: mockResult.extraInfo.bitrate,
-      sizeBytes: mockResult.extraInfo.sizeBytes,
-      traceId: mockResult.traceId,
-      generationSource: 'mock',
-    });
-
-    try {
-      appendTrack(config.outputDir, track);
-    } catch { /* non-fatal */ }
-
-    console.log(`[server] mock generate: id=${id} title="${title}" mode=${input.mode} generationSource=mock`);
-
-    sendJson(res, 200, {
-      ok: true,
-      track: toTrackResponse(track),
-      generationSource: 'mock',
-    });
-    return;
-  }
-
-  // ── REAL_GENERATION_ENABLED=true path ─────────────────────────────────────
-  // Backend selection: api / cli / mock
-  // CLI adapter is implemented but not wired in Phase 2D (no auto real generation).
-  // To enable CLI backend, uncomment the CLI block in handleGenerate
-  // (see Phase 2D-B instructions in docs/CLI-ADAPTER.md).
-  const backend = config.backend;
-
-  // ── Validation (shared) ───────────────────────────────────────────────────────
+  // ── Input validation ─────────────────────────────────────────────────────────
   const validation = validateMusicInput(input as Parameters<typeof validateMusicInput>[0]);
   if (!validation.ok) {
     sendError(res, 'validation', validation.errors.map((e) => e.message).join('；'), 400);
     return;
   }
 
-  // ── CLI Backend ─────────────────────────────────────────────────────────────
+  // ── Sync mode: legacy synchronous generation (internal debug only) ──────────
+  if (req.url?.includes('?sync=true')) {
+    // Only runs when REAL_GENERATION_ENABLED=true (real generation path)
+    if (!config.realGenerationEnabled) {
+      sendError(res, 'guard', '同步模式仅在 REAL_GENERATION_ENABLED=true 时可用', 403);
+      return;
+    }
+    // Delegate to the inline sync handler
+    await handleGenerateSync(req, res, config);
+    return;
+  }
+
+  // ── Async job mode (default) ─────────────────────────────────────────────────
+  const backend: BackendMode = config.backend;
+
+  // Determine effective backend: mock if realGenerationEnabled=false
+  const effectiveBackend: BackendMode =
+    !config.realGenerationEnabled ? 'mock' : backend;
+
+  const job = createJob(input as MusicGenerationInput, effectiveBackend);
+
+  console.log(`[server] job created: id=${job.id} mode=${input.mode} backend=${effectiveBackend}`);
+
+  sendJson(res, 202, {
+    ok: true,
+    job: {
+      id: job.id,
+      status: job.status,
+      progressMessage: job.progressMessage,
+      createdAt: job.createdAt,
+    },
+  });
+
+  // Enqueue and run in background
+  const sessionKey = keyMode === 'session'
+    ? getSessionApiKey(req.headers as Record<string, string | string[] | undefined>)
+    : undefined;
+  enqueueAndRun(keyMode as 'server' | 'session', sessionKey, region as 'cn' | 'global' | undefined);
+}
+
+async function handleGenerateSync(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  // Called only when REAL_GENERATION_ENABLED=true && ?sync=true
+  let body: GenerateRequest;
+  try {
+    body = await parseBody<GenerateRequest>(req, config.maxRequestBodyMb);
+  } catch {
+    sendError(res, 'unknown', '无效请求体');
+    return;
+  }
+  const { input, keyMode, region } = body;
+  const requestId = `req_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  const backend = config.backend;
+
+  const validation = validateMusicInput(input as Parameters<typeof validateMusicInput>[0]);
+  if (!validation.ok) {
+    sendError(res, 'validation', validation.errors.map((e) => e.message).join('；'), 400);
+    return;
+  }
+
   if (backend === 'cli') {
-    // Generate track id + filename BEFORE calling CLI so we can pass it in.
-    // This guarantees id == audioFileName, eliminating rename ambiguity.
     const id = generateTrackId();
     const audioFileName = `${id}.mp3`;
     let cliResult: Awaited<ReturnType<typeof generateWithMmxCli>>;
     try {
       cliResult = await generateWithMmxCli(input as MusicGenerationInput, {
         outputDir: config.outputDir,
-        audioFileName, // ensures mmx writes directly to the canonical filename
+        audioFileName,
         timeoutMs: 240_000,
         audioUrl: input.audioUrl,
         audioFile: undefined,
@@ -757,8 +646,6 @@ async function handleGenerate(
       sendError(res, 'generation', `MMX CLI 生成失败：${msg.slice(0, 200)}`, 500, hint);
       return;
     }
-
-    // Read the generated file
     let audioBuffer: Buffer;
     try {
       audioBuffer = fs.readFileSync(cliResult.audioFilePath);
@@ -766,7 +653,6 @@ async function handleGenerate(
       sendError(res, 'storage', 'CLI 生成成功但无法读取输出文件', 500);
       return;
     }
-
     const track = createTrackRecord({
       id,
       title: (input.prompt || 'CLI 音乐').slice(0, 80),
@@ -774,7 +660,7 @@ async function handleGenerate(
       model: 'music-2.6',
       prompt: input.prompt || '',
       lyrics: input.lyrics,
-      audioFileName, // use the server-generated name (${id}.mp3)
+      audioFileName,
       audioMimeType: cliResult.audioMimeType,
       audioFormat: cliResult.audioFormat,
       durationMs: undefined,
@@ -788,18 +674,11 @@ async function handleGenerate(
     try {
       appendTrack(config.outputDir, track);
     } catch { /* non-fatal */ }
-
-    console.log(`[server] mmx-cli generate: id=${id} title="${track.title}" mode=${input.mode} generationSource=mmx-cli file=${cliResult.audioFileName}`);
-
-    sendJson(res, 200, {
-      ok: true,
-      track: toTrackResponse(track),
-      generationSource: 'mmx-cli',
-    });
+    console.log(`[server] mmx-cli sync: id=${id} title="${track.title}" mode=${input.mode} generationSource=mmx-cli`);
+    sendJson(res, 200, { ok: true, track: toTrackResponse(track), generationSource: 'mmx-cli' });
     return;
   }
 
-  // ── API Backend ─────────────────────────────────────────────────────────────
   let apiKey: string | undefined;
   if (keyMode === 'server') {
     apiKey = config.minimaxApiKey;
@@ -811,17 +690,10 @@ async function handleGenerate(
     return;
   }
 
-  // Build payload
   const payload = buildMiniMaxMusicPayload(input as Parameters<typeof buildMiniMaxMusicPayload>[0]);
-
-  // Call MiniMax
   let apiResult: Awaited<ReturnType<typeof callMiniMaxApi>>;
   try {
-    apiResult = await callMiniMaxApi({
-      apiKey,
-      region: region || config.minimaxRegion,
-      payload,
-    });
+    apiResult = await callMiniMaxApi({ apiKey, region: region || config.minimaxRegion, payload });
   } catch (err) {
     const se = toServerError(err, requestId);
     console.error(`[server] MiniMax API error [${requestId}]:`, redactSecrets((err as Error).message));
@@ -829,16 +701,11 @@ async function handleGenerate(
     return;
   }
 
-  // Download or decode audio
   let audioBuffer: Buffer;
   if (apiResult.audioKind === 'url' && apiResult.audioValue) {
     try {
       const response = await fetch(apiResult.audioValue);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const contentLength = response.headers.get('content-length');
-      if (contentLength && Number(contentLength) > 80 * 1024 * 1024) {
-        throw new Error('音频文件超过 80MB 限制');
-      }
       const ab = await response.arrayBuffer();
       audioBuffer = Buffer.from(ab);
     } catch (err) {
@@ -846,14 +713,12 @@ async function handleGenerate(
       return;
     }
   } else if (apiResult.audioKind === 'hex') {
-    const clean = apiResult.audioValue.replace(/\s+/g, '');
-    audioBuffer = Buffer.from(clean, 'hex');
+    audioBuffer = Buffer.from(apiResult.audioValue.replace(/\s+/g, ''), 'hex');
   } else {
     sendError(res, 'minimax_api', 'MiniMax 返回的音频格式无法处理', 500);
     return;
   }
 
-  // Save to storage
   try {
     ensureOutputDir(config.outputDir);
   } catch {
@@ -861,10 +726,7 @@ async function handleGenerate(
     return;
   }
 
-  const fileName = generateFileName({
-    mode: input.mode,
-    title: (input.prompt || 'untitled').slice(0, 40),
-  });
+  const fileName = generateFileName({ mode: input.mode, title: (input.prompt || 'untitled').slice(0, 40) });
   const filePath = getTrackFilePath(config.outputDir, fileName);
   try {
     fs.writeFileSync(filePath, audioBuffer);
@@ -873,7 +735,6 @@ async function handleGenerate(
     return;
   }
 
-  // Write manifest
   const id = generateTrackId();
   const track = createTrackRecord({
     id,
@@ -896,14 +757,8 @@ async function handleGenerate(
   try {
     appendTrack(config.outputDir, track);
   } catch { /* non-fatal */ }
-
-  console.log(`[server] minimax generate: id=${id} title="${track.title}" mode=${input.mode} generationSource=minimax traceId=${apiResult.traceId ?? 'n/a'}`);
-
-  sendJson(res, 200, {
-    ok: true,
-    track: toTrackResponse(track),
-    generationSource: 'minimax',
-  });
+  console.log(`[server] minimax sync: id=${id} title="${track.title}" mode=${input.mode} generationSource=minimax`);
+  sendJson(res, 200, { ok: true, track: toTrackResponse(track), generationSource: 'minimax' });
 }
 
 async function handleListTracks(
@@ -1052,6 +907,45 @@ async function handleDeleteTrack(
   sendJson(res, 200, { ok: true, deleted: true, id });
 }
 
+// ── Job queue handlers ───────────────────────────────────────────────────────
+
+async function handleListJobs(
+  _req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  const jobs = listJobs();
+  sendJson(res, 200, { ok: true, jobs });
+}
+
+async function handleGetJob(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  const match = req.url!.match(/^\/api\/jobs\/([^/]+)$/);
+  if (!match) { sendError(res, 'validation', '无效的 job ID', 400); return; }
+  const job = getJob(match[1]);
+  if (!job) { sendError(res, 'unknown', 'Job 不存在', 404); return; }
+  sendJson(res, 200, { ok: true, job });
+}
+
+async function handleCancelJob(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  const match = req.url!.match(/^\/api\/jobs\/([^/]+)\/cancel$/);
+  if (!match) { sendError(res, 'validation', '无效的 job ID', 400); return; }
+  const jobId = match[1];
+  const cancelled = cancelJob(jobId);
+  if (!cancelled) {
+    sendError(res, 'unknown', 'Job 不存在或无法取消', 404);
+    return;
+  }
+  sendJson(res, 200, { ok: true, jobId, cancelled: true });
+}
+
 // ── Shared track response mapper ───────────────────────────────────────────────
 
 function toTrackResponse(t: TrackMetadata): Record<string, unknown> {
@@ -1162,6 +1056,12 @@ async function routeHandler(
     await handleDebugPayload(req, res, config);
   } else if (url === '/api/debug/cli' && req.method === 'GET') {
     await handleDebugCli(req, res, config);
+  } else if (url === '/api/jobs' && req.method === 'GET') {
+    await handleListJobs(req, res, config);
+  } else if (url.match(/^\/api\/jobs\/([^/]+)$/) && req.method === 'GET') {
+    await handleGetJob(req, res, config);
+  } else if (url.match(/^\/api\/jobs\/([^/]+)\/cancel$/) && req.method === 'POST') {
+    await handleCancelJob(req, res, config);
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ ok: false, code: 'not_found', message: '未找到对应接口' }));
@@ -1266,9 +1166,13 @@ function main() {
   console.log(`  realGenerationEnabled: ${config.realGenerationEnabled}`);
   console.log(`  mockGenerationEnabled: ${config.mockGenerationEnabled}`);
   console.log(`  hasServerKey: ${!!config.minimaxApiKey}`);
-  console.log(`  region: ${config.minimaxRegion}`);
   console.log(`  outputDir: ${config.outputDir}`);
+  console.log(`  jobQueue: enabled (concurrency=1)`);
   console.log(`======================================`);
+
+  // Load persisted jobs and start background worker
+  loadJobs();
+  startWorker(config);
 
   const server = http.createServer(async (req, res) => {
     try {

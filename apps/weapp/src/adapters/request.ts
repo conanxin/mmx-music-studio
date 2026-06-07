@@ -78,6 +78,44 @@ export interface ApiError {
   };
 }
 
+// ── Job queue types (Phase 4B) ────────────────────────────────────────────────
+
+export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface JobJob {
+  id: string;
+  status: JobStatus;
+  progress?: number;
+  progressMessage?: string;
+  track?: ServerTrack;
+  error?: { type?: string; message: string; hint?: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateJobResponse {
+  ok: boolean;
+  job?: JobJob;
+  track?: ServerTrack; // legacy sync format compatibility
+  error?: { type?: string; message: string };
+}
+
+export interface GetJobResponse {
+  ok: boolean;
+  job: JobJob;
+}
+
+export interface ListJobsResponse {
+  ok: boolean;
+  jobs: JobJob[];
+}
+
+export interface CancelJobResponse {
+  ok: boolean;
+  jobId: string;
+  cancelled: boolean;
+}
+
 // ── Core request ─────────────────────────────────────────────────────────────
 
 async function requestJson<T = Record<string, unknown>>(
@@ -167,6 +205,45 @@ export async function listTracks(): Promise<ServerTrack[]> {
     return res.tracks ?? [];
   } catch {
     return [];
+  }
+}
+
+// ── Job queue API (Phase 4B) ────────────────────────────────────────────────
+
+/**
+ * GET /api/jobs — list all jobs.
+ * Compatible with both async (job) and sync (track) server responses.
+ */
+export async function listJobs(): Promise<JobJob[]> {
+  try {
+    const res = await requestJson<ListJobsResponse>('/api/jobs');
+    return res.jobs ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * GET /api/jobs/:id — poll job status.
+ */
+export async function getJob(jobId: string): Promise<JobJob | null> {
+  try {
+    const res = await requestJson<GetJobResponse>(`/api/jobs/${jobId}`);
+    return res.job ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * POST /api/jobs/:id/cancel — cancel a queued/running job.
+ */
+export async function cancelJob(jobId: string): Promise<{ cancelled: boolean }> {
+  try {
+    const res = await requestJson<CancelJobResponse>(`/api/jobs/${jobId}/cancel`);
+    return { cancelled: res.cancelled };
+  } catch {
+    return { cancelled: false };
   }
 }
 

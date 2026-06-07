@@ -366,6 +366,38 @@ export default function Settings() {
           )}
         </div>
 
+        {/* Job queue section */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>生成队列</h2>
+          <p className={styles.backendDesc}>
+            音乐生成任务通过异步队列处理，支持轮询状态和取消任务。
+          </p>
+          <div className={styles.statusGrid}>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>队列状态</div>
+              <div className={`${styles.statusValue} ${health?.jobQueueEnabled ? styles.statusOk : styles.statusSecondary}`}>
+                {health?.jobQueueEnabled ? '已启用' : '未启用'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>队列中的任务</div>
+              <div className={styles.statusValue}>
+                {health?.queuedJobs ?? '—'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>Worker 状态</div>
+              <div className={`${styles.statusValue} ${health?.workerBusy ? styles.statusWarn : styles.statusOk}`}>
+                {health?.workerBusy ? '忙碌中' : '空闲'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>最大并发</div>
+              <div className={styles.statusValue}>1</div>
+            </div>
+          </div>
+        </div>
+
         {/* Security notice */}
         <div className={styles.notice}>
           <div className={styles.noticeIcon}>
