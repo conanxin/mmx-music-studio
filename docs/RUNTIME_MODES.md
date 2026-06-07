@@ -233,6 +233,7 @@ UI 层使用以下逻辑判断当前运行模式（见 `src/features/studio/Stud
 ```typescript
 function deriveRuntimeMode(health: HealthInfo): string {
   if (health.previewAccessEnabled) return '访问保护';
+  if (health.generationAccessEnabled && !health.generationAccessUnlocked) return '访问保护';
   if (health.realGenerationEnabled && health.backend === 'cli') return '真实生成';
   if (health.realGenerationEnabled && health.backend === 'api') return 'API 实验';
   if (!health.realGenerationEnabled && health.backend === 'mock' && health.mockGenerationEnabled) return '安全预览';
@@ -240,10 +241,16 @@ function deriveRuntimeMode(health: HealthInfo): string {
 }
 ```
 
+Generation Access（Phase 4C）在解锁前表现为"访问保护"，解锁后显示底层运行模式。
+
 | 条件 | 显示 |
 |------|------|
 | `previewAccessEnabled=true` | 访问保护 |
+| `generationAccessEnabled=true && generationAccessUnlocked=false` | 访问保护 |
+| `generationAccessEnabled=true && generationAccessUnlocked=true` | 显示底层模式 |
 | `realGenerationEnabled=true && backend=cli` | 真实生成 |
 | `realGenerationEnabled=true && backend=api` | API 实验 |
 | `realGenerationEnabled=false && backend=mock && mockGenerationEnabled=true` | 安全预览 |
 | 其他 | 自定义 |
+
+详见 [docs/AUTH_AND_QUOTA.md](AUTH_AND_QUOTA.md)。

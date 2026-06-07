@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings, maskKey } from '../../lib/settingsStore';
-import { checkKey, getHealth, type HealthInfo } from '../../lib/serverApi';
+import { checkKey, getHealth, getGenAccessStatus, unlockGenAccess, logoutGenAccess, type HealthInfo } from '../../lib/serverApi';
 import styles from './Settings.module.css';
 
 export default function Settings() {
@@ -11,13 +11,26 @@ export default function Settings() {
   const [testLoading, setTestLoading] = useState(false);
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
+  // Phase 4C: Generation Access state
+  const [genAccessEnabled, setGenAccessEnabled] = useState(false);
+  const [genAccessUnlocked, setGenAccessUnlocked] = useState(false);
+  const [genPin, setGenPin] = useState('');
+  const [genPinMsg, setGenPinMsg] = useState('');
 
-  // Fetch server health on mount
+  // Fetch server health and generation access status on mount
   useEffect(() => {
-    getHealth()
-      .then((h) => setHealth(h))
-      .catch(() => { /* server may be down, ignore */ })
-      .finally(() => setHealthLoading(false));
+    Promise.all([
+      getHealth().catch(() => null),
+      getGenAccessStatus().catch(() => null),
+    ]).then(([h, ga]) => {
+      if (h) setHealth(h);
+      if (ga) {
+        setGenAccessEnabled(ga.enabled);
+        setGenAccessUnlocked(ga.unlocked);
+      }
+    }).finally(() => {
+      setHealthLoading(false);
+    });
   }, []);
 
   const handleSave = () => {
@@ -45,6 +58,30 @@ export default function Settings() {
       setTestLoading(false);
       setTimeout(() => setTestMsg(''), 5000);
     }
+  };
+
+  // Phase 4C: Generation Access unlock
+  const handleGenAccessUnlock = async () => {
+    if (!genPin.trim()) {
+      setGenPinMsg('请输入生成访问码');
+      return;
+    }
+    setGenPinMsg('解锁中…');
+    const result = await unlockGenAccess(genPin);
+    if (result.ok) {
+      setGenAccessUnlocked(true);
+      setGenPin('');
+      setGenPinMsg('已解锁生成权限');
+    } else {
+      setGenPinMsg(result.message || '访问码不正确');
+    }
+  };
+
+  // Phase 4C: Generation Access logout
+  const handleGenAccessLogout = async () => {
+    await logoutGenAccess();
+    setGenAccessUnlocked(false);
+    setGenPinMsg('');
   };
 
   const keyMode = settings.keyMode;
@@ -396,6 +433,120 @@ export default function Settings() {
               <div className={styles.statusValue}>1</div>
             </div>
           </div>
+        </div>
+
+        {/* Phase 4C: Generation Protection section */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>生成保护</h2>
+          <p className={styles.backendDesc}>
+            防止公网误触真实生成，保护你的 MiniMax 额度。
+          </p>
+          <div className={styles.statusGrid}>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>生成访问保护</div>
+              <div className={`${styles.statusValue} ${health?.generationAccessEnabled ? styles.statusOk : styles.statusSecondary}`}>
+                {health?.generationAccessEnabled ? '开启' : '关闭'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>速率限制</div>
+              <div className={`${styles.statusValue} ${health?.rateLimitEnabled ? styles.statusOk : styles.statusSecondary}`}>
+                {health?.rateLimitEnabled ? '开启' : '关闭'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>时间窗口</div>
+              <div className={styles.statusValue}>
+                {health?.rateLimitEnabled ? `${Math.round((health?.rateLimitWindowMs ?? 60000) / 1000)} 秒` : '—'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>窗口内最大请求</div>
+              <div className={styles.statusValue}>
+                {health?.rateLimitEnabled ? health?.rateLimitMaxRequests ?? '—' : '—'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>每日额度</div>
+              <div className={`${styles.statusValue} ${health?.dailyQuotaEnabled ? styles.statusOk : styles.statusSecondary}`}>
+                {health?.dailyQuotaEnabled ? '开启' : '关闭'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>今日已用 / 限制</div>
+              <div className={styles.statusValue}>
+                {health?.dailyQuotaEnabled
+                  ? `${health?.dailyGenerationUsed ?? 0} / ${health?.dailyGenerationLimit ?? 10}`
+                  : '— / —'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>剩余额度</div>
+              <div className={`${styles.statusValue} ${(health?.remainingDailyGenerations ?? 0) === 0 && health?.dailyQuotaEnabled ? styles.statusWarn : styles.statusOk}`}>
+                {health?.dailyQuotaEnabled ? `${health?.remainingDailyGenerations ?? 0} 首` : '—'}
+              </div>
+            </div>
+          </div>
+
+          {/* Generation Access PIN unlock (only show if enabled) */}
+          {genAccessEnabled && (
+            <div className={styles.genAccessSection}>
+              {genAccessUnlocked ? (
+                <div className={styles.genAccessUnlocked}>
+                  <div className={styles.genAccessStatus}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>已解锁生成权限</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.genAccessLogoutBtn}
+                    onClick={handleGenAccessLogout}
+                  >
+                    退出解锁
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.genAccessForm}>
+                  <div className={styles.genAccessLabel}>生成访问码</div>
+                  <div className={styles.genAccessInputRow}>
+                    <input
+                      type="password"
+                      className={styles.input}
+                      placeholder="输入访问码"
+                      value={genPin}
+                      onChange={e => setGenPin(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleGenAccessUnlock(); }}
+                    />
+                    <button
+                      type="button"
+                      className={styles.genAccessUnlockBtn}
+                      onClick={handleGenAccessUnlock}
+                    >
+                      解锁真实生成
+                    </button>
+                  </div>
+                  {genPinMsg && <p className={`${styles.genPinMsg} ${genPinMsg.startsWith('✅') ? styles.genPinMsgSuccess : styles.genPinMsgError}`}>{genPinMsg}</p>}
+                  <p className={styles.keyHint}>
+                    生成访问码由服务器管理员设置，与预览访问码相同
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Warning if real generation is on but gen access is off */}
+          {health?.realGenerationEnabled && !health?.generationAccessEnabled && (
+            <div className={`${styles.hint} ${styles.hintWarn}`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span>真实生成已开启，但生成访问保护未开启。公网部署可能消耗额度。</span>
+            </div>
+          )}
         </div>
 
         {/* Security notice */}

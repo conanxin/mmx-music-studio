@@ -22,6 +22,15 @@ export interface HealthInfo {
   mockGenerationEnabled: boolean;
   previewAccessEnabled: boolean;
   previewAccessUnlocked: boolean;
+  generationAccessEnabled: boolean;
+  generationAccessUnlocked: boolean;
+  rateLimitEnabled: boolean;
+  rateLimitWindowMs: number;
+  rateLimitMaxRequests: number;
+  dailyQuotaEnabled: boolean;
+  dailyGenerationLimit: number;
+  dailyGenerationUsed: number;
+  remainingDailyGenerations: number;
   region: string;
   hasServerKey: boolean;
   hasUserKey: boolean;
@@ -192,9 +201,30 @@ export async function generateTrack(
     });
     return res;
   } catch (err) {
-    // 不暴露内部错误细节
-    const msg = err instanceof Error ? err.message : '生成请求失败';
-    throw new Error(`后端生成失败：${msg}`);
+    // 提供中文友好的错误提示，不暴露内部错误细节
+    const errMsg = err instanceof Error ? err.message : '生成请求失败';
+    // 尝试从错误消息中提取 JSON 错误体
+    let msg = '生成请求失败';
+    const colonIdx = errMsg.indexOf('：');
+    if (colonIdx >= 0) {
+      try {
+        const errBody = JSON.parse(errMsg.slice(colonIdx + 1)) as ApiError;
+        if (errBody?.error?.type === 'generation_access_required') {
+          msg = '需要生成访问授权，请先在设置中完成解锁';
+        } else if (errBody?.error?.type === 'rate_limit_exceeded') {
+          msg = '生成请求过于频繁，请稍后再试';
+        } else if (errBody?.error?.type === 'daily_quota_exceeded') {
+          msg = '今日生成额度已用完';
+        } else {
+          msg = errBody?.error?.message ?? errMsg;
+        }
+      } catch {
+        msg = errMsg;
+      }
+    } else {
+      msg = errMsg;
+    }
+    throw new Error(msg);
   }
 }
 

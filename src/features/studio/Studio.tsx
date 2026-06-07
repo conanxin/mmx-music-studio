@@ -400,7 +400,13 @@ export default function Studio() {
 
       if (!result.ok || !result.job) {
         const err = result.error;
-        if (err?.type === 'missing_api_key') {
+        if (err?.type === 'generation_access_required') {
+          setGenError('请先在设置页输入生成访问码，解锁后即可生成音乐');
+        } else if (err?.type === 'rate_limit_exceeded') {
+          setGenError('生成请求过于频繁，请稍后再试');
+        } else if (err?.type === 'daily_quota_exceeded') {
+          setGenError('今日生成额度已用完，请明天再试');
+        } else if (err?.type === 'missing_api_key') {
           setGenError('请先在设置中填写 Key，或选择服务器环境变量模式');
         } else if (err?.type === 'minimax_api') {
           setGenError('MiniMax 返回错误，请检查 Key、区域、额度或内容限制');

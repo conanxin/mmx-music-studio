@@ -51,6 +51,26 @@ import {
   PREVIEW_COOKIE_NAME,
   type PreviewAccessConfig,
 } from './security.js';
+import {
+  buildGenerationAccessConfig,
+  verifyGenAccessCookie,
+  signGenAccessCookie,
+  buildGenAccessCookie,
+  clearGenAccessCookie,
+  getGenAccessCookie,
+  isGenerationUnlocked,
+  verifyGenerationPin,
+  GEN_ACCESS_COOKIE_NAME,
+} from './auth.js';
+import {
+  buildRateLimitConfig,
+  buildDailyQuotaConfig,
+  checkRateLimit,
+  checkDailyQuota,
+  getDailyQuotaStatus,
+  incrementDailyQuota,
+  getClientKey,
+} from './rate-limit.js';
 import { mockMiniMaxGenerate } from './mock-minimax.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
 import { MmxCliError } from './adapters/minimax-cli/errors.js';
@@ -113,6 +133,9 @@ function loadConfig(): ServerConfig {
     backend,
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
+    generationAccess: buildGenerationAccessConfig(),
+    rateLimit: buildRateLimitConfig(),
+    dailyQuota: buildDailyQuotaConfig(),
   };
 }
 
@@ -439,6 +462,70 @@ async function handlePreviewAccessLogout(
   sendJson(res, 200, { ok: true, message: '已退出访问' });
 }
 
+// ── Generation Access Gate handlers (Phase 4C) ───────────────────────────────
+
+async function handleGenAccessStatus(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'GET') {
+    sendError(res, 'unknown', '只支持 GET', 405);
+    return;
+  }
+  const unlocked = isGenerationUnlocked(req.headers as Record<string, string | string[] | undefined>, config.generationAccess);
+  sendJson(res, 200, {
+    ok: true,
+    enabled: config.generationAccess.enabled,
+    unlocked,
+  });
+}
+
+async function handleGenAccessUnlock(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    sendError(res, 'unknown', '只支持 POST', 405);
+    return;
+  }
+  if (!config.generationAccess.enabled) {
+    sendError(res, 'security', '生成访问保护未开启', 400);
+    return;
+  }
+  let body: { pin?: string };
+  try {
+    body = await parseBody<{ pin?: string }>(req, 1);
+  } catch {
+    sendError(res, 'unknown', '无效请求体');
+    return;
+  }
+  const rawPin = body.pin ?? '';
+  const valid = verifyGenerationPin(rawPin, config.generationAccess);
+  if (!valid) {
+    res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: false, message: '生成访问码不正确' }));
+    return;
+  }
+  const token = signGenAccessCookie(config.generationAccess);
+  res.setHeader('Set-Cookie', buildGenAccessCookie(token));
+  sendJson(res, 200, { ok: true });
+}
+
+async function handleGenAccessLogout(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    sendError(res, 'unknown', '只支持 POST', 405);
+    return;
+  }
+  res.setHeader('Set-Cookie', clearGenAccessCookie());
+  sendJson(res, 200, { ok: true, message: '已退出生成访问' });
+}
+
 async function handleHealth(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -469,12 +556,31 @@ async function handleHealth(
   const queuedJobs = getQueuedCount();
   const workerBusy = isWorkerBusy();
 
+  // Daily quota status (Phase 4C)
+  const quotaStatus = getDailyQuotaStatus(config.dailyQuota);
+
   sendJson(res, 200, {
     ok: true,
     service: 'mmx-music-studio',
-    phase: '2I',
+    phase: '4C',
     safePreviewMode,
     previewAccessEnabled: config.previewAccess.enabled,
+    // Phase 4C: Generation Access
+    generationAccessEnabled: config.generationAccess.enabled,
+    generationAccessUnlocked: (() => {
+      const token = getGenAccessCookie(req.headers as Record<string, string | string[] | undefined>);
+      return token ? verifyGenAccessCookie(token, config.generationAccess) : false;
+    })(),
+    // Phase 4C: Rate Limit
+    rateLimitEnabled: config.rateLimit.enabled,
+    rateLimitWindowMs: config.rateLimit.windowMs,
+    rateLimitMaxRequests: config.rateLimit.maxRequests,
+    // Phase 4C: Daily Quota
+    dailyQuotaEnabled: config.dailyQuota.enabled,
+    dailyGenerationLimit: config.dailyQuota.limit,
+    dailyGenerationUsed: quotaStatus.used,
+    remainingDailyGenerations: quotaStatus.remaining,
+    // Existing fields
     demoMode: config.demoMode,
     realGenerationEnabled: config.realGenerationEnabled,
     mockGenerationEnabled: config.mockGenerationEnabled,
@@ -546,6 +652,52 @@ async function handleGenerate(
     sendError(res, 'unknown', '只支持 POST', 405);
     return;
   }
+
+  // ── Access guards ────────────────────────────────────────────────────────────
+
+  // 1. Preview Access
+  if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+    sendError(res, 'security', '请先解锁访问', 401);
+    return;
+  }
+
+  // 2. Generation Access
+  if (!isGenerationUnlocked(req.headers as Record<string, string | string[] | undefined>, config.generationAccess)) {
+    sendError(res, 'generation_access_required', '请先输入生成访问码', 401);
+    return;
+  }
+
+  // 3. Rate Limit
+  if (config.rateLimit.enabled) {
+    const clientKey = getClientKey(req);
+    const rl = checkRateLimit(clientKey, config.rateLimit);
+    if (!rl.allowed) {
+      sendError(
+        res,
+        'rate_limit_exceeded',
+        '生成请求过于频繁，请稍后再试',
+        429,
+        `请等待 ${Math.ceil((rl.retryAfterMs ?? 0) / 1000)} 秒`,
+      );
+      return;
+    }
+  }
+
+  // 4. Daily Quota
+  if (config.dailyQuota.enabled) {
+    const dq = checkDailyQuota(config.dailyQuota);
+    if (!dq.allowed) {
+      sendError(
+        res,
+        'daily_quota_exceeded',
+        '今日生成额度已用完',
+        429,
+        `今日已生成 ${dq.used} 首，请明天再试`,
+      );
+      return;
+    }
+  }
+
   let body: GenerateRequest;
   try {
     body = await parseBody<GenerateRequest>(req, config.maxRequestBodyMb);
@@ -1016,6 +1168,12 @@ async function routeHandler(
     await handlePreviewAccessUnlock(req, res, config);
   } else if (url === '/api/preview-access/logout') {
     await handlePreviewAccessLogout(req, res, config);
+  } else if (url === '/api/generation-access/status') {
+    await handleGenAccessStatus(req, res, config);
+  } else if (url === '/api/generation-access/unlock') {
+    await handleGenAccessUnlock(req, res, config);
+  } else if (url === '/api/generation-access/logout') {
+    await handleGenAccessLogout(req, res, config);
   } else if (url === '/api/generate') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '请先解锁访问', 401);

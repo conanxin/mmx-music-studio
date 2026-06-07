@@ -46,6 +46,18 @@ export interface HealthInfo {
   phase?: string;
   safePreviewMode?: boolean;
   previewAccessEnabled?: boolean;
+  // Phase 4C: Generation Access
+  generationAccessEnabled?: boolean;
+  // Phase 4C: Rate Limit
+  rateLimitEnabled?: boolean;
+  rateLimitWindowMs?: number;
+  rateLimitMaxRequests?: number;
+  // Phase 4C: Daily Quota
+  dailyQuotaEnabled?: boolean;
+  dailyGenerationLimit?: number;
+  dailyGenerationUsed?: number;
+  remainingDailyGenerations?: number;
+  // Existing fields
   demoMode?: boolean;
   publicDemoMode?: boolean;
   realGenerationEnabled?: boolean;
@@ -334,6 +346,34 @@ export async function deleteTrack(trackId: string): Promise<{ ok: boolean; messa
   } catch (err) {
     return { ok: false, message: safeApiError(err).message };
   }
+}
+
+// ── Generation Access API (Phase 4C) ──────────────────────────────────────────
+
+export interface GenAccessStatus {
+  ok: boolean;
+  enabled: boolean;
+  unlocked: boolean;
+}
+
+export async function getGenAccessStatus(): Promise<GenAccessStatus> {
+  return apiFetch<GenAccessStatus>('/api/generation-access/status', { method: 'GET' });
+}
+
+export async function unlockGenAccess(pin: string): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; message?: string }>(
+      '/api/generation-access/unlock',
+      { method: 'POST', body: JSON.stringify({ pin }) },
+    );
+    return raw;
+  } catch (err) {
+    return { ok: false, message: safeApiError(err).message };
+  }
+}
+
+export async function logoutGenAccess(): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/api/generation-access/logout', { method: 'POST' });
 }
 
 // ── Job queue API ─────────────────────────────────────────────────────────────

@@ -23,6 +23,8 @@ storage/tracks/*
 !storage/tracks/.gitkeep
 storage/jobs/
 storage/logs/
+storage/quota/*.json
+!storage/quota/.gitkeep
 *.mp3
 *.wav
 *.flac

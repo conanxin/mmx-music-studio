@@ -7,6 +7,8 @@
  */
 
 import type { PreviewAccessConfig } from './security.js';
+import type { GenerationAccessConfig } from './auth.js';
+import type { RateLimitConfig, DailyQuotaConfig } from './rate-limit.js';
 
 export type KeyMode = 'server' | 'session';
 
@@ -23,6 +25,9 @@ export interface ServerConfig {
   backend: BackendMode;
   maxRequestBodyMb: number;
   previewAccess: PreviewAccessConfig;
+  generationAccess: GenerationAccessConfig;
+  rateLimit: RateLimitConfig;
+  dailyQuota: DailyQuotaConfig;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';
@@ -84,6 +89,9 @@ export type ServerErrorType =
   | 'network'
   | 'security'
   | 'generation'
+  | 'rate_limit_exceeded'
+  | 'daily_quota_exceeded'
+  | 'generation_access_required'
   | 'unknown';
 
 export interface ServerError {

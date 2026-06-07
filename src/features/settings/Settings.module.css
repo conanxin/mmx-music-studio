@@ -426,3 +426,124 @@
 .modeDocLink a:hover {
   color: var(--color-text);
 }
+
+/* ===== Generation Access ===== */
+.genAccessSection {
+  background: var(--color-panel-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.genAccessUnlocked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.genAccessStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.genAccessForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.genAccessLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.genAccessInputRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.genAccessInputRow .input {
+  flex: 1;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.genAccessUnlockBtn {
+  padding: 10px var(--space-4);
+  background: var(--color-accent);
+  color: #090A0C;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.genAccessUnlockBtn:hover {
+  opacity: 0.85;
+}
+
+.genAccessLogoutBtn {
+  padding: 8px var(--space-4);
+  background: transparent;
+  color: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.genAccessLogoutBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
+}
+
+.genPinMsg {
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.genPinMsgError {
+  color: var(--color-error);
+}
+
+.genPinMsgSuccess {
+  color: var(--color-accent);
+}
+
+.keyHint {
+  font-size: 12px;
+  color: var(--color-secondary);
+  margin: 0;
+}
+
+/* Quota display in status grid */
+.quotaOk {
+  color: var(--color-accent);
+}
+
+.quotaWarn {
+  color: #FFB76B;
+}
+
+.quotaFull {
+  color: var(--color-error);
+}

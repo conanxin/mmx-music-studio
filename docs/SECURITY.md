@@ -122,14 +122,27 @@ node_modules/
 
 只要这三个条件同时满足，无论 `PUBLIC_DEMO_MODE` 是什么值，都是安全预览模式。
 
-### 5.2 访问保护（Preview Access Gate）
+### 5.2 双层访问保护
 
-Phase 2I 新增：公网部署可用 PIN 保护。
+Phase 2I + Phase 4C 新增。
+
+#### Preview Access Gate（页面访问保护）
 
 - `PREVIEW_ACCESS_ENABLED=true` + `PREVIEW_ACCESS_PIN=<pin>` 开启
 - PIN 只从环境变量读取，不写入代码/git
 - 验证成功设置 HttpOnly cookie，24小时有效
 - 未解锁时 API 返回 401
+
+#### Generation Access Gate（生成接口保护）
+
+Phase 4C 新增。保护 `/api/generate` 防止未授权用户触发真实生成。
+
+- `GENERATION_ACCESS_ENABLED=true` + `GENERATION_ACCESS_PIN=<pin>` 开启
+- 独立于 Preview Access 的第二层保护
+- 配合速率限制（`RATE_LIMIT_ENABLED=true`）和每日额度（`DAILY_QUOTA_ENABLED=true`）使用
+- 建议在公网部署时同时开启两层保护
+
+详见 [docs/AUTH_AND_QUOTA.md](AUTH_AND_QUOTA.md)。
 
 ### 5.3 公共部署建议
 

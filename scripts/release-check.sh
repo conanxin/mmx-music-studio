@@ -130,7 +130,8 @@ fi
 
 # ── 10. Git status ─────────────────────────────────────────────────────────
 echo "[10/11] Git status..."
-if git status --porcelain | grep -q ".env"; then
+# Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
+if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
 else
   pass ".env not in git"

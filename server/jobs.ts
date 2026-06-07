@@ -33,6 +33,7 @@ import { generateWithMmxCli } from './adapters/minimax-cli/index.js';
 import { buildMiniMaxMusicPayload, validateMusicInput, type MusicGenerationInput } from './core-wrapper.js';
 import { getSessionApiKey, redactSecrets } from './security.js';
 import { callMiniMaxApi } from './call-minimax.js';
+import { incrementDailyQuota } from './rate-limit.js';
 import type { BackendMode, TrackMetadata, ServerConfig } from './types.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ export function loadJobs(): void {
     jobStore.set(job.id, job);
   }
   // Recover interrupted running jobs
-  for (const job of jobStore.values()) {
+  for (const job of Array.from(jobStore.values())) {
     if (job.status === 'running') {
       job.status = 'failed';
       job.error = { type: 'interrupted', message: '任务中断（服务重启）' };
@@ -382,6 +383,9 @@ async function executeMockJob(job: GenerateJob): Promise<void> {
     elapsedMs: new Date(finishedAt).getTime() - new Date(job.startedAt!).getTime(),
   });
 
+  // Count successful mock generation toward daily quota
+  incrementDailyQuota('mock');
+
   console.log(`[jobs] mock job succeeded: id=${job.id} trackId=${track.id}`);
 }
 
@@ -485,6 +489,9 @@ async function executeCliJob(
   });
 
   console.log(`[jobs] cli job succeeded: id=${job.id} trackId=${track.id}`);
+
+  // Count successful CLI generation toward daily quota
+  incrementDailyQuota('mmx-cli');
 }
 
 // ── API job execution ─────────────────────────────────────────────────────────
@@ -647,6 +654,9 @@ async function executeApiJob(
   });
 
   console.log(`[jobs] api job succeeded: id=${job.id} trackId=${track.id}`);
+
+  // Count successful API generation toward daily quota
+  incrementDailyQuota('minimax-api');
 }
 
 // ── Worker ────────────────────────────────────────────────────────────────────

@@ -181,11 +181,13 @@ npm run start
 
 ---
 
-### 访问保护（Preview Access Gate）
+### 访问保护（双层保护）
 
-Phase 2I 新增：公网预览可用 PIN 保护，防止未授权访问。
+Phase 2I + Phase 4C 新增：Preview Access Gate + Generation Access Gate。
 
-#### 开启保护
+详见 [docs/AUTH_AND_QUOTA.md](AUTH_AND_QUOTA.md)。
+
+#### 开启 Preview Access（页面访问保护）
 
 ```bash
 # 在启动命令中添加

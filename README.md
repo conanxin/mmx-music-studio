@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.2.0--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
+[![Phase](https://img.shields.io/badge/Phase-v0.2.0--alpha--4C-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
@@ -315,7 +315,7 @@ mmx-music-studio/
 | Phase 3A–E | 微信小程序接入（Taro v4, mock API, HTTPS 就绪） | ✅ 完成 |
 | **Phase 4A** | **三种运行模式 + 生产发布检查 + Systemd 部署** | **✅ 当前** |
 | Phase 4B | 生成任务队列（后台异步处理 + Web 轮询 UI） | ✅ 完成 |
-| Phase 4C | 访问鉴权和额度限制（多用户） | 📋 规划 |
+| **Phase 4C** | **访问鉴权 + 速率限制 + 每日额度保护** | **✅ 当前** |
 | Phase 4D | 域名 HTTPS 正式实装 | 📋 规划 |
 | Phase 5 | 正式 Release v0.2.0-alpha | 📋 规划 |
 
