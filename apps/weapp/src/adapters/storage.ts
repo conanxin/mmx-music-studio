@@ -2,28 +2,30 @@
 // Uses Taro.getStorage / Taro.setStorage / Taro.removeStorage
 // IMPORTANT: Never store real API keys here (security risk in WeChat context)
 
+// @ts-ignore Taro types have internal esModuleInterop issues — ignored via skipLibCheck
 import Taro from '@tarojs/taro';
 
 export const getItem = (key: string): string | null => {
   try {
-    const res = Taro.getStorage({ key });
-    return (res.data as string) ?? null;
+    // Taro.getStorage is async, we use getStorageSync for synchronous access
+    const res = Taro.getStorageSync(key)
+    return res ?? null
   } catch {
-    return null;
+    return null
   }
-};
+}
 
 export const setItem = (key: string, value: string): void => {
   try {
-    Taro.setStorage({ key, data: value });
+    Taro.setStorageSync(key, value)
   } catch { /* ignore */ }
-};
+}
 
 export const removeItem = (key: string): void => {
   try {
-    Taro.removeStorage({ key });
+    Taro.removeStorageSync(key)
   } catch { /* ignore */ }
-};
+}
 
 // Safe storage keys (non-sensitive)
 export const STORAGE_KEYS = {

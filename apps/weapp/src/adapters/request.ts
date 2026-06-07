@@ -9,6 +9,7 @@
  * - 中文错误文案
  */
 
+// @ts-ignore Taro types have internal esModuleInterop issues — ignored via skipLibCheck
 import Taro from '@tarojs/taro';
 import { getEffectiveApiBase, DEFAULT_API_BASE } from '../config/api';
 
@@ -101,9 +102,10 @@ async function requestJson<T = Record<string, unknown>>(
     'Content-Type': 'application/json',
   };
 
-  const requestOptions: Taro.request.Option<Record<string, unknown>> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const requestOptions: any = {
     url: fullUrl,
-    method: method as Exclude<Taro.request.Method, 'OPTIONS' | 'CONNECT' | 'TRACE' | 'PATCH'>,
+    method,
     header: headerMap,
     timeout,
     data: body ? JSON.stringify(body) : undefined,

@@ -209,13 +209,37 @@ export default class Settings extends Component<Record<string, unknown>, {
           </View>
         </View>
 
+        {/* Audio capabilities status */}
+        <View className="settings-section card audio-capability">
+          <Text className="section-title">🎵 音频能力</Text>
+          <View className="capability-items">
+            <View className="capability-item">
+              <Text className="capability-dot ok">✓</Text>
+              <Text className="capability-label">播放：已接入 wx.createInnerAudioContext</Text>
+            </View>
+            <View className="capability-item">
+              <Text className="capability-dot ok">✓</Text>
+              <Text className="capability-label">下载保存：已接入 wx.downloadFile + wx.saveFile</Text>
+            </View>
+            <View className="capability-item">
+              <Text className="capability-dot pending">○</Text>
+              <Text className="capability-label">真机调试：待验证</Text>
+            </View>
+          </View>
+          <View className="capability-hint">
+            <Text className="hint-text">
+              ⚠️ 小程序正式环境播放和下载远程音频，需要后端域名配置为 HTTPS 合法域名。微信开发者工具可临时关闭合法域名校验调试 HTTP IP。
+            </Text>
+          </View>
+        </View>
+
         {/* Security notice */}
         <View className="settings-section card security-notice">
           <Text className="security-title">🔒 安全说明</Text>
           <View className="security-items">
             <Text className="security-item ok">✓ 小程序端不保存 MiniMax Key</Text>
             <Text className="security-item ok">✓ 不在代码中硬编码真实 Key</Text>
-            <Text className="security-item ok">✓ 当前 Phase 3B 只连接 Server Mock</Text>
+            <Text className="security-item ok">✓ 当前 Phase 3C 已接入音频播放 + 下载保存</Text>
             <Text className="security-item warn">⚠ 正式小程序必须使用 HTTPS 域名</Text>
             <Text className="security-item warn">⚠ 需在微信公众平台配置 request 合法域名</Text>
           </View>
@@ -224,7 +248,7 @@ export default class Settings extends Component<Record<string, unknown>, {
         {/* Version */}
         <View className="settings-section">
           <Text className="version-text">
-            mmx-music-studio v0.1.0-alpha · Phase 3B
+            mmx-music-studio v0.1.0-alpha · Phase 3C
           </Text>
         </View>
       </View>

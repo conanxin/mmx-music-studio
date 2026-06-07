@@ -1,18 +1,20 @@
+// app.tsx — MiniMax 音乐创作台 · 微信小程序入口
+// Phase 3A: Taro v4 + React 18 project scaffold
+/// <reference types="@tarojs/taro" />
+
 import { Component } from 'react'
+import { View } from '@tarojs/components'
 import './app.scss'
 
 class App extends Component {
-  componentDidMount() {}
-
-  componentDidShow() {}
-
-  componentDidHide() {}
-
-  componentDidCatchError() {}
-
-  // this.props.children 是将要被渲染的页面组件
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   render() {
-    return this.props.children
+    return (
+      <View className="app">
+        {/* children 是将要被渲染的页面组件 */}
+        {(this.props as any).children}
+      </View>
+    )
   }
 }
 

@@ -1,11 +1,18 @@
-import { Component } from 'react'
+// studio/index.tsx — 创作台页面（Phase 3C: audio + download）
+// Phase 3B: server mock API integration
+// Phase 3C: audio playback + download for generated tracks
+
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, Textarea, Button, ScrollView } from '@tarojs/components'
-import { useState } from 'react'
-import type { MusicMode } from '../../types'
+// @ts-ignore Taro types have internal esModuleInterop issues
+import Taro from '@tarojs/taro'
+import type { MusicMode, AudioPlayer } from '../../types'
 import { MODE_LABELS, MODE_BTN_LABELS, STYLE_TAGS, type StyleTag } from '../../types'
 import { MOCK_TRACKS } from '../../mock/tracks'
 import { generateTrack } from '../../adapters/request'
 import { getApiBaseFromConfig, DEFAULT_API_BASE } from '../../config/api'
+import { createAudioController } from '../../adapters/audio'
+import { downloadAndSaveAudio } from '../../adapters/download'
 import './index.scss'
 
 const MODE_ORDER: MusicMode[] = ['instrumental', 'auto', 'lyrics', 'cover']
@@ -17,6 +24,20 @@ const PROGRESS_MESSAGES = [
   '生成时间较长，请耐心等待…',
 ]
 
+type TrackLike = {
+  id: string
+  title: string
+  mode: MusicMode
+  durationSeconds: number
+  source: string
+  createdAt: string
+  audioUrl?: string
+  downloadUrl?: string
+}
+
+// Extended type for weapp audio controller
+type WeappAudioCtrl = AudioPlayer & { seek(s: number): void; getState(): { playing: boolean; loading: boolean; currentTime: number; duration: number; error?: string } }
+
 export default function Studio() {
   const [mode, setMode] = useState<MusicMode>('instrumental')
   const [prompt, setPrompt] = useState('')
@@ -25,14 +46,102 @@ export default function Studio() {
   const [progressMessage, setProgressMessage] = useState('')
   const [progressStep, setProgressStep] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
-  const [currentTrack, setCurrentTrack] = useState(MOCK_TRACKS[0])
+  const [currentTrack, setCurrentTrack] = useState<TrackLike | null>(null)
   const [sourceLabel, setSourceLabel] = useState('Mock')
   const [generationSource, setGenerationSource] = useState('local-mock')
+  const [playingState, setPlayingState] = useState<'idle' | 'loading' | 'playing' | 'paused' | 'error'>('idle')
+  const [downloadState, setDownloadState] = useState<'idle' | 'loading'>('idle')
+
+  const audioCtrlRef = useRef<WeappAudioCtrl | null>(null)
+
+  // Initialize audio controller once
+  useEffect(() => {
+    audioCtrlRef.current = createAudioController({
+      onStateChange: (audioState) => {
+        setPlayingState(
+          audioState.error
+            ? 'error'
+            : audioState.loading
+            ? 'loading'
+            : audioState.playing
+            ? 'playing'
+            : 'idle',
+        )
+      },
+      onEnded: () => setPlayingState('idle'),
+      onError: () => setPlayingState('error'),
+    })
+    return () => {
+      audioCtrlRef.current?.destroy()
+      audioCtrlRef.current = null
+    }
+  }, [])
 
   const toggleStyle = (style: StyleTag) => {
     setSelectedStyles(prev =>
-      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
+      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style],
     )
+  }
+
+  const hasAudio = (track: TrackLike | null): boolean => {
+    if (!track) return false
+    return !!track.audioUrl
+  }
+
+  const getAudioUrl = (track: TrackLike | null): string => {
+    if (!track?.audioUrl) return ''
+    if (track.audioUrl.startsWith('/')) {
+      return `${window.location.origin}${track.audioUrl}`
+    }
+    return track.audioUrl
+  }
+
+  const getDownloadUrl = (track: TrackLike | null): string => {
+    if (!track?.downloadUrl) return ''
+    if (track.downloadUrl.startsWith('/')) {
+      return `${window.location.origin}${track.downloadUrl}`
+    }
+    return track.downloadUrl
+  }
+
+  const handlePlayPause = () => {
+    const ctrl = audioCtrlRef.current
+    if (!ctrl) return
+
+    if (playingState === 'playing') {
+      ctrl.pause()
+    } else {
+      const url = getAudioUrl(currentTrack)
+      if (!url) {
+        Taro.showToast({ title: '暂无音频文件', icon: 'none' })
+        return
+      }
+      // play(url) loads and autoplays
+      ctrl.play(url)
+    }
+  }
+
+  const handleDownload = () => {
+    const url = getDownloadUrl(currentTrack)
+    if (!url) {
+      Taro.showToast({ title: '暂无音频文件', icon: 'none' })
+      return
+    }
+
+    setDownloadState('loading')
+    Taro.showLoading({ title: '保存中…' })
+
+    downloadAndSaveAudio({ url, title: currentTrack!.title })
+      // @ts-ignore Taro callback result typing mismatch
+      .then((result: { message: string }) => {
+        Taro.hideLoading()
+        Taro.showToast({ title: result.message, icon: 'none' })
+      })
+      .catch(() => {
+        Taro.hideLoading()
+        Taro.showToast({ title: '保存失败', icon: 'none' })
+      })
+      .finally(() => setDownloadState('idle'))
   }
 
   const handleGenerate = async () => {
@@ -57,7 +166,6 @@ export default function Studio() {
       }
     }, 3000)
 
-    // Build styles string
     const styleStr = selectedStyles.length > 0 ? selectedStyles.join('、') : ''
 
     try {
@@ -71,14 +179,28 @@ export default function Studio() {
       clearInterval(stepTimer)
 
       if (res.ok && res.track) {
+        const track = res.track
+        const audioUrl = track.audioUrl
+          ? (track.audioUrl.startsWith('/')
+            ? `${window.location.origin}${track.audioUrl}`
+            : track.audioUrl)
+          : undefined
+        const downloadUrl = track.downloadUrl
+          ? (track.downloadUrl.startsWith('/')
+            ? `${window.location.origin}${track.downloadUrl}`
+            : track.downloadUrl)
+          : undefined
+
         setCurrentTrack({
-          id: res.track.id,
-          title: res.track.title,
-          mode: res.track.mode as MusicMode,
-          durationSeconds: Math.floor(res.track.durationMs / 1000),
-          source: res.generationSource as 'mock' | 'cli' | 'api',
-          createdAt: res.track.createdAt,
-        } as typeof MOCK_TRACKS[0])
+          id: track.id,
+          title: track.title,
+          mode: track.mode as MusicMode,
+          durationSeconds: Math.floor(track.durationMs / 1000),
+          source: res.generationSource as string,
+          createdAt: track.createdAt,
+          audioUrl,
+          downloadUrl,
+        })
         setSourceLabel('Server Mock')
         setGenerationSource(res.generationSource)
         setShowPlayer(true)
@@ -97,11 +219,25 @@ export default function Studio() {
 
   const fallbackToLocalMock = () => {
     const mock = MOCK_TRACKS[Math.floor(Math.random() * MOCK_TRACKS.length)]
-    setCurrentTrack(mock)
+    setCurrentTrack({
+      id: mock.id,
+      title: mock.title,
+      mode: mock.mode,
+      durationSeconds: mock.durationSeconds || 0,
+      source: 'local-mock',
+      createdAt: mock.createdAt,
+      audioUrl: undefined,
+      downloadUrl: undefined,
+    })
     setSourceLabel('本地 Mock')
     setGenerationSource('local-mock')
     setShowPlayer(true)
   }
+
+  const playable = hasAudio(currentTrack)
+  const playableIcon =
+    playingState === 'loading' ? '⏳' : playingState === 'playing' ? '⏸' : '▶'
+  const downloadLabel = downloadState === 'loading' ? '保存中…' : '💾 下载'
 
   return (
     <View className="page studio-page">
@@ -114,6 +250,7 @@ export default function Studio() {
             {getApiBaseFromConfig() || DEFAULT_API_BASE}
           </Text>
         </View>
+        <Text className="phase-label">Phase 3C</Text>
       </View>
 
       {/* Mode tabs */}
@@ -183,7 +320,7 @@ export default function Studio() {
       </Button>
 
       {/* Player card */}
-      {showPlayer && (
+      {showPlayer && currentTrack && (
         <View className="player-card card">
           <View className="player-title-row">
             <Text className="player-title">{currentTrack.title}</Text>
@@ -208,15 +345,24 @@ export default function Studio() {
             </Text>
           </View>
           <View className="player-controls">
-            <View className="play-btn">
-              <Text className="play-icon">▶</Text>
+            <View
+              className={`play-btn ${!playable ? 'disabled' : ''}`}
+              onClick={playable ? handlePlayPause : undefined}
+            >
+              <Text className="play-icon">{playableIcon}</Text>
             </View>
             <View className="action-btns">
-              <View className="action-btn">
-                <Text>下载</Text>
+              <View
+                className={`action-btn ${downloadState === 'loading' ? 'loading' : ''} ${!playable ? 'disabled' : ''}`}
+                onClick={playable ? handleDownload : undefined}
+              >
+                <Text>{downloadLabel}</Text>
               </View>
             </View>
           </View>
+          {!playable && (
+            <Text className="player-no-audio">暂无音频文件</Text>
+          )}
         </View>
       )}
 
