@@ -114,6 +114,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - HTTPS 域名实装待 Phase 4E
 - 微信小程序正式上线需完成法律域名备案
 
+---
+
+## [0.3.0-alpha] — 2026-06-08
+
+### Added
+
+#### HTTPS 部署完成 / HTTPS Deployment
+- **生产 HTTPS 地址** — https://music.conanxin.com
+- **Caddy 反向代理** — HTTP → HTTPS 自动重定向，安全响应头（CSP/HSTS/X-Frame-Options 等）
+- **Server 安全监听** — 强制 `127.0.0.1:8787`，仅允许本地代理访问
+- **Caddyfile 模板** — `deploy/Caddyfile.example`，开箱即用配置模板
+- **Nginx 配置模板** — `deploy/nginx.mmx-music-studio.conf.example`
+- **本地安全启动脚本** — `scripts/run-local-behind-proxy.sh`
+- **域名就绪检查脚本** — `scripts/domain-readiness-check.sh`
+- **HTTPS 部署完整文档** — `docs/HTTPS_DOMAIN_DEPLOYMENT.md`
+
+#### 安全加固 / Security Hardening（Phase 4F）
+- **Audit Logging 审计日志** — `server/audit.ts`，13 种事件类型，JSONL 持久化
+- **PIN Brute-force Guard** — `server/auth-guard.ts`，错误 N 次后锁定 M 分钟，返回 429
+- **Audit API** — `GET /api/audit/stats`（统计）、`GET /api/audit/events`（事件列表）
+- **Health 审计字段** — `/api/health` 新增 `auditLogEnabled`、`authGuardEnabled`、`authGuard` 详情
+- **敏感信息过滤** — 审计日志自动过滤 PIN/API key/Authorization/原始 IP
+- **clientHash 匿名化** — 使用 SHA256(IP) 前16字符，不保存原始 IP
+- **Settings 安全审计面板** — 查看审计状态、解锁统计、拦截统计
+
+#### 部署基础设施 / Deployment Infrastructure
+- **Docker HTTPS 支持** — `docker-compose.yml` 包含 port 80/443 映射
+- **Caddy 自动 HTTPS** — Let's Encrypt 自动签发证书
+- **.env.proxy.example** — 17 个 HTTPS/代理相关环境变量模板
+
+#### 安全默认策略 / Security Defaults
+- Real Generation 默认关闭
+- Audit Logging / Auth Guard / Rate Limit / Daily Quota 均可选启用
+- PIN / API key / Authorization 绝不写入日志或提交 git
+
+### Security
+- `storage/audit/*.jsonl` 不提交 git（`.gitignore` 保护）
+- `storage/audit/.gitkeep` 保持目录结构
+- `.env.example` 新增 6 个 Phase 4F 环境变量（均为占位符）
+- Phase 4 全阶段 secret scan 持续 CLEAN
+- 无原始 IP、API key、Authorization header、PIN 明文泄露
+
+### Known Limitations
+- 多用户系统未实现（单机自用场景）
+- Redis 未集成（PIN Guard 为内存存储，重启清零）
+- 微信正式发布需在微信公众平台配置 `https://music.conanxin.com` 为合法域名
+
 
 ## 早期版本说明
 
