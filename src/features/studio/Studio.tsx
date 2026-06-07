@@ -54,6 +54,21 @@ const UI_MODE_LABELS: Record<string, string> = {
   'cover-file': '参考改编',
 };
 
+function getBackendLabel(backend?: string): string {
+  switch (backend) {
+    case 'cli': return 'MMX CLI';
+    case 'api': return 'API Adapter';
+    case 'mock': return '本地模拟';
+    default: return backend ?? 'API Adapter';
+  }
+}
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 type UIMode = 'pure-music' | 'auto-song' | 'lyric-song' | 'cover-url' | 'cover-file';
 
 function resolveMode(): UIMode {
@@ -167,7 +182,72 @@ export default function Studio() {
   const [currentTrack, setCurrentTrack] = useState<DisplayTrack | null>(null);
   const [recentTracks, setRecentTracks] = useState<DisplayTrack[]>([]);
 
-  // Sync hash → state on mount
+  // Generation progress UI
+  const [progressMessage, setProgressMessage] = useState<string | null>(null);
+  const [progressElapsed, setProgressElapsed] = useState(0);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressStartRef = useRef<number>(0);
+
+  // Health info state
+  const [healthInfo, setHealthInfo] = useState<{
+    backend?: string;
+    realGenerationEnabled?: boolean;
+    mockGenerationEnabled?: boolean;
+  } | null>(null);
+
+  function startProgressTracking() {
+    // Clear any existing timer
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    progressStartRef.current = Date.now();
+    setProgressMessage('正在提交任务…');
+    setProgressElapsed(0);
+    progressTimerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - progressStartRef.current) / 1000);
+      setProgressElapsed(elapsed);
+      if (elapsed >= 120) {
+        setProgressMessage('生成时间较长，仍在等待服务器返回…');
+      } else if (elapsed >= 60) {
+        setProgressMessage('MiniMax 正在生成音乐，通常需要 30–90 秒…');
+      } else if (elapsed >= 30) {
+        setProgressMessage('仍在生成中，请不要重复点击…');
+      } else if (elapsed >= 10) {
+        setProgressMessage('正在调用 MMX CLI，请稍候…');
+      }
+    }, 1000);
+  }
+
+  function clearProgress(successMsg?: string) {
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    if (successMsg) {
+      setProgressMessage(successMsg);
+      setTimeout(() => {
+        setProgressMessage(null);
+        setProgressElapsed(0);
+      }, 4000);
+    } else {
+      setProgressMessage(null);
+      setProgressElapsed(0);
+    }
+  }
+
+  // Fetch health on mount
+  useEffect(() => {
+    getHealth().then(h => {
+      setHealthInfo({
+        backend: h.backend,
+        realGenerationEnabled: h.realGenerationEnabled,
+        mockGenerationEnabled: h.mockGenerationEnabled,
+      });
+    }).catch(() => {});
+  }, []);
+
+  // Sync hash → mode on mount
   useEffect(() => {
     const m = resolveMode();
     if (m !== activeMode) setActiveMode(m);
@@ -248,6 +328,7 @@ export default function Studio() {
 
     setIsGenerating(true);
     setGenerationSource(null);
+    startProgressTracking();
 
     // Check if API server is available
     let useApi = false;
@@ -285,6 +366,7 @@ export default function Studio() {
           setCurrentTrack(display);
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
           setGenerationSource(result.generationSource ?? null);
+          clearProgress(`生成完成，用时 ${formatElapsed(progressElapsed)}`);
           setIsGenerating(false);
           return;
         }
@@ -301,11 +383,13 @@ export default function Studio() {
           } else {
             setGenError(result.error.message);
           }
+          clearProgress();
           setIsGenerating(false);
           return;
         }
       } catch (err) {
         setGenError('生成失败，请稍后重试');
+        clearProgress();
         setIsGenerating(false);
         return;
       }
@@ -328,6 +412,7 @@ export default function Studio() {
           };
           setCurrentTrack(display);
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
+          clearProgress();
           setIsGenerating(false);
         } else {
           setTimeout(tick, 500);
@@ -569,10 +654,22 @@ export default function Studio() {
             {isGenerating ? (
               <>
                 <span className={styles.spinner} />
-                生成中...
+                生成中…
               </>
             ) : getButtonLabel()}
           </button>
+
+          {/* Progress UI */}
+          {isGenerating && progressMessage && (
+            <div className={styles.progressCard}>
+              <div className={styles.progressMessage}>{progressMessage}</div>
+              {progressElapsed > 0 && (
+                <div className={styles.progressElapsed}>
+                  已等待 {formatElapsed(progressElapsed)}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Mode hint */}
           <p className={styles.modeHint}>{getModeHint()}</p>
@@ -667,7 +764,11 @@ export default function Studio() {
           <div className={styles.statusBar}>
             <span className={styles.statusDot} />
             <span>
-              {settings.keyMode === 'server'
+              {healthInfo?.realGenerationEnabled
+                ? '✓ 真实生成已开启'
+                : healthInfo?.mockGenerationEnabled
+                ? '安全预览模式'
+                : settings.keyMode === 'server'
                 ? '服务器 Key'
                 : settings.apiKey ? 'Key 已连接'
                 : 'Key 未设置'}
@@ -675,7 +776,7 @@ export default function Studio() {
             <span className={styles.statusSep}>·</span>
             <span>{settings.region === 'cn' ? '中国区' : 'Global'}</span>
             <span className={styles.statusSep}>·</span>
-            <span>API Adapter</span>
+            <span>{getBackendLabel(healthInfo?.backend)}</span>
           </div>
 
           {/* Player */}

@@ -29,6 +29,15 @@ export default function WaveformPlayer({
   const [audioError, setAudioError] = useState(false);
 
   const hasAudio = !!audioUrl;
+  // Display duration: show "读取中" while audio is loading, then real time
+  const isDurationKnown = totalDuration > 0 || !!durationText;
+  const displayDuration = durationText
+    ? durationText
+    : hasAudio && !isDurationKnown
+    ? '读取中'
+    : totalDuration > 0
+    ? formatSeconds(totalDuration)
+    : '';
 
   // Sync audio element when audioUrl changes
   useEffect(() => {
@@ -94,7 +103,6 @@ export default function WaveformPlayer({
   });
 
   const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
-  const displayDuration = durationText || (totalDuration > 0 ? formatSeconds(totalDuration) : '0:00');
   const displayCurrent = formatSeconds(currentTime);
 
   // Mock waveform bars
