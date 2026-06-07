@@ -1426,7 +1426,9 @@ function main() {
     }
   });
 
-  const host = process.env.HOST || '0.0.0.0';
+  // Security default: only listen on localhost when behind a reverse proxy.
+  // Set HOST=0.0.0.0 to restore old behavior if needed.
+  const host = process.env.HOST || '127.0.0.1';
 
   server.listen(config.port, host, () => {
     console.log(`[server] mmx-music-studio API 运行于 http://${host}:${config.port}`);
