@@ -1,7 +1,6 @@
 /**
  * mmx-music-studio API server.
- * Phase 2B.2: Mock MiniMax adapter, real-generation safety switch,
- *              structured errors, DELETE tracks, audio content-type.
+ * Phase 2I: Preview Access Gate (PIN protection).
  *
  * Security guarantees:
  * - REAL_GENERATION_ENABLED=false by default — never calls MiniMax API
@@ -10,6 +9,7 @@
  * - Never persists keys in manifest
  * - Never exposes server absolute paths
  * - smoke tests always use mock adapter (REAL_GENERATION_ENABLED=false)
+ * - Preview Access Gate: PIN never logged, never returned, cookie is HttpOnly
  *
  * Architecture: Standalone Node.js HTTP server. Imports core/adapters via
  * relative paths resolved by tsx. No npm workspace complexity.
@@ -42,6 +42,14 @@ import {
   validateKeyLooksReasonable,
   safeContentDisposition,
   redactSecrets,
+  buildPreviewAccessConfig,
+  verifyPreviewPin,
+  generateAccessToken,
+  buildPreviewAccessCookie,
+  getPreviewAccessToken,
+  isPreviewUnlocked,
+  PREVIEW_COOKIE_NAME,
+  type PreviewAccessConfig,
 } from './security.js';
 import { mockMiniMaxGenerate } from './mock-minimax.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
@@ -90,6 +98,7 @@ function loadConfig(): ServerConfig {
     mockGenerationEnabled,
     backend,
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
+    previewAccess: buildPreviewAccessConfig(),
   };
 }
 
@@ -446,6 +455,80 @@ async function handleDebugPayload(
   });
 }
 
+// ── Preview Access Gate ────────────────────────────────────────────────────────
+
+/** GET /api/preview-access/status */
+async function handlePreviewAccessStatus(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'GET') {
+    sendError(res, 'unknown', '只支持 GET', 405);
+    return;
+  }
+  const unlocked = isPreviewUnlocked(
+    req.headers as Record<string, string | string[] | undefined>,
+    config.previewAccess,
+  );
+  sendJson(res, 200, {
+    ok: true,
+    enabled: config.previewAccess.enabled,
+    unlocked,
+  });
+}
+
+/** POST /api/preview-access/unlock */
+async function handlePreviewAccessUnlock(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    sendError(res, 'unknown', '只支持 POST', 405);
+    return;
+  }
+  if (!config.previewAccess.enabled) {
+    sendError(res, 'security', '访问控制未启用', 400);
+    return;
+  }
+  let body = '';
+  for await (const chunk of req) {
+    body += chunk;
+    if (body.length > 1024) break;
+  }
+  let pin: string;
+  try {
+    const parsed = JSON.parse(body);
+    pin = parsed?.pin ?? '';
+  } catch {
+    sendError(res, 'validation', '请求格式错误', 400);
+    return;
+  }
+  if (!verifyPreviewPin(pin, config.previewAccess)) {
+    // Use generic message — never reveal which security check failed
+    sendError(res, 'security', '访问码不正确', 401);
+    return;
+  }
+  const token = generateAccessToken(config.previewAccess);
+  res.setHeader('Set-Cookie', buildPreviewAccessCookie(token));
+  sendJson(res, 200, { ok: true, message: '解锁成功' });
+}
+
+/** POST /api/preview-access/logout */
+async function handlePreviewAccessLogout(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    sendError(res, 'unknown', '只支持 POST', 405);
+    return;
+  }
+  res.setHeader('Set-Cookie', `${PREVIEW_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
+  sendJson(res, 200, { ok: true, message: '已退出访问' });
+}
+
 async function handleHealth(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -467,10 +550,17 @@ async function handleHealth(
     cliAvailable = false;
   }
 
+  const safePreviewMode =
+    config.realGenerationEnabled === false &&
+    config.backend === 'mock' &&
+    config.mockGenerationEnabled === true;
+
   sendJson(res, 200, {
     ok: true,
     service: 'mmx-music-studio',
-    phase: '2D.1',
+    phase: '2I',
+    safePreviewMode,
+    previewAccessEnabled: config.previewAccess.enabled,
     demoMode: config.demoMode,
     realGenerationEnabled: config.realGenerationEnabled,
     mockGenerationEnabled: config.mockGenerationEnabled,
@@ -1026,17 +1116,47 @@ async function routeHandler(
     await handleHealth(req, res, config);
   } else if (url === '/api/key/check') {
     await handleKeyCheck(req, res, config);
+  } else if (url === '/api/preview-access/status') {
+    await handlePreviewAccessStatus(req, res, config);
+  } else if (url === '/api/preview-access/unlock') {
+    await handlePreviewAccessUnlock(req, res, config);
+  } else if (url === '/api/preview-access/logout') {
+    await handlePreviewAccessLogout(req, res, config);
   } else if (url === '/api/generate') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
     await handleGenerate(req, res, config);
   } else if (url === '/api/tracks' && req.method === 'GET') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
     await handleListTracks(req, res, config);
   } else if (url.match(/^\/api\/tracks\/([^/]+)\/audio$/)) {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
     await handleTrackAudio(req, res, config);
   } else if (url.match(/^\/api\/tracks\/([^/]+)\/download$/)) {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
     await handleTrackDownload(req, res, config);
   } else if (url.match(/^\/api\/tracks\/([^/]+)$/) && req.method === 'GET') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
     await handleGetTrack(req, res, config);
   } else if (url.match(/^\/api\/tracks\/([^/]+)$/) && req.method === 'DELETE') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
     await handleDeleteTrack(req, res, config);
   } else if (url === '/api/debug/payload' && req.method === 'POST') {
     await handleDebugPayload(req, res, config);
@@ -1141,7 +1261,7 @@ function main() {
 
   console.log(`=== mmx-music-studio server config ===`);
   console.log(`  port: ${config.port}`);
-  console.log(`  demoMode: ${config.demoMode}`);
+  console.log(`  previewAccessEnabled: ${config.previewAccess.enabled}`);
   console.log(`  backend: ${config.backend}`);
   console.log(`  realGenerationEnabled: ${config.realGenerationEnabled}`);
   console.log(`  mockGenerationEnabled: ${config.mockGenerationEnabled}`);

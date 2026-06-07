@@ -110,18 +110,33 @@ node_modules/
 
 ## 5. 公共部署安全
 
-### 5.1 PUBLIC_DEMO_MODE
+### 5.1 安全预览模式（Safe Preview Mode）
 
-`.env.example` 中的 `PUBLIC_DEMO_MODE=true` 表示演示模式：
+安全预览模式由三个条件共同保证，不依赖单一字段：
 
-- 开启时：所有生成使用 Mock 数据，不调用真实 API
-- 关闭时：调用真实 API（需要正确配置 Key）
+| 条件 | 说明 |
+|------|------|
+| `REAL_GENERATION_ENABLED=false` | 禁止调用 MiniMax |
+| `MINIMAX_BACKEND=mock` | 使用本地模拟后端 |
+| `MOCK_GENERATION_ENABLED=true` | 本地模拟生成可用 |
 
-### 5.2 公共部署建议
+只要这三个条件同时满足，无论 `PUBLIC_DEMO_MODE` 是什么值，都是安全预览模式。
+
+### 5.2 访问保护（Preview Access Gate）
+
+Phase 2I 新增：公网部署可用 PIN 保护。
+
+- `PREVIEW_ACCESS_ENABLED=true` + `PREVIEW_ACCESS_PIN=<pin>` 开启
+- PIN 只从环境变量读取，不写入代码/git
+- 验证成功设置 HttpOnly cookie，24小时有效
+- 未解锁时 API 返回 401
+
+### 5.3 公共部署建议
 
 如果你在公网上部署此项目（不是自用）：
 
-- ✅ 保持 `PUBLIC_DEMO_MODE=true` 作为默认值
+- ✅ 保持安全预览模式（`REAL_GENERATION_ENABLED=false` + `backend=mock`）
+- ✅ 开启 `PREVIEW_ACCESS_ENABLED=true` 保护公网预览
 - ✅ 如果要开启真实生成，需要添加用户认证
 - ✅ 添加生成频率限制（防止滥用额度）
 - ✅ 添加使用量监控
@@ -207,6 +222,8 @@ let apiKey = ''  // 内存变量，页面销毁即消失
 - [ ] `.env` 文件不在 git 仓库中
 - [ ] 没有 console.log 打印 Authorization 或 Key
 - [ ] `.env.example` 只有占位符
-- [ ] 公共部署默认开启 `PUBLIC_DEMO_MODE=true`
+- [ ] 公共部署默认开启安全预览模式（`REAL_GENERATION_ENABLED=false` + `backend=mock`）
+- [ ] 公网部署开启 `PREVIEW_ACCESS_ENABLED=true`
 - [ ] 没有硬编码的 API Key
 - [ ] 小程序端不使用 wx.setStorageSync 存储 Key
+- [ ] PIN 不写入代码/git/文档（只通过环境变量配置）

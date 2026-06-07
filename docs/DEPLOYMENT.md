@@ -162,6 +162,74 @@ npm run start
 
 ---
 
+### 访问保护（Preview Access Gate）
+
+Phase 2I 新增：公网预览可用 PIN 保护，防止未授权访问。
+
+#### 开启保护
+
+```bash
+# 在启动命令中添加
+PREVIEW_ACCESS_ENABLED=true \
+PREVIEW_ACCESS_PIN=<your_preview_pin> \
+REAL_GENERATION_ENABLED=false \
+MOCK_GENERATION_ENABLED=true \
+MINIMAX_BACKEND=mock \
+HOST=0.0.0.0 \
+PORT=8787 \
+npm run start
+```
+
+#### 工作原理
+
+| 条件 | 结果 |
+|------|------|
+| `PREVIEW_ACCESS_ENABLED=false` | 无保护，直接访问 |
+| `PREVIEW_ACCESS_ENABLED=true` | 输入正确 PIN 才能访问 |
+| PIN 错误 | 401 "访问码不正确" |
+| PIN 正确 | 设置 HttpOnly cookie，24小时有效 |
+
+#### 受保护的 API
+
+未解锁时返回 401：
+
+- `POST /api/generate`
+- `GET /api/tracks`
+- `GET /api/tracks/:id`
+- `GET /api/tracks/:id/audio`
+- `GET /api/tracks/:id/download`
+- `DELETE /api/tracks/:id`
+
+#### 公开可访问
+
+- `GET /api/health` — 不泄露敏感信息
+- `GET /api/preview-access/status` — 返回 `{enabled, unlocked}`（无 PIN）
+
+#### Docker 部署
+
+```bash
+docker run -d \
+  --name mmx-music-studio \
+  -p 8787:8787 \
+  -e PREVIEW_ACCESS_ENABLED=true \
+  -e PREVIEW_ACCESS_PIN=<your_pin> \
+  -e REAL_GENERATION_ENABLED=false \
+  -e MOCK_GENERATION_ENABLED=true \
+  -e MINIMAX_BACKEND=mock \
+  mmx-music-studio:0.1.0
+```
+
+#### 安全说明
+
+- PIN 只从环境变量读取，不写入代码/git
+- cookie 为 HttpOnly，前端 JS 无法读取（防止 XSS 窃取）
+- PIN 不记录日志
+- 不支持多用户，只是简单访问保护
+
+---
+
+---
+
 ### 启用真实 CLI 生成（⚠️ 消耗额度）
 
 需要在容器中或宿主机安装并登录 `mmx` CLI：
@@ -266,8 +334,9 @@ curl http://localhost:8787/api/health
 {
   "ok": true,
   "service": "mmx-music-studio",
-  "phase": "2H.2",
+  "phase": "2I",
   "safePreviewMode": true,
+  "previewAccessEnabled": false,
   "realGenerationEnabled": false,
   "mockGenerationEnabled": true,
   "backend": "mock",

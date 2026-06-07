@@ -247,6 +247,28 @@ MOCK_GENERATION_ENABLED=true
 
 CLI Adapter 推荐原因：不通过 HTTP 直连 MiniMax，由 mmx CLI 管理认证和请求。
 
+### 访问保护（Preview Access Gate）
+
+公网部署时推荐开启 PIN 访问保护：
+
+```bash
+PREVIEW_ACCESS_ENABLED=true
+PREVIEW_ACCESS_PIN=<your_preview_pin>
+```
+
+| 环境变量 | 说明 |
+|----------|------|
+| `PREVIEW_ACCESS_ENABLED` | `true` 开启 PIN 保护 |
+| `PREVIEW_ACCESS_PIN` | 访问码（由部署者设置） |
+| `PREVIEW_ACCESS_SECRET` | 可选，自定义 cookie 签名密钥 |
+
+特点：
+- PIN 只从环境变量读取，不写入代码/git
+- 验证成功后设置 HttpOnly cookie（24小时有效）
+- API `/api/tracks`、`/api/generate` 等在未解锁时返回 401
+- `/api/health` 公开可访问，不泄露敏感信息
+- 这是安全预览保护，不是多用户鉴权
+
 详见 [docs/SECURITY.md](docs/SECURITY.md)
 
 ---

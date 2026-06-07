@@ -44,6 +44,8 @@ export interface HealthInfo {
   ok: boolean;
   service?: string;
   phase?: string;
+  safePreviewMode?: boolean;
+  previewAccessEnabled?: boolean;
   demoMode?: boolean;
   publicDemoMode?: boolean;
   realGenerationEnabled?: boolean;

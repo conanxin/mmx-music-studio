@@ -6,6 +6,8 @@
  * server/types.ts standalone. Inline the minimal subset needed.
  */
 
+import type { PreviewAccessConfig } from './security.js';
+
 export type KeyMode = 'server' | 'session';
 
 export type BackendMode = 'mock' | 'api' | 'cli';
@@ -20,6 +22,7 @@ export interface ServerConfig {
   mockGenerationEnabled: boolean;
   backend: BackendMode;
   maxRequestBodyMb: number;
+  previewAccess: PreviewAccessConfig;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';
