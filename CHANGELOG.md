@@ -56,6 +56,65 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.0-alpha] — 2026-06-08
+
+### Added
+
+#### 任务系统 / Job System
+- **Job Queue 异步任务队列** — 提交任务 → 后台异步处理 → 轮询状态 → 完成通知
+- **任务取消** — `POST /api/jobs/:id/cancel`，运行中任务可取消
+- **Job History Admin 任务历史管理** — 列表、筛选、详情、删除、重试
+- **任务统计面板** — `GET /api/jobs/stats`，总计/队列中/运行中/成功/失败/繁忙/队列长度
+- **Job 详情侧边栏** — 生成时间、模式、后端、prompt、trackId、操作按钮
+
+#### 访问控制 / Access Control
+- **Preview Access Gate** — HMAC Cookie 锁，PIN 保护预览模式，`PREVIEW_ACCESS_PIN` 环境变量
+- **Generation Access Gate** — 生成保护模式，HMAC Cookie 解锁，`GENERATION_ACCESS_PIN` 环境变量
+- **PIN Hash 验证** — SHA256(PIN + cookieSecret)，防止 PIN 明文泄露
+- **双重访问保护** — Preview Gate + Generation Gate 分层防护
+
+#### 限流与额度 / Rate Limiting & Quota
+- **Basic Rate Limiting** — `RATE_LIMIT_WINDOW_MS` + `RATE_LIMIT_MAX_REQUESTS`，内存计数
+- **Daily Generation Quota** — `DAILY_QUOTA_MAX_GENERATIONS`，每日生成上限
+- **Quota 持久化** — `storage/quota/daily.json` 每日配额计数
+- **队列超额拒绝** — 配额用尽返回 429，包含剩余可用时间
+
+#### Web UI 增强 / Web UI Enhancements
+- **生成进度状态** — queued → running → succeeded/failed，实时 UI 反馈
+- **任务历史页面 `/jobs`** — 统计卡片 + 筛选标签 + 任务列表 + 详情面板
+- **导航栏任务入口** — 新增「任务」导航项
+- **创作台任务链接** — Studio 页面增加「查看任务历史」入口
+- **设置页任务统计** — 显示任务总数和成功/失败计数
+
+#### 微信小程序 / WeChat Mini Program
+- **Phase 4C 类型更新** — HealthInfo 扩展 `generationAccessUnlocked` 字段
+- **Phase 4D API 同步** — `listJobsFiltered`/`deleteJob`/`retryJob`/`getJobStats` 小程序端支持
+- **Phase 4D UI 同步** — Job History Admin 小程序端 API 端点对接
+
+#### 部署与运维 / Deployment & Operations
+- **运行时模式增强** — `deriveRuntimeMode()` 支持 generationAccessUnlocked
+- **生产环境锁模式** — `.env.production-locked.example` 完整配置模板
+- **开发交接文档** — `DEVELOPMENT_HANDOFF.md` 详细开发状态和下一步
+
+#### 安全加固 / Security Hardening
+- **HMAC Cookie 安全** — 不可预测的 cookie 签名，防篡改
+- **PIN 暴力破解防护** — 无锁定机制（生产环境建议加 Redis 计数）
+- **Secret scan 增强** — 多 `grep -qF` 模式，避免正则假阳性
+- **任务历史安全** — 删除/重试操作权限校验
+
+### Security
+- `.gitignore` 忽略 `storage/quota/*.json`（运行时额度数据）
+- `storage/quota/.gitkeep` 确保目录结构存在
+- Phase 4C/4D 所有 API 不打印 Authorization header
+- `GENERATION_ACCESS_PIN` 明文不在日志中出现
+
+### Known Limitations
+- API Adapter 仍为实验性，真实 API 生成未完全稳定
+- 暂无多用户账户系统
+- HTTPS 域名实装待 Phase 4E
+- 微信小程序正式上线需完成法律域名备案
+
+
 ## 早期版本说明
 
 v0.1.0-alpha 之前无正式版本记录。

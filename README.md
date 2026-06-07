@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.2.0--alpha--4D-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
+[![Phase](https://img.shields.io/badge/Phase-v0.2.0-alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
@@ -116,9 +116,15 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **Job Queue** | ✅ PASS |
 | **Job History Admin** | ✅ PASS |
 | **Access Control / Quota** | ✅ PASS |
-| 微信小程序 | 📋 Phase 3E（待 HTTPS 域名） |
+| 微信小程序 | ✅ PASS（scaffold + adapters） |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
+
+## Release
+
+**v0.2.0-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.2.0-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.2.0-alpha) | [Zip 包](https://github.com/conanxin/mmx-music-studio/releases/download/v0.2.0-alpha/mmx-music-studio-v0.2.0-alpha.zip)
+
+
 
 ---
 
