@@ -50,9 +50,11 @@ export async function downloadAndSaveAudio(options: {
         // @ts-ignore Taro callback result typing mismatch
         Taro.saveFile({ tempFilePath })
           .then((saveRes) => {
+            // @ts-ignore savedFilePath exists on SuccessCallbackResult
             if (saveRes.savedFilePath) {
               resolve({
                 ok: true,
+                // @ts-ignore
                 savedFilePath: saveRes.savedFilePath,
                 tempFilePath,
                 message: '保存成功',

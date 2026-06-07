@@ -43,6 +43,35 @@ npm run start
 
 ---
 
+## 微信小程序（Phase 3D+）
+
+> 🚧 **开发中** — Phase 3D: DevTools 导入 + 真机预览准备
+
+### 微信开发者工具导入
+
+```bash
+# 1. 编译小程序
+npm run weapp:build
+
+# 2. 导入微信开发者工具
+# 项目目录选择：apps/weapp/
+# AppID：测试号（touristappid）
+
+# 3. 开发阶段设置
+# 详情 → 本地设置 → 勾选「不校验合法域名、web-view、TLS 版本以及 HTTPS 证书」
+```
+
+### dist 打包下载
+
+```bash
+bash scripts/package-weapp-dist.sh
+# 输出：/tmp/mmx-music-studio-weapp-dist.zip
+```
+
+详细文档：[docs/WEAPP_DEVTOOLS_IMPORT.md](docs/WEAPP_DEVTOOLS_IMPORT.md)
+
+---
+
 ## 功能规划
 
 - 🎵 **纯音乐 / BGM** — 文字描述生成背景音乐

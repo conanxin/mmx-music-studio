@@ -1,0 +1,8 @@
+{
+  "description": "微信开发者工具私有配置示例（不提交）",
+  "projectname": "mmx-music-studio",
+  "setting": {
+    "urlCheck": false
+  },
+  "appid": "<your-miniprogram-appid>"
+}

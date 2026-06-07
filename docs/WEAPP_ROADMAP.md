@@ -9,9 +9,9 @@
 | 阶段 | 目标 | 依赖 | 状态 |
 |------|------|------|------|
 | Phase 3A | Taro 小程序 UI + Mock 原型 | Web 基线 | ✅ 完成 |
-| Phase 3B | 接入自托管 server API (safe mock) | Phase 3A + server 运行 | ✅ 当前 |
-| Phase 3C | 音频播放、下载、作品库 | Phase 3B | 📋 |
-| Phase 3D | 微信开发者工具真机预览 | Phase 3C | 📋 |
+| Phase 3B | 接入自托管 server API (safe mock) | Phase 3A + server 运行 | ✅ 完成 |
+| Phase 3C | 音频播放、下载、作品库 | Phase 3B | ✅ 完成 |
+| Phase 3D | 微信开发者工具真机预览 | Phase 3C | ✅ 完成 |
 | Phase 3E | HTTPS 域名 + 合法域名配置 | Phase 3D | 📋 |
 | Phase 3F | 真实生成受控测试 | Phase 3E | 📋 |
 
@@ -88,24 +88,38 @@
 
 ---
 
-## Phase 3D — 微信开发者工具真机预览
+## Phase 3D — 微信开发者工具真机预览 ✅
 
-**目标**：在微信开发者工具中打开并调试小程序。
+> 2026-06-07 完成
 
-### 实现项
+**目标**：微信开发者工具导入 + 真机预览准备，不真实生成，不消耗额度。
 
-- [ ] Taro build：`npm run weapp:build`
-- [ ] 微信开发者工具导入 `apps/weapp/dist`
+### 完成项
+
+- [x] `apps/weapp/dist` 产物完整（5 个页面：home/studio/library/settings/docs）
+- [x] `apps/weapp/project.config.json` — `appid: touristappid`，`miniprogramRoot: "./dist/"`
+- [x] `apps/weapp/project.private.config.json.example` — 占位符，不提交真实隐私配置
+- [x] `docs/WEAPP_DEVTOOLS_IMPORT.md` — 导入指南：导入 `apps/weapp/`，勾选"不校验合法域名"
+- [x] `docs/WEAPP_REAL_DEVICE_CHECKLIST.md` — 真机测试清单（首页/设置/创作/作品/音频/下载/安全）
+- [x] `docs/WEAPP_TROUBLESHOOTING.md` — 问题排查（request 失败/音频播放/下载/dist 导入/白屏）
+- [x] `scripts/package-weapp-dist.sh` — dist 打包脚本（Python zipfile），输出 `/tmp/mmx-music-studio-weapp-dist.zip`
+- [x] README.md 新增微信小程序导入章节
+- [x] WEAPP_DEV_GUIDE.md 更新 Phase 3D 完成状态
+- [x] WEAPP_ROADMAP.md 更新 Phase 3D 状态
+
+### 关键发现
+
+**微信开发者工具导入路径：`apps/weapp/`（不是 `dist/`）**
+- `project.config.json` 中 `miniprogramRoot: "./dist/"` 会自动定位到编译产物
+- 若直接导入 `dist/`，工具可能无法识别项目结构
+
+### 后续步骤
+
+- [ ] 用户本地下载 `/tmp/mmx-music-studio-weapp-dist.zip` 并解压
+- [ ] 微信开发者工具导入 `apps/weapp/` 目录
+- [ ] 开发阶段勾选"不校验合法域名"
 - [ ] 真机调试（手机微信扫码）
-- [ ] 检查页面布局是否正常
-- [ ] 检查音频播放是否正常
-- [ ] 检查文件下载是否正常
-
-### 已知问题
-
-- 微信开发者工具需要配置项目路径为 `apps/weapp/dist`
-- 需要在微信公众平台添加开发者权限
-- iOS 真机可能与开发者工具表现不同
+- [ ] Phase 3E：配置 HTTPS 域名 + 微信合法域名
 
 ---
 
