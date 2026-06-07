@@ -73,6 +73,10 @@ export interface HealthInfo {
   jobQueueEnabled?: boolean;
   queuedJobs?: number;
   workerBusy?: boolean;
+  // Phase 4F: Audit & Auth Guard
+  auditLogEnabled?: boolean;
+  authGuardEnabled?: boolean;
+  authGuard?: Record<string, unknown>;
 }
 
 export interface CheckKeyResult {
@@ -587,5 +591,18 @@ export async function cancelJob(jobId: string): Promise<CancelJobResult> {
     return { ok: true, jobId: raw.jobId, cancelled: raw.cancelled };
   } catch (err) {
     return { ok: false, error: safeApiError(err) };
+  }
+}
+
+/** Get audit log statistics (Phase 4F). */
+export async function getAuditStats(): Promise<{ ok: boolean; stats?: Record<string, number>; authGuard?: Record<string, unknown> }> {
+  try {
+    const raw = await apiFetch<{ ok: boolean; stats: Record<string, number>; authGuard: Record<string, unknown> }>(
+      '/api/audit/stats',
+      { method: 'GET' },
+    );
+    return { ok: true, stats: raw.stats, authGuard: raw.authGuard };
+  } catch {
+    return { ok: false };
   }
 }

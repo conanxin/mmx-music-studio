@@ -1,8 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSettings, maskKey } from '../../lib/settingsStore';
-import { checkKey, getHealth, getGenAccessStatus, unlockGenAccess, logoutGenAccess, getJobStats, type HealthInfo } from '../../lib/serverApi';
+import { checkKey, getHealth, getGenAccessStatus, unlockGenAccess, logoutGenAccess, getJobStats, getAuditStats, type HealthInfo } from '../../lib/serverApi';
 import styles from './Settings.module.css';
+
+// Phase 4F: Audit stats display helper
+function StatItem({ label, value, ok, warn, error }: { label: string; value: number; ok?: boolean; warn?: boolean; error?: boolean }) {
+  return (
+    <div style={{
+      background: error ? 'rgba(255,107,107,0.1)' : warn ? 'rgba(255,193,107,0.1)' : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${error ? '#FF6B6B' : warn ? '#FFC16B' : 'rgba(255,255,255,0.06)'}`,
+      borderRadius: '8px',
+      padding: '8px',
+      textAlign: 'center',
+    }}>
+      <div style={{ fontSize: '18px', fontWeight: 700, color: error ? '#FF6B6B' : ok ? '#4ADE80' : warn ? '#FFC16B' : '#F4F1EA' }}>{value}</div>
+      <div style={{ fontSize: '10px', color: '#9BA1AA', marginTop: '2px' }}>{label}</div>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { settings, updateSettings } = useSettings();
@@ -20,6 +36,10 @@ export default function Settings() {
 
   // Fetch server health and generation access status on mount
   const [jobStatsSummary, setJobStatsSummary] = useState<{ total: number; queued: number; running: number } | null>(null);
+  // Phase 4F: Audit & Auth Guard state
+  const [auditStats, setAuditStats] = useState<{ total: number; unlockFailed: number; unlockSuccess: number; unlockLocked: number; generationBlocked: number; generationRequested: number; jobDeleted: number; jobRetried: number } | null>(null);
+  const [authGuardInfo, setAuthGuardInfo] = useState<Record<string, unknown> | null>(null);
+  const [auditLoading, setAuditLoading] = useState(true);
   useEffect(() => {
     Promise.all([
       getHealth().catch(() => null),
@@ -37,6 +57,26 @@ export default function Settings() {
     }).finally(() => {
       setHealthLoading(false);
     });
+  }, []);
+
+  // Phase 4F: Fetch audit stats
+  useEffect(() => {
+    getAuditStats().then((result) => {
+      if (result.ok && result.stats) {
+        const s = result.stats;
+        setAuditStats({
+          total: s.total ?? 0,
+          unlockFailed: s.unlockFailed ?? 0,
+          unlockSuccess: s.unlockSuccess ?? 0,
+          unlockLocked: s.unlockLocked ?? 0,
+          generationBlocked: s.generationBlocked ?? 0,
+          generationRequested: s.generationRequested ?? 0,
+          jobDeleted: s.jobDeleted ?? 0,
+          jobRetried: s.jobRetried ?? 0,
+        });
+        if (result.authGuard) setAuthGuardInfo(result.authGuard);
+      }
+    }).finally(() => setAuditLoading(false));
   }, []);
 
   const handleSave = () => {
@@ -569,6 +609,65 @@ export default function Settings() {
                 {jobStatsSummary.queued > 0 && ` · ${jobStatsSummary.queued} 排队中`}
                 {jobStatsSummary.running > 0 && ` · ${jobStatsSummary.running} 运行中`}
               </span>
+            )}
+          </div>
+        </div>
+
+        {/* Phase 4F: Audit & Security section */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>安全审计</h3>
+          <div className={styles.card}>
+            {auditLoading ? (
+              <div style={{ color: '#9BA1AA', fontSize: '13px' }}>加载中…</div>
+            ) : (
+              <>
+                {/* Core audit status */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div className={styles.statusCard}>
+                    <span className={styles.statusCardLabel}>审计日志</span>
+                    <span className={`${styles.statusCardValue} ${styles.statusGreen}`}>
+                      {health?.auditLogEnabled ? '开启' : '关闭'}
+                    </span>
+                  </div>
+                  <div className={styles.statusCard}>
+                    <span className={styles.statusCardLabel}>PIN 防爆破</span>
+                    <span className={`${styles.statusCardValue} ${health?.authGuardEnabled ? styles.statusGreen : styles.statusGray}`}>
+                      {health?.authGuardEnabled ? '开启' : '关闭'}
+                    </span>
+                  </div>
+                  {authGuardInfo && (
+                    <>
+                      <div className={styles.statusCard}>
+                        <span className={styles.statusCardLabel}>失败阈值</span>
+                        <span className={styles.statusCardValue}>{(authGuardInfo as any).maxFailures ?? '?'} 次</span>
+                      </div>
+                      <div className={styles.statusCard}>
+                        <span className={styles.statusCardLabel}>锁定时间</span>
+                        <span className={styles.statusCardValue}>{Math.round(((authGuardInfo as any).lockMs ?? 0) / 60000)} 分钟</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Audit event counters */}
+                {auditStats ? (
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#9BA1AA', marginBottom: '8px' }}>审计事件统计</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                      <StatItem label="解锁失败" value={auditStats.unlockFailed} warn={auditStats.unlockFailed > 0} />
+                      <StatItem label="解锁成功" value={auditStats.unlockSuccess} ok />
+                      <StatItem label="被拦截" value={auditStats.generationBlocked} warn={auditStats.generationBlocked > 0} />
+                      <StatItem label="生成请求" value={auditStats.generationRequested} />
+                      <StatItem label="任务删除" value={auditStats.jobDeleted} warn={auditStats.jobDeleted > 0} />
+                      <StatItem label="任务重试" value={auditStats.jobRetried} />
+                      <StatItem label="被锁定" value={auditStats.unlockLocked} error={auditStats.unlockLocked > 0} />
+                      <StatItem label="总事件" value={auditStats.total} />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: '#9BA1AA' }}>审计统计暂不可用</div>
+                )}
+              </>
             )}
           </div>
         </div>

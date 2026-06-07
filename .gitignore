@@ -58,3 +58,7 @@ temp/
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# Phase 4F: Audit logs (runtime JSONL, never commit)
+storage/audit/*.jsonl
+!storage/audit/.gitkeep

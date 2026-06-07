@@ -406,3 +406,6 @@ mmx auth login
 - 删除 job record 默认不删除对应的音频文件（`storage/tracks/` 下文件保留）
 - Retry 操作会创建新任务，原任务记录保留
 - Running 状态的任务不能直接删除，需要先 Cancel
+## Phase 4F: Audit Logging and PIN Brute-Force Protection
+
+See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md) for details.

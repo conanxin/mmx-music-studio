@@ -72,7 +72,21 @@ import {
   getClientKey,
 } from './rate-limit.js';
 import { mockMiniMaxGenerate } from './mock-minimax.js';
+import { appendAuditEvent, auditUnlockSuccess, auditUnlockFailed, auditUnlockLocked, auditGenerationBlocked, auditGenerationRequested, auditJobEvent, auditTrackAccess, getAuditStats, listAuditEvents, type AuditEventType } from './audit.js';
+import { checkAuthGuard, recordFailedAttempt, recordSuccessfulUnlock, getAuthGuardStats } from './auth-guard.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
+
+/**
+ * Get a short client hash for auth guard and audit logging.
+ * Uses the same getClientKey from rate-limit.ts for consistency.
+ */
+function getClientHashShort(req: http.IncomingMessage): string {
+  return getClientKey(req);
+}
+
+function getUserAgent(req: http.IncomingMessage): string {
+  return (req.headers['user-agent'] ?? 'unknown').slice(0, 200);
+}
 import { MmxCliError } from './adapters/minimax-cli/errors.js';
 import type { MmxCliDiagnostics } from './adapters/minimax-cli/types.js';
 import { callMiniMaxApi } from './call-minimax.js';
@@ -500,6 +514,21 @@ async function handleGenAccessUnlock(
     sendError(res, 'security', '生成访问保护未开启', 400);
     return;
   }
+  const clientHash = getClientHashShort(req);
+  const userAgentHash = getUserAgent(req);
+  const route = req.url ?? '/api/generation-access/unlock';
+
+  // Auth guard: check if locked
+  const guard = checkAuthGuard(req.socket.remoteAddress ?? 'unknown', getUserAgent(req));
+  if (!guard.allowed) {
+    auditUnlockLocked('generation', route, clientHash, userAgentHash);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Retry-After', String(Math.ceil((guard.retryAfterMs ?? 900000) / 1000)));
+    res.writeHead(429);
+    res.end(JSON.stringify({ ok: false, message: guard.reason }));
+    return;
+  }
+
   let body: { pin?: string };
   try {
     body = await parseBody<{ pin?: string }>(req, 1);
@@ -510,10 +539,14 @@ async function handleGenAccessUnlock(
   const rawPin = body.pin ?? '';
   const valid = verifyGenerationPin(rawPin, config.generationAccess);
   if (!valid) {
+    recordFailedAttempt(req.socket.remoteAddress ?? 'unknown', getUserAgent(req));
+    auditUnlockFailed('generation', route, clientHash, userAgentHash);
     res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ ok: false, message: '生成访问码不正确' }));
     return;
   }
+  recordSuccessfulUnlock(req.socket.remoteAddress ?? 'unknown', getUserAgent(req));
+  auditUnlockSuccess('generation', route, clientHash, userAgentHash);
   const token = signGenAccessCookie(config.generationAccess);
   res.setHeader('Set-Cookie', buildGenAccessCookie(token));
   sendJson(res, 200, { ok: true });
@@ -602,6 +635,10 @@ async function handleHealth(
     jobQueueEnabled: true,
     queuedJobs,
     workerBusy,
+    // Phase 4F: Audit & Auth Guard
+    auditLogEnabled: process.env.AUDIT_LOG_ENABLED !== 'false',
+    authGuardEnabled: process.env.AUTH_GUARD_ENABLED !== 'false',
+    authGuard: getAuthGuardStats(),
   });
 }
 
@@ -669,6 +706,7 @@ async function handleGenerate(
 
   // 2. Generation Access
   if (!isGenerationUnlocked(req.headers as Record<string, string | string[] | undefined>, config.generationAccess)) {
+    auditGenerationBlocked('access', req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req));
     sendError(res, 'generation_access_required', '请先输入生成访问码', 401);
     return;
   }
@@ -678,6 +716,7 @@ async function handleGenerate(
     const clientKey = getClientKey(req);
     const rl = checkRateLimit(clientKey, config.rateLimit);
     if (!rl.allowed) {
+      auditGenerationBlocked('rate_limit', req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req));
       sendError(
         res,
         'rate_limit_exceeded',
@@ -693,6 +732,7 @@ async function handleGenerate(
   if (config.dailyQuota.enabled) {
     const dq = checkDailyQuota(config.dailyQuota);
     if (!dq.allowed) {
+      auditGenerationBlocked('daily_quota', req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req));
       sendError(
         res,
         'daily_quota_exceeded',
@@ -752,6 +792,8 @@ async function handleGenerate(
       createdAt: job.createdAt,
     },
   });
+
+  auditGenerationRequested(req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req), { mode: input.mode, jobId: job.id });
 
   // Enqueue and run in background
   const sessionKey = keyMode === 'session'
@@ -1121,6 +1163,7 @@ async function handleCancelJob(
     sendError(res, 'unknown', 'Job 不存在或无法取消', 404);
     return;
   }
+  auditJobEvent('cancelled', `/api/jobs/${jobId}/cancel`, getClientHashShort(req), getUserAgent(req), { jobId });
   sendJson(res, 200, { ok: true, jobId, cancelled: true });
 }
 
@@ -1137,6 +1180,7 @@ async function handleDeleteJob(
     sendError(res, 'validation', '任务不存在或当前状态不能删除', 400);
     return;
   }
+  auditJobEvent('deleted', `/api/jobs/${jobId}`, getClientHashShort(req), getUserAgent(req), { jobId });
   sendJson(res, 200, { ok: true, deleted: true, jobId });
 }
 
@@ -1153,6 +1197,7 @@ async function handleRetryJob(
     sendError(res, 'validation', '该任务不能重试', 400);
     return;
   }
+  auditJobEvent('retried', `/api/jobs/${jobId}/retry`, getClientHashShort(req), getUserAgent(req), { jobId, newJobId: newJob.id });
   sendJson(res, 200, { ok: true, job: newJob, message: '任务已重新提交' });
 }
 
@@ -1163,6 +1208,41 @@ async function handleJobStats(
 ): Promise<void> {
   const stats = getJobStats();
   sendJson(res, 200, { ok: true, stats });
+}
+
+async function handleAuditStats(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'GET') {
+    sendError(res, 'unknown', '只支持 GET', 405);
+    return;
+  }
+  const stats = getAuditStats();
+  const guardStats = getAuthGuardStats();
+  sendJson(res, 200, {
+    ok: true,
+    stats,
+    authGuard: guardStats,
+  });
+}
+
+async function handleAuditEvents(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  _config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'GET') {
+    sendError(res, 'unknown', '只支持 GET', 405);
+    return;
+  }
+  const url = new URL(req.url!, 'http://localhost');
+  const limit = Math.min(Number(url.searchParams.get('limit') ?? '50'), 200);
+  const offset = Number(url.searchParams.get('offset') ?? '0');
+  const type = url.searchParams.get('type') ?? undefined;
+  const { events, total } = listAuditEvents({ type: type as AuditEventType | undefined, limit, offset });
+  sendJson(res, 200, { ok: true, events, total, limit, offset });
 }
 
 // ── Shared track response mapper ───────────────────────────────────────────────
@@ -1293,6 +1373,18 @@ async function routeHandler(
     await handleGetJob(req, res, config);
   } else if (url === '/api/jobs' && req.method === 'GET') {
     await handleListJobs(req, res, config);
+  } else if (url === '/api/audit/stats' && req.method === 'GET') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
+    await handleAuditStats(req, res, config);
+  } else if (url === '/api/audit/events' && req.method === 'GET') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
+    await handleAuditEvents(req, res, config);
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ ok: false, code: 'not_found', message: '未找到对应接口' }));

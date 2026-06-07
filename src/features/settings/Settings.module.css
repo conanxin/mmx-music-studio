@@ -350,6 +350,24 @@
   padding: var(--space-3) var(--space-4);
 }
 
+.statusCardLabel {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+}
+
+.statusCardValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.statusGreen { color: #4ADE80; }
+.statusGray { color: #9BA1AA; }
+.statusRed { color: #FF6B6B; }
+.statusYellow { color: #FFC16B; }
+
 .statusLabel {
   font-size: 11px;
   color: var(--color-text-secondary);

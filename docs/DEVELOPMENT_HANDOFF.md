@@ -297,3 +297,7 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 3. **不裸露** 真实生成公网服务 without auth + rate limit + quota
 4. **不覆盖** 用户真实生成的音频文件
 5. **不读取** `~/.mmx/config.json` 或 `~/.hermes/.env`
+
+## Phase 4F: Audit Logging and PIN Brute-Force Protection
+
+See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md) for details.

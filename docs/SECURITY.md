@@ -249,3 +249,6 @@ Job History Admin 遵循以下安全原则：
 - **Retry 保护。** Retry 操作仍受 Generation Access PIN + Rate Limit + Daily Quota 保护，真实生成不会绕过后端防护
 - **运行中任务不可删除。** DELETE 只允许对 succeeded/failed/cancelled 状态的任务执行
 - **操作可溯源。** 所有 DELETE / RETRY 操作均通过 HTTP method 区分，日志可查
+## Phase 4F: Audit Logging and PIN Brute-Force Protection
+
+See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md) for details.
