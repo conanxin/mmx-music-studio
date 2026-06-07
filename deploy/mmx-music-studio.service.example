@@ -1,0 +1,46 @@
+# mmx-music-studio systemd 服务模板
+# 使用方法：
+#   1. 复制到 /etc/systemd/system/mmx-music-studio.service
+#   2. 根据实际情况修改路径和用户名
+#   3. 创建 /etc/mmx-music-studio.env（从 .env.demo.example 等复制）
+#   4. 运行：sudo systemctl daemon-reload && sudo systemctl enable mmx-music-studio && sudo systemctl start mmx-music-studio
+
+[Unit]
+Description=mmx-music-studio — MiniMax 音乐创作台
+Documentation=https://github.com/conanxin/mmx-music-studio
+After=network.target
+
+[Service]
+Type=simple
+
+# 工作目录
+WorkingDirectory=/opt/mmx-music-studio
+
+# 启动命令
+ExecStart=/usr/bin/npm run start
+
+# 环境变量文件
+EnvironmentFile=/etc/mmx-music-studio.env
+
+# 以非 root 用户运行（推荐先创建专用用户）
+# User=mmx
+# Group=mmx
+
+# 重启策略
+Restart=always
+RestartSec=5
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mmx-music-studio
+
+# 安全加固（可选）
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/mmx-music-studio/storage/tracks
+# AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

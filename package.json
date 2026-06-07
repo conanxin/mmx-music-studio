@@ -16,7 +16,8 @@
     "preview": "vite preview",
     "weapp:dev": "npm --prefix apps/weapp run dev:weapp",
     "weapp:build": "npm --prefix apps/weapp run build:weapp",
-    "weapp:typecheck": "npm --prefix apps/weapp run typecheck"
+    "weapp:typecheck": "npm --prefix apps/weapp run typecheck",
+    "production:check": "bash scripts/production-readiness-check.sh"
   },
   "dependencies": {
     "react": "^18.3.1",

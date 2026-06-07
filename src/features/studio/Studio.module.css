@@ -364,6 +364,16 @@
   opacity: 0.4;
 }
 
+.runtimeMode {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.statusWarn {
+  color: var(--color-warning, #f5a623);
+  font-size: 11px;
+}
+
 /* Player card */
 .playerCard {
   background: var(--color-panel);

@@ -102,13 +102,53 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ## Current Status
 
-- **Web 公网预览**：`http://118.195.129.137:8787`（mock 模式）
-- **Web 真实生成**：✅ 已验证（MMX CLI，需 auth login）
-- **微信小程序**：Phase 3C/3D 就绪（Taro v4，mock API，音频/下载 adapter）
-- **HTTPS 域名**：⏳ Phase 3E 待办（需用户提供域名）
-- **公网真实生成**：⚠️ 需要登录鉴权 + 额度限制
+| 模块 | 状态 |
+|------|------|
+| UI | ✅ PASS |
+| Mock generation | ✅ PASS |
+| MMX CLI adapter | ✅ PASS |
+| MMX CLI 真实生成 | ✅ PASS（已验证） |
+| MMX API adapter | 🔧 实验性 |
+| Docker 部署 | ✅ PASS |
+| **三种运行模式** | ✅ Phase 4A 新增 |
+| **Systemd 部署模板** | ✅ Phase 4A 新增 |
+| **生产发布检查** | ✅ Phase 4A 新增 |
+| 微信小程序 | 📋 Phase 3E（待 HTTPS 域名） |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
+
+---
+
+## 三种运行模式
+
+| 模式 | 真实生成 | 额度消耗 | 用途 |
+|------|----------|----------|------|
+| [Demo Preview（安全预览）](docs/RUNTIME_MODES.md#1-demo-preview安全预览模式) | ❌ | ❌ | 公开演示，给别人看 UI |
+| [Private Real（私有真实生成）](docs/RUNTIME_MODES.md#2-private-real私有真实生成) | ✅ | ✅ | 个人自用，需 mmx auth login |
+| [Production Locked（生产锁定）](docs/RUNTIME_MODES.md#3-production-locked生产锁定模式) | ❌ | ❌ | 公网发布前，需访问保护 |
+
+> ⚠️ 真实生成会消耗 MiniMax Token Plan 额度。公网部署前请确保已开启访问保护。
+
+详见 [docs/RUNTIME_MODES.md](docs/RUNTIME_MODES.md)。
+
+### 快速启动
+
+```bash
+# 安全预览（默认）
+bash scripts/run-demo-preview.sh
+
+# 私有真实生成（会消耗额度）
+bash scripts/run-private-real.sh
+
+# 生产锁定（需先设置 PIN）
+bash scripts/run-production-locked.sh
+```
+
+### 正式发布前检查
+
+```bash
+npm run production:check
+```
 
 ---
 
@@ -272,9 +312,12 @@ mmx-music-studio/
 |------|------|------|
 | Phase 1 | UI 原型 + 项目文档 | ✅ 完成 |
 | Phase 2A–F | Mock / API / CLI / Docker / 发布准备 | ✅ 完成 |
-| Phase 3B | 微信小程序接入自托管 Server Mock API | ✅ 当前 |
-| Phase 4 | API Adapter 完善（稳定性、错误处理） | 📋 规划 |
-| Phase 5 | 公共多用户部署（认证、额度限制） | 📋 规划 |
+| Phase 3A–E | 微信小程序接入（Taro v4, mock API, HTTPS 就绪） | ✅ 完成 |
+| **Phase 4A** | **三种运行模式 + 生产发布检查 + Systemd 部署** | **✅ 当前** |
+| Phase 4B | 生成任务队列（后台异步处理） | 📋 规划 |
+| Phase 4C | 访问鉴权和额度限制（多用户） | 📋 规划 |
+| Phase 4D | 域名 HTTPS 正式实装 | 📋 规划 |
+| Phase 5 | 正式 Release v0.2.0-alpha | 📋 规划 |
 
 ---
 

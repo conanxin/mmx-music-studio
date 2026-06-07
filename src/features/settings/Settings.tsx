@@ -62,6 +62,25 @@ export default function Settings() {
   const cliAuth = health?.cliAuthenticated ?? null;
   const cliRegion = health?.cliRegion ?? null;
 
+  // Runtime mode derivation
+  const runtimeMode = ((): string => {
+    if (health === null) return '连接中…';
+    if (health.previewAccessEnabled) return '访问保护';
+    if (health.realGenerationEnabled && backend === 'cli') return '真实生成';
+    if (health.realGenerationEnabled && backend === 'api') return 'API 实验';
+    if (!health.realGenerationEnabled && backend === 'mock' && health.mockGenerationEnabled) return '安全预览';
+    return '自定义';
+  })();
+
+  const runtimeModeDesc = ((): string => {
+    if (health === null) return '正在连接服务器…';
+    if (health.previewAccessEnabled) return '已启用 PIN 访问保护，真实生成暂时关闭';
+    if (health.realGenerationEnabled && backend === 'cli') return '真实调用 MiniMax mmx CLI，会消耗 Token Plan 额度';
+    if (health.realGenerationEnabled && backend === 'api') return '直接调用 MiniMax API，实验性，可能不稳定';
+    if (!health.realGenerationEnabled && backend === 'mock' && health.mockGenerationEnabled) return '本地模拟，不调用 MiniMax，不消耗额度';
+    return '当前配置不属于标准运行模式';
+  })();
+
   // Determine hint message
   let hint: { type: 'safe' | 'warn' | 'info'; text: string } | null = null;
   if (safePreviewMode) {
@@ -218,6 +237,53 @@ export default function Settings() {
               <div className={styles.radioTitle}>全球版（global）</div>
               <div className={styles.radioDesc}>api.minimax.io</div>
             </label>
+          </div>
+        </div>
+
+        {/* Backend status section */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>运行模式</h2>
+
+          <div className={styles.statusGrid}>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>当前模式</div>
+              <div className={`${styles.statusValue} ${runtimeMode === '安全预览' ? styles.statusOk : runtimeMode === '真实生成' ? styles.statusWarn : ''}`}>
+                {runtimeMode}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>当前后端</div>
+              <div className={styles.statusValue}>{backendLabel}</div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>真实生成</div>
+              <div className={`${styles.statusValue} ${health?.realGenerationEnabled ? styles.statusWarn : styles.statusOk}`}>
+                {health?.realGenerationEnabled ? '开启' : '关闭'}
+              </div>
+            </div>
+            <div className={styles.statusCard}>
+              <div className={styles.statusLabel}>访问保护</div>
+              <div className={`${styles.statusValue} ${health?.previewAccessEnabled ? styles.statusOk : styles.statusSecondary}`}>
+                {health?.previewAccessEnabled ? '已开启' : '未开启'}
+              </div>
+            </div>
+          </div>
+
+          {runtimeModeDesc && runtimeMode !== '连接中…' && (
+            <div className={styles.hint}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{runtimeModeDesc}</span>
+            </div>
+          )}
+
+          <div className={styles.modeDocLink}>
+            <a href="#/docs/runtime-modes" onClick={e => { e.preventDefault(); window.open('/docs/RUNTIME_MODES.md', '_blank'); }}>
+              📖 查看三种运行模式说明
+            </a>
           </div>
         </div>
 

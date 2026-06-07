@@ -410,3 +410,19 @@
   border: 1px solid rgba(138, 124, 255, 0.2);
   color: var(--color-secondary);
 }
+
+.modeDocLink {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.modeDocLink a {
+  font-size: 13px;
+  color: var(--color-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.modeDocLink a:hover {
+  color: var(--color-text);
+}

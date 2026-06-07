@@ -63,6 +63,20 @@ function getBackendLabel(backend?: string): string {
   }
 }
 
+function deriveRuntimeModeLabel(health?: {
+  previewAccessEnabled?: boolean;
+  realGenerationEnabled?: boolean;
+  mockGenerationEnabled?: boolean;
+  backend?: string;
+} | null): string {
+  if (!health) return '连接中…';
+  if (health.previewAccessEnabled) return '访问保护';
+  if (health.realGenerationEnabled && health.backend === 'cli') return '真实生成';
+  if (health.realGenerationEnabled && health.backend === 'api') return 'API 实验';
+  if (!health.realGenerationEnabled && health.backend === 'mock' && health.mockGenerationEnabled) return '安全预览';
+  return '自定义';
+}
+
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -193,6 +207,7 @@ export default function Studio() {
     backend?: string;
     realGenerationEnabled?: boolean;
     mockGenerationEnabled?: boolean;
+    previewAccessEnabled?: boolean;
   } | null>(null);
 
   function startProgressTracking() {
@@ -243,6 +258,7 @@ export default function Studio() {
         backend: h.backend,
         realGenerationEnabled: h.realGenerationEnabled,
         mockGenerationEnabled: h.mockGenerationEnabled,
+        previewAccessEnabled: h.previewAccessEnabled,
       });
     }).catch(() => {});
   }, []);
@@ -763,20 +779,16 @@ export default function Studio() {
           {/* Status bar */}
           <div className={styles.statusBar}>
             <span className={styles.statusDot} />
-            <span>
-              {healthInfo?.realGenerationEnabled
-                ? '✓ 真实生成已开启'
-                : healthInfo?.mockGenerationEnabled
-                ? '安全预览模式'
-                : settings.keyMode === 'server'
-                ? '服务器 Key'
-                : settings.apiKey ? 'Key 已连接'
-                : 'Key 未设置'}
+            <span className={styles.runtimeMode}>
+              {deriveRuntimeModeLabel(healthInfo)}
             </span>
-            <span className={styles.statusSep}>·</span>
-            <span>{settings.region === 'cn' ? '中国区' : 'Global'}</span>
+            {healthInfo?.realGenerationEnabled && (
+              <span className={styles.statusWarn}>⚠️ 会消耗额度</span>
+            )}
             <span className={styles.statusSep}>·</span>
             <span>{getBackendLabel(healthInfo?.backend)}</span>
+            <span className={styles.statusSep}>·</span>
+            <span>{settings.region === 'cn' ? '中国区' : 'Global'}</span>
           </div>
 
           {/* Player */}
