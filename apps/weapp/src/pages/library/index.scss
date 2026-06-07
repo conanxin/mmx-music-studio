@@ -1,0 +1,100 @@
+.library-page {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 100vh;
+}
+
+.library-header {
+  padding-top: var(--space-8);
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.track-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.track-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.track-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.track-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.track-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.track-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.track-meta {
+  display: flex;
+  align-items: center;
+}
+
+.meta-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.track-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: var(--color-panel-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  min-height: 44px;
+}
+
+.action-btn-danger {
+  border-color: rgba(255, 107, 107, 0.3);
+  color: var(--color-error);
+}
+
+.library-footer {
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+.footer-note {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.5;
+}
