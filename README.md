@@ -83,11 +83,20 @@ MINIMAX_BACKEND=mock           # 后端模式
 
 ## Online Preview
 
-**Safe demo preview**: http://154.17.0.147:8787
+**Safe demo preview**: http://118.195.129.137:8787
 
 > ⚠️ Requires cloud security group to open TCP 8787 inbound. If the address is not reachable, open TCP 8787 in your cloud provider's security group settings (Tencent Cloud / Alibaba Cloud / etc.).
 
 This preview runs in safe mock mode — it does not call MiniMax, does not use any API Key, and does not consume Token Plan credits.
+
+### Public Preview API Base
+
+生产预览默认使用 **same-origin API**：
+
+- 打开 `http://<server-ip>:8787` 时，前端自动请求 `http://<server-ip>:8787/api/*`
+- **不要**在生产构建中写死 `VITE_API_BASE_URL=http://localhost:8787`（会导致浏览器向用户本机 localhost 发请求）
+- 本地开发如果需要可设置 `VITE_API_BASE_URL=http://localhost:8787`
+- 不要在环境变量中写入任何真实 Key
 
 ---
 

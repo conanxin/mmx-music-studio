@@ -10,10 +10,29 @@
  * - Redacts secrets from any displayed error text
  */
 
-const API_BASE = (() => {
-  const env = (import.meta as { env?: Record<string, string> }).env;
-  return (env && env.VITE_API_BASE_URL) || 'http://localhost:8787';
-})();
+/**
+ * Resolves the API server base URL.
+ *
+ * Priority:
+ * 1. VITE_API_BASE_URL env var (for local dev / reverse-proxy scenarios)
+ * 2. window.location.origin (for same-origin browser deployments — the server
+ *    and frontend are served from the same origin, so the browser auto-paths
+ *    to the right host without hardcoding localhost or an IP)
+ * 3. http://localhost:8787 (last-resort fallback for local dev without Vite proxy)
+ */
+function resolveApiBase(): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const envBase = (import.meta as any)?.env?.VITE_API_BASE_URL?.trim();
+  if (envBase) return envBase.replace(/\/$/, '');
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '');
+  }
+
+  return 'http://localhost:8787';
+}
+
+const API_BASE = resolveApiBase();
 
 export function getApiBaseUrl(): string {
   return API_BASE;

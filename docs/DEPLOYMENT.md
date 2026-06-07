@@ -129,9 +129,15 @@ npm run start
 
 > **注意**：以下地址需要云厂商安全组已开放 TCP 8787 入站。
 >
-> 若访问失败，请在云厂商控制台（腾讯云 / 阿里云等）开放 **TCP 8787** 入站规则。
->
-> 地址：`http://154.17.0.147:8787`
+> 地址：`http://118.195.129.137:8787`
+
+### Public Preview API Base（同源 API）
+
+生产构建默认使用 **same-origin**：
+
+- 打开 `http://<server-ip>:8787` 时，前端自动请求 `http://<server-ip>:8787/api/*`
+- `src/lib/serverApi.ts` 中 `getApiBaseUrl()` 优先使用 `window.location.origin`
+- **不要**在生产构建中写死 `VITE_API_BASE_URL=http://localhost:8787`（会导致浏览器向用户本机 localhost 发请求）
 
 ### 安全模式说明
 
