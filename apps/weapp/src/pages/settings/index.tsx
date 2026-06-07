@@ -125,7 +125,7 @@ export default class Settings extends Component<Record<string, unknown>, {
             </View>
             <Input
               className="api-base-input"
-              placeholder="http://your-server:8787"
+              placeholder="https://music.yourdomain.com"
               value={apiBase}
               onInput={this.handleApiBaseChange}
             />

@@ -11,8 +11,13 @@
 
 import { getItem, setItem, removeItem } from '../adapters/storage';
 
-//⚠️ 部署时替换为你的实际 HTTPS 域名
+//⚠️ 开发默认：HTTP IP + 微信开发者工具关闭合法域名校验
+// 开发者工具调试阶段使用此地址
 export const DEFAULT_API_BASE = 'http://118.195.129.137:8787';
+
+//⚠️ 生产占位符：用户提供域名后替换此值
+// 正式小程序必须使用 HTTPS 域名，并在微信公众平台配置合法域名
+export const PRODUCTION_API_BASE_PLACEHOLDER = 'https://music.yourdomain.com';
 export const API_BASE_KEY = 'mmx_api_base';
 
 /** 从本地存储读取用户配置的 API Base */

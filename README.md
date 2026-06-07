@@ -70,6 +70,36 @@ bash scripts/package-weapp-dist.sh
 
 详细文档：[docs/WEAPP_DEVTOOLS_IMPORT.md](docs/WEAPP_DEVTOOLS_IMPORT.md)
 
+#### Phase 3E — HTTPS 域名与合法域名配置
+
+> 当前阶段：域名就绪文档与配置模板准备（不真实安装）
+
+**配置模板**：
+- `deploy/Caddyfile.example` — Caddy HTTPS 反代（自动 SSL，推荐）
+- `deploy/nginx.mmx-music-studio.conf.example` — Nginx HTTPS 反代（手动 SSL）
+
+**文档**：
+- [docs/WEAPP_DOMAIN_HTTPS_GUIDE.md](docs/WEAPP_DOMAIN_HTTPS_GUIDE.md) — 微信合法域名配置总览
+- [docs/CADDY_DEPLOYMENT.md](docs/CADDY_DEPLOYMENT.md) — Caddy 部署指南
+- [docs/NGINX_DEPLOYMENT.md](docs/NGINX_DEPLOYMENT.md) — Nginx 部署指南
+
+**域名就绪检查**：
+```bash
+DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
+```
+
+**当前 API Base**：
+- 开发：`http://118.195.129.137:8787`（仅开发者工具调试）
+- 生产占位符：`https://music.yourdomain.com`（用户提供域名后替换）
+
+**正式发布要求**：
+- HTTPS 域名（必须）
+- 微信公众平台配置 request 合法域名
+- 微信公众平台配置 downloadFile 合法域名
+- 小程序不存储 MiniMax key
+
+---
+
 ---
 
 ## 功能规划

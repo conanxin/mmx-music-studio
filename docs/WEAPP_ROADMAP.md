@@ -12,7 +12,7 @@
 | Phase 3B | 接入自托管 server API (safe mock) | Phase 3A + server 运行 | ✅ 完成 |
 | Phase 3C | 音频播放、下载、作品库 | Phase 3B | ✅ 完成 |
 | Phase 3D | 微信开发者工具真机预览 | Phase 3C | ✅ 完成 |
-| Phase 3E | HTTPS 域名 + 合法域名配置 | Phase 3D | 📋 |
+| Phase 3E | HTTPS 域名 + 合法域名配置准备 | Phase 3D | ✅ 完成 |
 | Phase 3F | 真实生成受控测试 | Phase 3E | 📋 |
 
 ---
@@ -123,21 +123,43 @@
 
 ---
 
-## Phase 3E — HTTPS 域名 + 合法域名配置
+## Phase 3E — HTTPS 域名 + 合法域名配置准备 ✅
 
-**目标**：完成微信小程序正式发布前的所有配置。
+> 2026-06-07 完成
 
-### 实现项
+**目标**：准备 HTTPS 域名接入方案，不真实安装（无域名时仅做文档和模板）。
 
-- [ ] 购买/配置 HTTPS 域名（推荐 Caddy 自动 HTTPS）
-- [ ] 域名已备案（微信要求）
-- [ ] 在微信公众平台配置 request 合法域名
-  - `https://your-domain.com`（API base）
-- [ ] 更新 `apps/weapp/config/prod.ts` 中的 API base
-- [ ] 小程序版本提审前检查：
-  - 所有 request 使用 HTTPS
-  - 不存在 hardcoded IP
-  - 不存在真实 API Key
+### 完成项
+
+- [x] `docs/WEAPP_DOMAIN_HTTPS_GUIDE.md` — 微信合法域名配置总览、开发 vs 正式环境说明
+- [x] `docs/CADDY_DEPLOYMENT.md` — Caddy 部署详细指南（含安装/配置/验证/常见问题）
+- [x] `docs/NGINX_DEPLOYMENT.md` — Nginx 反代部署详细指南（含 SSL 证书/proxy timeout）
+- [x] `deploy/Caddyfile.example` — Caddy 配置模板（gzip/反代/安全响应头）
+- [x] `deploy/nginx.mmx-music-studio.conf.example` — Nginx 配置模板（HTTP→HTTPS/SSL/proxy timeout 180s）
+- [x] `apps/weapp/src/config/api.ts` — 新增 `PRODUCTION_API_BASE_PLACEHOLDER = 'https://music.yourdomain.com'`
+- [x] `apps/weapp/src/pages/settings/index.tsx` — API Base placeholder 改为 `https://music.yourdomain.com`，保留 HTTP IP 开发默认值
+- [x] `scripts/weapp-domain-readiness-check.sh` — 域名就绪检查脚本（local/public HTTP/HTTPS/TLS）
+- [x] README.md 新增 Phase 3E HTTPS 配置章节
+
+### 配置模板位置
+
+| 文件 | 用途 |
+|------|------|
+| `deploy/Caddyfile.example` | Caddy 反代配置（自动 HTTPS） |
+| `deploy/nginx.mmx-music-studio.conf.example` | Nginx 反代配置（手动 SSL） |
+| `docs/WEAPP_DOMAIN_HTTPS_GUIDE.md` | 微信合法域名配置总览 |
+| `docs/CADDY_DEPLOYMENT.md` | Caddy 部署指南 |
+| `docs/NGINX_DEPLOYMENT.md` | Nginx 部署指南 |
+
+### 后续步骤（用户提供域名后执行）
+
+- [ ] 用户提供真实域名（如 `music.yourdomain.com`）
+- [ ] 配置 DNS A 记录 → `118.195.129.137`
+- [ ] 腾讯云安全组开放 TCP 80/443
+- [ ] 使用 Caddy 或 Nginx 配置 HTTPS 反代
+- [ ] 验证 `https://music.yourdomain.com/api/health`
+- [ ] 微信公众平台配置 request + downloadFile 合法域名
+- [ ] 更新小程序 API Base，重新编译：`npm run weapp:build`
 
 ### 安全要求
 

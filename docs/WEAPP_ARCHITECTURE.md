@@ -1,6 +1,6 @@
 # 微信小程序架构 / WeApp Architecture
 
-> 文档版本：Phase 3B · 2026-06-07
+> 文档版本：Phase 3E · 2026-06-07
 > 项目路径：`apps/weapp`
 
 ---

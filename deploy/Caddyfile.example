@@ -1,0 +1,35 @@
+# Caddyfile — mmx-music-studio HTTPS 反向代理配置
+#
+# 用法：
+#   1. 将此文件复制为 Caddyfile（去除 .example）
+#   2. 修改 music.yourdomain.com 为你的真实域名
+#   3. 确保 server 运行在 localhost:8787
+#   4. 运行: caddy run --config Caddyfile
+#
+# 详细部署指南：docs/CADDY_DEPLOYMENT.md
+
+music.yourdomain.com {
+
+    # 启用 gzip 压缩
+    encode gzip
+
+    # 反向代理到本地 server
+    reverse_proxy 127.0.0.1:8787
+
+    # 安全响应头
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-Referrer-Policy "strict-origin-when-cross-origin"
+        X-XSS-Protection "1; mode=block"
+
+        # 禁止浏览器推测内容类型（防止 MIME 类型混淆攻击）
+        # Caddy 会自动处理 CORS，可按需添加：
+        # Access-Control-Allow-Origin "*"
+    }
+
+    # 日志（可选，调试时开启）
+    # log {
+    #     output file /var/log/caddy/mmx-music-studio.log
+    # }
+}
