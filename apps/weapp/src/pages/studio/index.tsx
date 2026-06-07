@@ -4,15 +4,17 @@ import { useState } from 'react'
 import type { MusicMode } from '../../types'
 import { MODE_LABELS, MODE_BTN_LABELS, STYLE_TAGS, type StyleTag } from '../../types'
 import { MOCK_TRACKS } from '../../mock/tracks'
+import { generateTrack } from '../../adapters/request'
+import { getApiBaseFromConfig, DEFAULT_API_BASE } from '../../config/api'
 import './index.scss'
 
 const MODE_ORDER: MusicMode[] = ['instrumental', 'auto', 'lyrics', 'cover']
 
 const PROGRESS_MESSAGES = [
+  '正在连接后端…',
   '正在提交任务…',
-  '正在生成音乐…',
+  '正在生成音乐（Server Mock）…',
   '生成时间较长，请耐心等待…',
-  '仍在生成中，请不要重复点击…',
 ]
 
 export default function Studio() {
@@ -21,9 +23,11 @@ export default function Studio() {
   const [selectedStyles, setSelectedStyles] = useState<StyleTag[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [progressMessage, setProgressMessage] = useState('')
-  const [progressElapsed, setProgressElapsed] = useState(0)
+  const [progressStep, setProgressStep] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
   const [currentTrack, setCurrentTrack] = useState(MOCK_TRACKS[0])
+  const [sourceLabel, setSourceLabel] = useState('Mock')
+  const [generationSource, setGenerationSource] = useState('local-mock')
 
   const toggleStyle = (style: StyleTag) => {
     setSelectedStyles(prev =>
@@ -31,34 +35,72 @@ export default function Studio() {
     )
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (isGenerating) return
+    if (!prompt.trim()) {
+      setProgressMessage('请输入音乐描述')
+      setTimeout(() => setProgressMessage(''), 2000)
+      return
+    }
+
     setIsGenerating(true)
+    setShowPlayer(false)
+    setProgressStep(0)
     setProgressMessage(PROGRESS_MESSAGES[0])
-    setProgressElapsed(0)
 
     let step = 0
-    const elapsed = setInterval(() => {
-      setProgressElapsed(prev => prev + 1)
-    }, 1000)
-
-    const messages = ['正在提交任务…', '正在调用生成服务…', 'MiniMax 正在生成音乐…', '生成时间较长，请耐心等待…']
-    let msgIdx = 0
-    const msgTimer = setInterval(() => {
-      msgIdx++
-      if (msgIdx < messages.length) {
-        setProgressMessage(messages[msgIdx])
+    const stepTimer = setInterval(() => {
+      step++
+      if (step < PROGRESS_MESSAGES.length) {
+        setProgressStep(step)
+        setProgressMessage(PROGRESS_MESSAGES[step])
       }
     }, 3000)
 
-    setTimeout(() => {
-      clearInterval(elapsed)
-      clearInterval(msgTimer)
+    // Build styles string
+    const styleStr = selectedStyles.length > 0 ? selectedStyles.join('、') : ''
+
+    try {
+      const res = await generateTrack({
+        mode,
+        prompt: styleStr ? `${prompt.trim()}，${styleStr}` : prompt.trim(),
+        model: 'music-2.6',
+        outputFormat: 'mp3',
+      })
+
+      clearInterval(stepTimer)
+
+      if (res.ok && res.track) {
+        setCurrentTrack({
+          id: res.track.id,
+          title: res.track.title,
+          mode: res.track.mode as MusicMode,
+          durationSeconds: Math.floor(res.track.durationMs / 1000),
+          source: res.generationSource as 'mock' | 'cli' | 'api',
+          createdAt: res.track.createdAt,
+        } as typeof MOCK_TRACKS[0])
+        setSourceLabel('Server Mock')
+        setGenerationSource(res.generationSource)
+        setShowPlayer(true)
+      } else {
+        fallbackToLocalMock()
+      }
+    } catch {
+      clearInterval(stepTimer)
+      fallbackToLocalMock()
+    } finally {
       setIsGenerating(false)
       setProgressMessage('')
-      setProgressElapsed(0)
-      setShowPlayer(true)
-    }, 5000)
+      setProgressStep(0)
+    }
+  }
+
+  const fallbackToLocalMock = () => {
+    const mock = MOCK_TRACKS[Math.floor(Math.random() * MOCK_TRACKS.length)]
+    setCurrentTrack(mock)
+    setSourceLabel('本地 Mock')
+    setGenerationSource('local-mock')
+    setShowPlayer(true)
   }
 
   return (
@@ -66,9 +108,11 @@ export default function Studio() {
       {/* Header */}
       <View className="studio-header">
         <Text className="page-title">今天想创作什么音乐？</Text>
-        <View className="status-bar" style="margin-top:8px">
+        <View className="status-bar">
           <View className="status-dot mock" />
-          <Text>Mock 模式 · 未消耗额度</Text>
+          <Text className="status-text">
+            {getApiBaseFromConfig() || DEFAULT_API_BASE}
+          </Text>
         </View>
       </View>
 
@@ -94,7 +138,7 @@ export default function Studio() {
           className="prompt-input"
           placeholder="描述你想要音乐的感觉…例如：深夜编程，温暖电子氛围，放松专注"
           value={prompt}
-          onInput={(e) => setPrompt((e.detail as {value:string}).value)}
+          onInput={(e) => setPrompt(((e as unknown as {detail: {value: string}}).detail?.value) || '')}
           maxlength={500}
         />
       </View>
@@ -119,40 +163,49 @@ export default function Studio() {
       {isGenerating && (
         <View className="progress-card">
           <Text className="progress-message">{progressMessage}</Text>
-          <Text className="progress-elapsed">
-            {Math.floor(progressElapsed / 60)}:{String(progressElapsed % 60).padStart(2, '0')} elapsed
-          </Text>
+          <View className="progress-bar-wrap">
+            <View
+              className="progress-bar-fill"
+              style={`width:${((progressStep + 1) / PROGRESS_MESSAGES.length) * 100}%`}
+            />
+          </View>
+          <Text className="progress-hint">当前为 Server Mock，不消耗额度</Text>
         </View>
       )}
 
       {/* Generate button */}
       <Button
-        className={`btn-primary generate-btn ${isGenerating ? 'disabled' : ''}`}
+        className={`btn-primary generate-btn ${isGenerating ? 'btn-disabled' : ''}`}
         onClick={handleGenerate}
         disabled={isGenerating}
       >
         <Text>{isGenerating ? '生成中…' : MODE_BTN_LABELS[mode]}</Text>
       </Button>
 
-      {/* Mock player */}
+      {/* Player card */}
       {showPlayer && (
         <View className="player-card card">
           <View className="player-title-row">
             <Text className="player-title">{currentTrack.title}</Text>
-            <View className="tag tag-warning">Mock</View>
+            <View className={`tag ${generationSource === 'mock' ? 'tag-success' : 'tag-warning'}`}>
+              {sourceLabel}
+            </View>
           </View>
           <View className="player-waveform">
             {Array.from({ length: 40 }).map((_, i) => (
               <View
                 key={i}
                 className="waveform-bar"
-                style={`height:${20 + Math.random() * 40}px;opacity:${0.4 + Math.random() * 0.6}`}
+                style={`height:${20 + Math.sin(i * 0.5) * 20 + 20}px;opacity:${0.4 + Math.cos(i * 0.3) * 0.3}`}
               />
             ))}
           </View>
           <View className="player-time">
             <Text>0:00</Text>
-            <Text>{(currentTrack.durationSeconds || 0) / 60 | 0}:{String((currentTrack.durationSeconds || 0) % 60).padStart(2, '0')}</Text>
+            <Text>
+              {Math.floor((currentTrack.durationSeconds || 0) / 60)}:
+              {String((currentTrack.durationSeconds || 0) % 60).padStart(2, '0')}
+            </Text>
           </View>
           <View className="player-controls">
             <View className="play-btn">
@@ -175,10 +228,12 @@ export default function Studio() {
             <View className="track-info">
               <Text className="track-title">{track.title}</Text>
               <Text className="track-meta">
-                {MODE_LABELS[track.mode]} · {Math.floor((track.durationSeconds || 0) / 60)}:{String((track.durationSeconds || 0) % 60).padStart(2, '0')}
+                {MODE_LABELS[track.mode]} ·{' '}
+                {Math.floor((track.durationSeconds || 0) / 60)}:
+                {String((track.durationSeconds || 0) % 60).padStart(2, '0')}
               </Text>
             </View>
-            <View className="tag tag-warning">Mock</View>
+            <View className="tag tag-warning">本地 Mock</View>
           </View>
         ))}
       </View>

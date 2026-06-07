@@ -1,6 +1,6 @@
 # 微信小程序开发路线图 / WeApp Roadmap
 
-> 文档版本：Phase 3A · 2026-06-07
+> 文档版本：Phase 3B · 2026-06-07
 
 ---
 
@@ -8,8 +8,8 @@
 
 | 阶段 | 目标 | 依赖 | 状态 |
 |------|------|------|------|
-| Phase 3A | Taro 小程序 UI + Mock 原型 | Web 基线 | 🔄 当前 |
-| Phase 3B | 接入自托管 server API (safe mock) | Phase 3A + server 运行 | 📋 |
+| Phase 3A | Taro 小程序 UI + Mock 原型 | Web 基线 | ✅ 完成 |
+| Phase 3B | 接入自托管 server API (safe mock) | Phase 3A + server 运行 | ✅ 当前 |
 | Phase 3C | 音频播放、下载、作品库 | Phase 3B | 📋 |
 | Phase 3D | 微信开发者工具真机预览 | Phase 3C | 📋 |
 | Phase 3E | HTTPS 域名 + 合法域名配置 | Phase 3D | 📋 |
@@ -41,28 +41,22 @@
 
 ---
 
-## Phase 3B — 接入自托管 server API (safe mock)
+## Phase 3B — 接入自托管 server API (safe mock) ✅
 
-**目标**：小程序通过 HTTPS 请求调用自托管 server，获取 safe mock 数据。
+**目标**：小程序通过 HTTP 请求调用自托管 server，获取 safe mock 数据。
 
-### 前置条件
+### 实现项（✅ 全部完成）
 
-1. 自托管 server 运行于 `http://localhost:8787`（开发）或 `https://your-domain.com`（生产）
-2. 微信公众平台已配置 request 合法域名（生产环境）
-3. `packages/core` 类型已验证可在 Taro 中引用
-
-### 实现项
-
-- [ ] `packages/adapters/weapp/request.ts` 配置 API base
-- [ ] 接入 `/api/health` 获取后端状态
-- [ ] 接入 `/api/tracks` 获取作品列表（safe mock 数据）
-- [ ] 复用 `packages/core` 中的 `MusicMode` 类型
-- [ ] 复用 `packages/core` 中的 `validateMusicInput` 校验
-- [ ] workspace alias 配置或类型复制
+- [x] `apps/weapp/src/config/api.ts` — API Base 配置层，默认 `http://118.195.129.137:8787`
+- [x] `apps/weapp/src/adapters/request.ts` — getHealth、generateTrack、listTracks、testConnection
+- [x] 设置页：API Base 输入 + 测试连接 / 保存 / 清除
+- [x] 创作页：调用 `/api/generate`，Server Mock，不消耗额度
+- [x] 作品库：调用 `/api/tracks`，Server 不可用时 fallback 本地 Mock
+- [x] `scripts/weapp-api-smoke-test.sh` — 3/3 PASS，generationSource=mock
 
 ### 安全要求
 
-- API base 不得硬编码真实生产 IP
+- API base 不得硬编码真实生产 IP（现用 `http://118.195.129.137:8787`）
 - Phase 3B 仅使用 server safe mock 模式（`MOCK_GENERATION_ENABLED=true`）
 - 不触发 `REAL_GENERATION_ENABLED=true`
 

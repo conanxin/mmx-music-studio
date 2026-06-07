@@ -203,7 +203,7 @@ mmx-music-studio/
 |------|------|------|
 | Phase 1 | UI 原型 + 项目文档 | ✅ 完成 |
 | Phase 2A–F | Mock / API / CLI / Docker / 发布准备 | ✅ 完成 |
-| Phase 3 | 微信小程序（Taro / uni-app） | 📋 规划 |
+| Phase 3B | 微信小程序接入自托管 Server Mock API | ✅ 当前 |
 | Phase 4 | API Adapter 完善（稳定性、错误处理） | 📋 规划 |
 | Phase 5 | 公共多用户部署（认证、额度限制） | 📋 规划 |
 

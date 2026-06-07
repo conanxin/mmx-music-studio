@@ -18,7 +18,7 @@ export default function Docs() {
         </Text>
         <View className="tag-row">
           <View className="tag tag-accent">MIT License</View>
-          <View className="tag tag-warning">Phase 3A</View>
+          <View className="tag tag-success">Phase 3B</View>
           <View className="tag tag-secondary">Taro + React</View>
         </View>
       </View>
@@ -27,15 +27,16 @@ export default function Docs() {
       <View className="doc-section card">
         <Text className="doc-title">当前阶段</Text>
         <Text className="doc-body">
-          Phase 3A — 微信小程序 Mock UI 原型
+          Phase 3B — 微信小程序接入自托管 Server Mock API
         </Text>
         <View className="phase-items">
           <Text className="phase-item">✓ 5 个页面（首页/创作/作品库/设置/关于）</Text>
           <Text className="phase-item">✓ 模式选择 Tab（纯音乐/自动成歌/歌词成歌/参考改编）</Text>
-          <Text className="phase-item">✓ Mock 生成流程（不消耗额度）</Text>
-          <Text className="phase-item">✓ 微信 adapter 占位</Text>
-          <Text className="phase-item">✗ 未接入真实 Server API</Text>
-          <Text className="phase-item">✗ 未实现音频播放/下载</Text>
+          <Text className="phase-item">✓ 设置页可配置 API Base + 测试连接</Text>
+          <Text className="phase-item">✓ 创作页调用 /api/generate（Server Mock，不消耗额度）</Text>
+          <Text className="phase-item">✓ 作品库调用 /api/tracks（Server Mock）</Text>
+          <Text className="phase-item">✓ Server 不可用时 fallback 本地 Mock</Text>
+          <Text className="phase-item">✗ 未实现真实音频播放/下载（Phase 3C）</Text>
         </View>
       </View>
 
@@ -61,7 +62,7 @@ export default function Docs() {
           </View>
           <View className="roadmap-item">
             <Text className="roadmap-phase">3B</Text>
-            <Text className="roadmap-desc">接入自托管 Server API</Text>
+            <Text className="roadmap-desc">接入自托管 Server API ✅ (this phase)</Text>
           </View>
           <View className="roadmap-item">
             <Text className="roadmap-phase">3C</Text>

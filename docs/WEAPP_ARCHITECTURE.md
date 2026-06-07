@@ -1,6 +1,6 @@
 # 微信小程序架构 / WeApp Architecture
 
-> 文档版本：Phase 3A · 2026-06-07
+> 文档版本：Phase 3B · 2026-06-07
 > 项目路径：`apps/weapp`
 
 ---
@@ -135,27 +135,33 @@ mmx-music-studio/
 
 ---
 
-## Phase 3B 接入计划
+## Phase 3B 接入自托管 Server Mock API
 
-### 当前状态（Phase 3A）
-- 小程序 UI Mock 原型完成
-- 不调用任何真实 API
-- 不接入 packages/core
+### 当前状态（Phase 3B）
+- ✅ 小程序 request adapter 接入自托管 server (`http://118.195.129.137:8787`)
+- ✅ `apps/weapp/src/adapters/request.ts` 封装：getHealth、generateTrack、listTracks、testConnection
+- ✅ `apps/weapp/src/config/api.ts` — DEFAULT_API_BASE + get/set/clearApiBase
+- ✅ 设置页可配置 API Base + 测试连接 + 保存 / 清除
+- ✅ 创作页调用 `/api/generate`（Server Mock，不消耗额度）
+- ✅ 作品库调用 `/api/tracks`（Server Mock）
+- ✅ Server 不可用时 fallback 本地 Mock tracks
+- ✅ smoke test 脚本：3/3 PASS，generationSource=mock
+- ✅ 不发送任何 API key / token / secret
+- ✅ 不触发真实生成
+- ✅ 不运行 mmx music generate / music cover
 
-### Phase 3B 目标
-- 配置 `packages/adapters/weapp/request.ts` 指向自托管 server
-- 通过 workspace alias 或复制方式复用 `packages/core` 的：
-  - `MusicMode` 类型
-  - `validateMusicInput` 校验
-  - `buildExpandedPrompt` prompt 构建
-  - `createMockTrack` mock 数据生成
-- 接入 `/api/health` 获取后端状态
+### Phase 3B 目标（已全部完成 ✅）
+- ✅ 配置 `apps/weapp/src/config/api.ts` 指向自托管 server
+- ✅ 通过 `apps/weapp/src/adapters/request.ts` 封装 HTTP 请求
+- ✅ 接入 `/api/health` 获取后端状态
+- ✅ 接入 `/api/generate`（Server Mock，不消耗额度）
+- ✅ 接入 `/api/tracks` 获取作品列表
+- ✅ 设置页可配置 API Base + 测试连接
 
 ### Phase 3C 目标
 - 实现 `audio.ts` 真实音频播放（`wx.createInnerAudioContext`）
 - 实现 `download.ts` 真实下载（`wx.downloadFile`）
-- 接入 `/api/tracks` 获取作品库
-- 接入 `/api/tracks/:id/audio` 流式音频
+- 接入 `/api/tracks/:id/audio` 流式音频播放
 
 ### Phase 3D 目标
 - 微信开发者工具真机调试
