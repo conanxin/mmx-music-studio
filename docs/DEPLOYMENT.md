@@ -160,6 +160,25 @@ npm run start
 - **不要**把 API Key 写入前端、Dockerfile、docker-compose.yml 或公开文档
 - 公网 HTTPS 推荐使用 **Caddy** 或 **Nginx** 反向代理（HTTP 明文传输存在中间人攻击风险）
 
+### ⚠️ 公网真实生成说明
+
+当前公网预览 `http://118.195.129.137:8787` 运行于真实生成模式（`MINIMAX_BACKEND=cli` + `REAL_GENERATION_ENABLED=true`），**会真实调用 MiniMax mmx CLI 并消耗 Token Plan 额度**。
+
+**如需切换回安全模拟模式：**
+
+```bash
+# 方法 1：Docker Compose（推荐，最安全）
+docker compose up -d
+
+# 方法 2：手动环境变量
+REAL_GENERATION_ENABLED=false \
+MOCK_GENERATION_ENABLED=true \
+MINIMAX_BACKEND=mock \
+HOST=0.0.0.0 \
+PORT=8787 \
+npm run start
+```
+
 ---
 
 ### 访问保护（Preview Access Gate）

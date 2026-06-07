@@ -83,11 +83,20 @@ MINIMAX_BACKEND=mock           # 后端模式
 
 ## Online Preview
 
-**Safe demo preview**: http://118.195.129.137:8787
+**Live preview**: http://118.195.129.137:8787
+
+> ⚠️ **当前为真实生成模式（MMX CLI）** — 此预览后端使用 `MINIMAX_BACKEND=cli` + `REAL_GENERATION_ENABLED=true`，会真实调用 MiniMax mmx CLI 并消耗 Token Plan 额度。
+>
+> 如需安全模拟模式，请使用 Docker 部署：
+> ```bash
+> docker compose up -d
+> ```
+> 或手动设置：
+> ```bash
+> REAL_GENERATION_ENABLED=false MOCK_GENERATION_ENABLED=true MINIMAX_BACKEND=mock npm run start
+> ```
 
 > ⚠️ Requires cloud security group to open TCP 8787 inbound. If the address is not reachable, open TCP 8787 in your cloud provider's security group settings (Tencent Cloud / Alibaba Cloud / etc.).
-
-This preview runs in safe mock mode — it does not call MiniMax, does not use any API Key, and does not consume Token Plan credits.
 
 ### Public Preview API Base
 
@@ -116,17 +125,16 @@ This preview runs in safe mock mode — it does not call MiniMax, does not use a
 
 ## 当前阶段
 
-**Phase 2F：Docker 部署与 GitHub Release 准备** ✅
+**Phase 2J：手机浏览器体验验证** ✅
 
-- ✅ Dockerfile（多阶段构建，默认安全模式）
-- ✅ docker-compose.yml（默认安全模式）
-- ✅ .dockerignore
-- ✅ `docs/DEPLOYMENT.md`（本地/Docker/生产部署指南）
-- ✅ `CONTRIBUTING.md`（贡献指南）
-- ✅ `CHANGELOG.md`（版本记录）
-- ✅ `docs/release/RELEASE_NOTES_v0.1.0-alpha.md`（发布说明）
-- ✅ `docs/OPEN_SOURCE_CHECKLIST.md`（开源检查清单）
-- ✅ `scripts/release-check.sh`（11 项发布前检查）
+- ✅ 移动端截图（9 张：5 mobile + 4 desktop）
+- ✅ `docs/MOBILE_BROWSER_CHECKLIST.md`（移动端检查清单）
+- ✅ `body { overflow-x: hidden }` 防御横向溢出
+- ✅ ModeTab min-height:44px，GenerateBtn min-height:52px
+- ✅ PlayBtn 44×44px，ActionBtn min-height:44px
+- ✅ 进度 UI（elapsed counter + progress messages）手机端可见
+- ✅ Contact sheet 更新
+- ✅ 移动端设置页 radio 单列布局
 
 ---
 
