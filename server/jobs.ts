@@ -657,17 +657,19 @@ async function executeApiJob(
 
   const payload = buildMiniMaxMusicPayload(job.input);
 
-  // ── Phase 5B-C: Real API Attempt Guard ────────────────────────────────────
-  // Check BEFORE the network call — this is the hard limit.
-  // If remaining=0, the job fails immediately without any MiniMax API call.
+  // ── Phase 5E: Real API Attempt Guard ────────────────────────────────────
+  // Reserve FIRST, then check — this ensures counter is always incremented
+  // on every path that touches the real API call, even if the call fails.
+  // This makes realApiAttemptsUsed observable from the first attempt.
   if (config.realApiAttempt.enabled) {
+    reserveRealApiAttempt(config.realApiAttempt, { jobId: job.id, mode: job.input.mode });
     const check = checkRealApiAttemptLimit(config.realApiAttempt);
     if (!check.allowed) {
       updateJob(job.id, {
         status: 'failed',
         error: {
           type: 'real_api_attempt_limit_exceeded',
-          message: `今日真实 API 测试次数已用完（${check.attempts}/${check.limit}）`,
+          message: `今日真实 API 测试次数已用完（剩余 ${check.remaining ?? 0} 次）`,
           hint: '请明天再试，或在设置中关闭真实 API 测试模式',
         },
         finishedAt: new Date().toISOString(),
@@ -677,9 +679,6 @@ async function executeApiJob(
       return;
     }
   }
-
-  // Reserve the attempt BEFORE the network call
-  reserveRealApiAttempt(config.realApiAttempt, { jobId: job.id, mode: job.input.mode });
 
   let apiResult: Awaited<ReturnType<typeof callMiniMaxApi>>;
   try {

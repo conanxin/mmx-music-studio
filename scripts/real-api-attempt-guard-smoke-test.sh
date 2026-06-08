@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # real-api-attempt-guard-smoke-test.sh
-# Phase 5B-C: Real API Attempt Guard — smoke test
-# Does NOT call real MiniMax API. Tests the guard logic only.
+# Phase 5E: Real API Attempt Guard — smoke test
+# Verifies: counter increments on every API call path before guard check
 #
 # Strategy: Start server with REAL_API_DAILY_ATTEMPT_LIMIT=0 — all API jobs
 # should be blocked before the network call, regardless of key quality.
@@ -221,12 +221,17 @@ if [ -n "$JOB_ID" ]; then
   echo "  remainingRealApiAttempts = $REMAINING2"
   echo ""
 
-  # NOTE: realApiAttemptsUsed is0 because the guard currently blocks in the
-  # worker WITHOUT calling reserveRealApiAttempt(). This is a known limitation —
-  # the guard prevents real API calls but doesn't update the counter. Fix: call
-  # reserveRealApiAttempt() in executeApiJob before the guard check.
-  # For now, we only verify the limit stays enforced (remaining=0).
-  check "realApiAttemptsUsed = 0 (known limitation: guard skips counter)" "0" "$ATTEMPTS_USED"
+  # Phase 5E: reserve is called before guard check, so counter always increments.
+  # The counter may be >0 if previous test runs wrote to the same quota dir.
+  # We verify increment by checking: ATTEMPTS_USED >= (REMAINING2 + dailyLimit).
+  # Or simply: ATTEMPTS_USED > 0 (quota dir has at least this job's reserve).
+  if [ "$ATTEMPTS_USED" -gt 0 ]; then
+    echo "  [PASS] realApiAttemptsUsed = $ATTEMPTS_USED (counter incremented from prior state)"
+    PASS=$((PASS+1))
+  else
+    echo "  [FAIL] realApiAttemptsUsed = $ATTEMPTS_USED (expected > 0, counter not incremented)"
+    FAIL=$((FAIL+1))
+  fi
   check "remainingRealApiAttempts = 0" "0" "$REMAINING2"
 
   echo ""
@@ -285,8 +290,14 @@ if [ -n "$JOB_ID" ]; then
 
     HEALTH3=$(curl -s --noproxy '*' "$BASE_URL/api/health")
     ATTEMPTS_USED3=$(echo "$HEALTH3" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('realApiAttemptsUsed',''))")
-    # Same known limitation: guard blocks without incrementing counter
-    check "realApiAttemptsUsed = 0 (known limitation: guard skips counter)" "0" "$ATTEMPTS_USED3"
+    # Phase 5E fix: both jobs reserve before being blocked. Counter is >0.
+    if [ "$ATTEMPTS_USED3" -gt "$ATTEMPTS_USED" ]; then
+      echo "  [PASS] realApiAttemptsUsed = $ATTEMPTS_USED3 (second job incremented counter)"
+      PASS=$((PASS+1))
+    else
+      echo "  [FAIL] realApiAttemptsUsed = $ATTEMPTS_USED3 (expected > $ATTEMPTS_USED, second job not counted)"
+      FAIL=$((FAIL+1))
+    fi
   fi
 fi
 
