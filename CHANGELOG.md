@@ -162,6 +162,58 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 微信正式发布需在微信公众平台配置 `https://music.conanxin.com` 为合法域名
 
 
+## [0.3.0-alpha] — 2026-06-08
+
+### Highlights
+
+- **HTTPS 域名部署就绪** — Caddy + Let's Encrypt 技术链路完成，`music.conanxin.com` HTTPS 正式可用（待 ICP 备案后公开访问）
+- **腾讯云备案拦截文档** — 记录大陆服务器域名需 ICP 备案 / 接入备案的技术原因和解决方案
+- **Cloudflare Tunnel 临时预览** — 开发阶段临时 HTTPS 公开访问，无需 ICP 备案
+- **BYOK API Key 模式** — 后端核心、UI、smoke tests、文档全部完成
+- **BYOK 真实测试预检** — Phase 5B-A 不调用真实 API 的预检流程完成
+- **Real API Attempt Guard** — Phase 5B-C 新增，每次真实 API 调用前计数，超限直接拦截
+- **Job Queue / Job History / Access Control** — 继承自 v0.2.0-alpha，全部稳定
+- **微信小程序 Mock API + 音频播放 + 下载 Adapters** — scaffold 完整，DevTools 可导入
+
+### Added
+
+#### 安全防护 / Security
+- **Real API Attempt Guard** — `storage/quota/real-api-attempts.json` 独立统计，每天最多 N 次真实 MiniMax API 调用，超限直接 failed，不发出网络请求
+- **BYOK Key 内存模式** — 用户 key 仅存内存，会话结束即清除，不写磁盘
+- **generationAccessUnlocked** — 生成访问 Cookie 双重保护（HMAC 签名 + 时间戳验证）
+- **attempt guard 健康字段** — `/api/health` 新增 `realApiAttemptLimitEnabled`、`realApiDailyAttemptLimit`、`realApiAttemptsUsed`、`remainingRealApiAttempts`
+
+#### 文档 / Documentation
+- **docs/ICP_RECORDAL_AND_TEMP_ACCESS.md** — 腾讯云备案拦截根因 + 5 种临时访问方案
+- **docs/CLOUDFLARE_TUNNEL_PREVIEW.md** — Cloudflare Tunnel 临时 HTTPS 预览完整指南
+- **docs/BYOK_REAL_TEST_PLAN.md** — BYOK 真实测试计划（attempt guard / 禁止条件 / 测试后检查）
+- **docs/BYOK_REAL_TEST_POSTMORTEM.md** — Phase 5B-B 事故复盘报告
+
+#### 部署基础设施 / Deployment Infrastructure
+- **Caddy HTTPS 技术配置** — `/etc/caddy/Caddyfile` 已配置 `music.conanxin.com` 反向代理，Let's Encrypt 证书自动签发
+- **deploy/Caddyfile.example** — Caddy 反代模板（含安全头）
+- **deploy/Caddyfile.safe-preview.example** — Caddy safe-preview 模式模板
+- **deploy/nginx.mmx-music-studio.conf.example** — Nginx 反代模板（80→443 重定向）
+- **scripts/run-local-behind-proxy.sh** — 仅监听 127.0.0.1 的安全 server 启动脚本
+- **scripts/domain-readiness-check.sh** — 端口/DNS/HTTPS 就绪检查脚本
+- **scripts/real-api-attempt-guard-smoke-test.sh** — Attempt Guard 专项 smoke test（12,494字节）
+
+### Security
+- Real Generation 默认关闭（`realGenerationEnabled=false`）
+- backend=mock 时不触发任何真实 API 调用
+- BYOK key 内存存储，不写磁盘
+- `storage/quota/real-api-attempts.json` 不提交 git
+- 无 API key / Authorization header / PIN 明文泄露
+- Secret scan 持续 CLEAN
+
+### Known Limitations
+- `music.conanxin.com` 公开访问需完成 ICP 备案 / 腾讯云接入备案（当前被 webblock 拦截）
+- Cloudflare Tunnel URL 每次重启变化，仅适合开发测试临时预览
+- BYOK 真实 MiniMax API 测试尚未完成（待 ICP 备案后执行）
+- MiniMax API Adapter 仍为实验性
+- 多用户账号系统未实现
+
+
 ## 早期版本说明
 
 v0.1.0-alpha 之前无正式版本记录。

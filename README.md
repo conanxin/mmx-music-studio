@@ -335,8 +335,13 @@ mmx-music-studio/
 | **Phase 4D** | **任务历史管理后台（统计/筛选/详情/取消/删除/重试）** | ✅ 完成 |
 | Phase 4E | 域名 HTTPS 正式实装 + 备案方案 | ✅ PASS |
 | Phase 4E-A | HTTPS 域名预检与方案准备 | ✅ 完成 |
+| Phase 4E-B | Caddy HTTPS 实际安装部署 | ✅ 完成 |
+| Phase 4E-C | HTTPS 部署收口 | ✅ 完成 |
+| Phase 4E-D | ICP 备案拦截文档 | ✅ 完成 |
+| Phase 4E-E | Cloudflare Tunnel 临时预览 | ✅ 完成 |
 | **Phase 5A** | **BYOK API Key 模式（用户自携 Key，无登录）** | ✅ 完成 |
 | **Phase 5B-A** | **BYOK 真实测试预检（不调用真实 API）** | ✅ 完成 |
+| **Phase 5B-C** | **Real API Attempt Guard（调用前计数，超限拦截）** | ✅ 完成 |
 | Phase 5B-B | BYOK 受控真实 API 测试（需用户确认） | 📋 规划 |
 | Phase 5C | 小程序 BYOK 策略 | 📋 规划 |
 | Phase 6 | 正式 Release v0.4.0-alpha | 📋 规划 |
