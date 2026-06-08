@@ -100,23 +100,27 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ---
 
-**Version:** `v0.4.0-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.0-alpha)
+**Version:** `v0.4.1-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.0-alpha)
 
 ## Current Status
 
-| 模块 | 状态 | 备注 |
+> **推荐主链路**：Web + MMX CLI backend（`backend=cli`）。与 Telegram 生成链路一致，稳定性已验证。
+
+|| 模块 | 状态 | 备注 |
 |------|------|------|
 | UI | ✅ PASS | |
 | Mock generation | ✅ PASS | |
-| MMX CLI adapter | ✅ PASS | |
-| MMX CLI 真实生成 | ✅ PASS（已验证） | |
-| MMX API adapter | 🔧 实验性 | |
+| **MMX CLI backend** | ✅ **推荐** | `backend=cli`，与 Telegram 链路一致 |
+| MMX CLI 真实生成 | ✅ PASS | 已验证 |
+| MMX API adapter (BYOK) | ⚠️ 实验性 | 研究方向，非生产推荐 |
 | Docker 部署 | ✅ PASS | |
 | **三种运行模式** | ✅ Phase 4A 新增 | |
 | **Systemd 部署模板** | ✅ Phase 4A 新增 | |
 | **生产发布检查** | ✅ Phase 4A 新增 | |
 | **Job Queue** | ✅ PASS | |
 | **Job History Admin** | ✅ PASS | |
+| Studio 冷启动播放器 | ✅ Phase CLI-Web-E | |
+| Audio duration 显示 | ✅ Phase CLI-Web-F | |
 | **Access Control / Quota** | ✅ PASS | |
 | **Audit Logging** | ✅ PASS | |
 | **PIN Brute-force Guard** | ✅ PASS | |

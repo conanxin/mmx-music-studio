@@ -21,7 +21,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | Web UI | ✅ 完成 | 移动端优先，桌面双栏，暖黑/米白/绿色 |
 | Web 公网预览 | ✅ 可用 | `http://118.195.129.137:8787`（mock 模式） |
 | Mock 生成 | ✅ 完成 | server mock，不消耗额度 |
-| MMX CLI 生成 | ✅ 已验证 | `MINIMAX_BACKEND=cli`，需 auth login |
+| MMX CLI 生成 | ✅ 已验证 | `MINIMAX_BACKEND=cli`，需 auth login，Web+CLI 主链路 |
 | API adapter | ⚠️ 实验性 | `MINIMAX_BACKEND=api`，需真实 key |
 | 微信小程序 | ✅ Phase 3C/3D | Taro v4，mock API，音频播放/下载 adapter |
 | HTTPS 域名 | ⏳ 待办 | Phase 3E：需用户提供域名 |

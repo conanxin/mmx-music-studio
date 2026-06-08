@@ -2,6 +2,17 @@
 
 > Phase 5A: Bring Your Own Key — No-Login, Self-Hosted MiniMax Generation
 
+## Current Status (Post CLI-Web-G)
+
+> **⚠️ NOTE**: As of Phase CLI-Web-G (2026-06-09), the recommended main path for
+> personal self-hosted generation is **`backend=cli`** (MMX CLI), not BYOK/API mode.
+> BYOK remains the open-source research direction, but the CLI path is proven stable.
+>
+> | Path | Status |
+> |------|--------|
+> | `backend=cli` (MMX CLI) | ✅ Recommended — matches Telegram path |
+> | `backend=api` (BYOK) | ⚠️ Experimental — research only |
+
 ## What is BYOK
 
 BYOK (Bring Your Own Key) lets users provide their own MiniMax Token Plan API key

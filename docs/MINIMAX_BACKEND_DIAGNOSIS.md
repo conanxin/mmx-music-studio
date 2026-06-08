@@ -165,12 +165,81 @@ Add backend indicator:
 
 ---
 
+## Post-CLI-Web-G Status (2026-06-09)
+
+**Phase CLI-Web-E/F/G complete — Web CLI backend is now the recommended main path.**
+
+### Verified Working Path
+
+```
+User Web (browser)
+  → /api/generate (frontend submit guard)
+    → executeCliJob() → generateWithMmxCli()
+      → mmx music generate --instrumental --prompt "..."
+        → MiniMax API (official)
+          → storage/tracks/*.mp3
+            → /api/tracks → Studio player / Library
+```
+
+**This matches the Telegram proven-working path.**
+
+### Verified Fixes (CLI-Web-E/F)
+
+1. **Studio cold-start hydration** (Phase CLI-Web-E): Studio page load now calls `listTracks()` → finds latest track with audioUrl → populates WaveformPlayer immediately. Falls back to `listJobsFiltered()`.
+
+2. **Audio duration display** (Phase CLI-Web-F): WaveformPlayer now reads HTMLAudioElement `loadedmetadata` / `canplay` / `timeupdate` events to resolve duration. Shows "读取中" during load, then real time. Studio no longer passes hardcoded `'?:??'`.
+
+3. **Track handoff** (Phase CLI-Web-D): Job completion now attaches track to job response so Studio polling picks it up.
+
+### Current Backend Configuration
+
+```json
+{
+  "backend": "cli",
+  "realGenerationEnabled": true,
+  "mockGenerationEnabled": false,
+  "dailyQuotaEnabled": true,
+  "dailyGenerationLimit": 20,
+  "generationAccessEnabled": false
+}
+```
+
+### API Adapter (backend=api) Status
+
+- **Experimental / research path** — not recommended for production
+- Security infrastructure (submit guard, rate limit, BYOK) is complete
+- Real API generation has not been validated as a stable capability
+- Do NOT use `backend=api` for personal self-hosted generation
+
+### Recommended Usage
+
+| Scenario | Recommended Backend |
+|----------|-------------------|
+| Personal self-hosted generation | `backend=cli` (MMX CLI) |
+| Open source / BYOK research | `backend=api` with caution |
+| Telegram integration | MMX CLI (via Hermes skill) |
+
+### Environment Variables for CLI Backend
+
+```bash
+MINIMAX_BACKEND=cli
+REAL_GENERATION_ENABLED=true
+MOCK_GENERATION_ENABLED=false
+GENERATION_ACCESS_ENABLED=false
+RATE_LIMIT_ENABLED=true
+DAILY_QUOTA_ENABLED=true
+DAILY_GENERATION_LIMIT=20
+```
+
+---
+
 ## Files Involved
 
 - `server/index.ts` — backend routing, health endpoint
 - `server/jobs.ts` — job execution (mock/cli/api paths)
 - `server/rate-limit.ts` — realApiAttempt guard implementation
 - `server/adapters/minimax-cli/client.ts` — MMX CLI adapter
-- `src/features/studio/Studio.tsx` — UI quota display
-- `src/features/settings/Settings.tsx` — settings display
+- `src/features/studio/Studio.tsx` — UI, hydration useEffect, submit guard
+- `src/features/library/Library.tsx` — library track listing
+- `src/components/WaveformPlayer.tsx` — audio metadata duration reading
 - `docs/MINIMAX_BACKEND_DIAGNOSIS.md` — this document
