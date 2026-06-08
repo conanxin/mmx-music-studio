@@ -242,3 +242,16 @@ createdAt: 2026-06-07T23:46:05
 
 *本文档脱敏处理：不包含任何 API key、token、Authorization header、cookie、签名 URL 或 prompt 全文。*
 *生成时间：2026-06-08T10:54 CST*
+
+---
+
+## v0.4.0-alpha 版本边界
+
+本文档已冻结于 v0.4.0-alpha。
+
+**关键发现：**
+- Guard 正确工作：3 次真实 API attempts 全部被拦截
+- `REAL_API_DAILY_ATTEMPT_LIMIT=1` 过于严格，正常手动测试会立即耗尽
+- BYOK header (`x-minimax-api-key`) 在 Phase 5B-B-Retry 中已正确传递（通过 server-key fallback 路径）
+
+**下次测试必须：** limit=3 + 前端防抖 + 人工确认

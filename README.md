@@ -100,27 +100,34 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ---
 
+**Version:** `v0.4.0-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.0-alpha)
+
 ## Current Status
 
-| 模块 | 状态 |
-|------|------|
-| UI | ✅ PASS |
-| Mock generation | ✅ PASS |
-| MMX CLI adapter | ✅ PASS |
-| MMX CLI 真实生成 | ✅ PASS（已验证） |
-| MMX API adapter | 🔧 实验性 |
-| Docker 部署 | ✅ PASS |
-| **三种运行模式** | ✅ Phase 4A 新增 |
-| **Systemd 部署模板** | ✅ Phase 4A 新增 |
-| **生产发布检查** | ✅ Phase 4A 新增 |
-| **Job Queue** | ✅ PASS |
-| **Job History Admin** | ✅ PASS |
-| **Access Control / Quota** | ✅ PASS |
-| **Audit Logging** | ✅ PASS |
-| **PIN Brute-force Guard** | ✅ PASS |
-| **HTTPS** | ✅ PASS（Caddy + Let's Encrypt） |
-| **域名 ICP 备案** | ⏳ 腾讯云大陆服务器需备案，当前外部访问被拦截 |
-| 微信小程序 | ✅ PASS（scaffold + adapters） |
+| 模块 | 状态 | 备注 |
+|------|------|------|
+| UI | ✅ PASS | |
+| Mock generation | ✅ PASS | |
+| MMX CLI adapter | ✅ PASS | |
+| MMX CLI 真实生成 | ✅ PASS（已验证） | |
+| MMX API adapter | 🔧 实验性 | |
+| Docker 部署 | ✅ PASS | |
+| **三种运行模式** | ✅ Phase 4A 新增 | |
+| **Systemd 部署模板** | ✅ Phase 4A 新增 | |
+| **生产发布检查** | ✅ Phase 4A 新增 | |
+| **Job Queue** | ✅ PASS | |
+| **Job History Admin** | ✅ PASS | |
+| **Access Control / Quota** | ✅ PASS | |
+| **Audit Logging** | ✅ PASS | |
+| **PIN Brute-force Guard** | ✅ PASS | |
+| **HTTPS** | ✅ PASS（Caddy + Let's Encrypt） | |
+| **域名 ICP 备案** | ⏳ 腾讯云大陆服务器需备案，当前外部访问被拦截 | |
+| 微信小程序 | ✅ PASS（scaffold + adapters） | |
+| **Web BYOK API Key Mode** | ✅ Phase 5A | sessionStorage + x-minimax-api-key header |
+| **WeChat BYOK strategy** | ✅ Phase 5C | key 管理方案已文档化 |
+| **Real API attempt guard** | ✅ Phase 5B-C/5E | 计数器在 check 前递增 |
+| **BYOK safety smoke tests** | ✅ Phase 5E | 8 个 smoke tests 全部 PASS |
+| **Real BYOK API 成功生成** | ⏳ PENDING | guard 验证通过；真实生成待 Phase 5B-D |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 

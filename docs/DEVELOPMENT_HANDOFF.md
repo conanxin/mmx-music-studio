@@ -345,3 +345,16 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 ## Phase 4F: Audit Logging and PIN Brute-Force Protection
 
 See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md) for details.
+
+---
+
+## Phase 5: BYOK Safety and WeChat Strategy
+
+**Frozen in v0.4.0-alpha.** See [docs/release/RELEASE_NOTES_v0.4.0-alpha.md](docs/release/RELEASE_NOTES_v0.4.0-alpha.md) for full details.
+
+**关键里程碑：**
+- Phase 5A: Web BYOK API Key Mode ✅
+- Phase 5B-A/B-C: Real API attempt guard ✅
+- Phase 5C: WeChat BYOK strategy ✅
+- Phase 5E: realApiAttemptsUsed counter fix ✅
+- Phase 5B-D: 真实 MiniMax API 生成 ⏳ PENDING

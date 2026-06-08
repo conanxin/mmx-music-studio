@@ -4,6 +4,53 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0-alpha] — 2026-06-08
+
+### Highlights
+
+- **Web BYOK API Key Mode completed** — 用户可在页面输入 Key，存储于 sessionStorage，经 `x-minimax-api-key` header 传给后端
+- **WeChat Mini Program BYOK strategy completed** — 小程序端 `WEAPP_BYOK_STRATEGY.md` 明确了 key 管理方案
+- **Real API attempt guard added** — `REAL_API_ATTEMPT_LIMIT_ENABLED=true` 时，阻止超过 `REAL_API_DAILY_ATTEMPT_LIMIT` 的真实 API 调用
+- **realApiAttemptsUsed counter observability fixed** — `reserveRealApiAttempt()` 在 `checkRealApiAttemptLimit()` 之前调用，确保 counter 每次都递增
+- **BYOK real test postmortem documented** — 记录了 guard 拦截 3 次真实 API attempt 的测试结果
+- **BYOK safety smoke tests added** — 覆盖 BYOK 模式、guard、job queue、auth quota、job history、web API、weapp audio URL
+
+### Added
+
+- **Web BYOK API Key Mode** — `src/features/settings/Settings.tsx` + `server/api/key.ts`，sessionStorage + `x-minimax-api-key` header
+- **WeChat BYOK strategy** — `docs/WEAPP_BYOK_STRATEGY.md` + `apps/weapp/src/adapters/request.ts`
+- **Real API attempt guard** — `server/rate-limit.ts` `RealApiAttemptGuard` 类，`server/jobs.ts` 中集成
+- **BYOK real test plan** — `docs/BYOK_REAL_TEST_PLAN.md`，明确测试窗口、limit 配置、人工确认步骤
+- **BYOK real test postmortem** — `docs/BYOK_REAL_TEST_POSTMORTEM.md`，记录 guard 拦截事件和教训
+- **Smoke tests** — `scripts/byok-mode-smoke-test.sh` (13 cases), `scripts/real-api-attempt-guard-smoke-test.sh` (13 cases), `scripts/reserve-real-api-attempt-test.sh` (5 cases)
+- **`realApiAttemptsUsed` / `remainingRealApiAttempts` health fields** — `/api/health` 暴露 counter 状态
+- **Generation Access Gate** — `server/auth.ts`，可选 PIN 保护真实生成功能
+- **Audit logging** — `server/audit.ts`，记录所有关键操作
+- **Job history admin API** — `GET/DELETE/POST /api/jobs/:id`，`GET /api/jobs/stats`
+
+### Fixed
+
+- **realApiAttemptsUsed counter** — `server/jobs.ts` 中 `reserveRealApiAttempt()` 移到 `checkRealApiAttemptLimit()` 之前调用，确保每次真实 API 路径都 +1
+
+### Safety
+
+- BYOK keys 通过 `x-minimax-api-key` header 传递，不写入 URL、JSON body、manifest、audit logs 或磁盘
+- BYOK keys 按 job id 存储在内存中，job 完成后立即清除
+- Real API attempt guard 防止在测试窗口内重复调用真实 API
+- Mock / CLI / API runtime modes 完全隔离
+- 无真实 keys 提交，无生成音频提交，无 .env 提交
+
+### Known Limitations
+
+- **BYOK 真实 MiniMax API 音频生成尚未成功通过** — 最新测试被 real API attempt guard 正确拦截，未能调用 MiniMax API
+- **下次真实测试建议** — `REAL_API_DAILY_ATTEMPT_LIMIT=3` + 前端防抖 + 人工确认窗口
+- **API Adapter 仍为实验性**
+- **ICP 备案尚未完成**，国内腾讯云自定义域名公网访问受限
+
+### Removed / Changed
+
+- N/A
+
 ## [0.3.1-alpha] — 2026-06-08
 
 ### Added

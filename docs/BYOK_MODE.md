@@ -123,3 +123,11 @@ When `AUDIT_LOG_ENABLED=true`, `auditGenerationRequested` records:
 - [SECURITY.md](./SECURITY.md) — Security model and best practices
 - [DEPLOYMENT.md](./DEPLOYMENT.md) — Deployment configurations
 - [BYOK_NO_LOGIN_TOOL_MODE_ARCHITECTURE.md](./BYOK_NO_LOGIN_TOOL_MODE_ARCHITECTURE.md) — Architecture decision record
+
+---
+
+## v0.4.0-alpha 版本边界
+
+本文档描述的功能已冻结于 v0.4.0-alpha（Phase 5A-5E）。
+
+**本版本不包含：** 成功的真实 MiniMax API 音频生成。下次真实测试建议 `REAL_API_DAILY_ATTEMPT_LIMIT=3` + 前端防抖 + 人工确认窗口。

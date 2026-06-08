@@ -290,3 +290,18 @@ print('realApiAttemptsUsed:', d.get('realApiAttemptsUsed'))
 - `remainingRealApiAttempts = 0` 时禁止触发任何真实生成
 - `REAL_API_DAILY_ATTEMPT_LIMIT` 不允许手动临时调高超过 1（除非明确知道会消耗）
 - 不要在 server 配置不确定时启动 realGeneration server
+
+---
+
+## v0.4.0-alpha 版本边界
+
+本文档描述的测试方案已冻结于 v0.4.0-alpha。
+
+**已验证：** Guard 正确拦截超额真实 API attempts。**未验证：** 真实 MiniMax API 成功返回音频。
+
+**下次真实测试必须：**
+1. `REAL_API_DAILY_ATTEMPT_LIMIT=3`（而非 1）
+2. 前端生成按钮添加 10 秒防抖（点击后 disable 10s）
+3. 增加人工确认对话框（"确认发送 1 次真实 API 调用？"）
+4. 单次操作，不 retry
+5. 低峰时段（UTC 02:00-06:00）
