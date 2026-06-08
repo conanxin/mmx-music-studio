@@ -204,7 +204,11 @@ export default function Studio() {
   const jobStartRef = useRef<number>(0);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // Health info state
+  // Phase 5B-D-A: Submit guard — prevents duplicate clicks
+  const lastGenerateClickAt = useRef<number>(0);
+  const DEBOUNCE_MS = 10_000;
+
+  // Health info state (extended)
   const [healthInfo, setHealthInfo] = useState<{
     backend?: string;
     realGenerationEnabled?: boolean;
@@ -216,6 +220,9 @@ export default function Studio() {
     realApiAttemptLimitEnabled?: boolean;
     realApiDailyAttemptLimit?: number;
     remainingRealApiAttempts?: number;
+    // Phase 5D-A: Daily quota display
+    dailyGenerationUsed?: number;
+    remainingDailyGenerations?: number;
   } | null>(null);
 
   // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
@@ -314,6 +321,8 @@ export default function Studio() {
         realApiAttemptLimitEnabled: h.realApiAttemptLimitEnabled,
         realApiDailyAttemptLimit: h.realApiDailyAttemptLimit,
         remainingRealApiAttempts: h.remainingRealApiAttempts,
+        dailyGenerationUsed: h.dailyGenerationUsed,
+        remainingDailyGenerations: h.remainingDailyGenerations,
       });
     });
   }, []);
@@ -371,6 +380,39 @@ export default function Studio() {
   const handleGenerate = async () => {
     setGenError(null);
 
+    // Phase 5B-D-A: Submit guard — immediate lock
+    const now = Date.now();
+    if (now - lastGenerateClickAt.current < DEBOUNCE_MS) {
+      setGenError('生成任务已提交，请不要重复点击。');
+      return;
+    }
+    lastGenerateClickAt.current = now;
+
+    // Phase 5B-D-A: Block if active job is still running
+    if (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) {
+      setGenError('已有生成任务正在进行，请等待完成或取消后再试。');
+      return;
+    }
+
+    // Phase 5B-D-A: Block if real API quota exhausted
+    if (
+      healthInfo?.backend === 'api' &&
+      healthInfo?.realGenerationEnabled &&
+      healthInfo?.realApiAttemptLimitEnabled &&
+      (healthInfo?.remainingRealApiAttempts ?? 1) <= 0
+    ) {
+      setGenError('今日真实 API 测试次数已用完，请明天再试。');
+      return;
+    }
+
+    // Phase 5B-D-A: Block if daily generation quota exhausted
+    if (
+      healthInfo?.remainingDailyGenerations !== undefined &&
+      healthInfo.remainingDailyGenerations <= 0
+    ) {
+      setGenError('今日生成额度已用完，请明天再试。');
+      return;
+    }
 
     const input = buildCoreInput(
       activeMode,
@@ -714,19 +756,47 @@ export default function Studio() {
             <div className={styles.errorBox}>{genError}</div>
           )}
 
-          {/* Generate button — disabled when BYOK needs key */}
+          {/* Generate button — Phase 5B-D-A: full submit guard */}
           <button
             className={styles.generateBtn}
             onClick={handleGenerate}
-            disabled={isGenerating || (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey)}
+            disabled={
+              // Already generating / polling
+              isGenerating ||
+              // Active job still running
+              (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) ||
+              // BYOK API mode but no key
+              (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey) ||
+              // Real API attempt quota exhausted
+              (healthInfo?.realApiAttemptLimitEnabled && (healthInfo?.remainingRealApiAttempts ?? 1) <= 0) ||
+              // Daily generation quota exhausted
+              (healthInfo?.remainingDailyGenerations !== undefined && healthInfo.remainingDailyGenerations <= 0)
+            }
           >
-            {isGenerating ? (
+            {currentJob && (currentJob.status === 'queued' || currentJob.status === 'running') ? (
               <>
                 <span className={styles.spinner} />
                 生成中…
               </>
+            ) : isGenerating ? (
+              <>
+                <span className={styles.spinner} />
+                生成中…
+              </>
+            ) : isCancelling ? (
+              <>
+                <span className={styles.spinner} />
+                正在取消…
+              </>
             ) : getButtonLabel()}
           </button>
+
+          {/* Phase 5B-D-A: Real API warning banner */}
+          {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
+            <div className={styles.realApiWarning}>
+              ⚠️ 真实 API 测试会消耗额度，请只点击一次
+            </div>
+          )}
 
           {/* Progress UI: job polling */}
           {isGenerating && currentJob && (

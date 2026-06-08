@@ -528,6 +528,13 @@ export default function Settings() {
           <p className={styles.backendDesc}>
             防止公网误触真实生成，保护你的 MiniMax 额度。
           </p>
+          {health?.realApiAttemptLimitEnabled && (
+            <div className={styles.backendDesc} style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: -6 }}>
+              真实 API 测试模式：限 {health.realApiDailyAttemptLimit} 次/天，剩余 <strong style={{ color: health.remainingRealApiAttempts === 0 ? '#FF8B8B' : '#B8FF6A' }}>{health.remainingRealApiAttempts ?? 0}</strong> 次。
+              测试时<strong style={{ color: '#B8FF6A' }}>请只点击一次生成按钮</strong>。
+              如已用完，请明天再试或关闭真实 API 模式。
+            </div>
+          )}
           <div className={styles.statusGrid}>
             <div className={styles.statusCard}>
               <div className={styles.statusLabel}>生成访问保护</div>
