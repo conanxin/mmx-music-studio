@@ -405,8 +405,9 @@ export default function Studio() {
       return;
     }
 
-    // Phase 5B-D-A: Block if daily generation quota exhausted
+    // Phase 5B-D-A: Block if daily generation quota exhausted (CLI bypasses this)
     if (
+      healthInfo?.backend !== 'cli' &&
       healthInfo?.remainingDailyGenerations !== undefined &&
       healthInfo.remainingDailyGenerations <= 0
     ) {
@@ -767,10 +768,14 @@ export default function Studio() {
               (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) ||
               // BYOK API mode but no key
               (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey) ||
-              // Real API attempt quota exhausted
-              (healthInfo?.realApiAttemptLimitEnabled && (healthInfo?.remainingRealApiAttempts ?? 1) <= 0) ||
-              // Daily generation quota exhausted
-              (healthInfo?.remainingDailyGenerations !== undefined && healthInfo.remainingDailyGenerations <= 0)
+              // Real API attempt quota exhausted — only applies to API backend (CLI has no such guard)
+              (healthInfo?.backend === 'api' &&
+                healthInfo?.realApiAttemptLimitEnabled &&
+                (healthInfo?.remainingRealApiAttempts ?? 1) <= 0) ||
+              // Daily generation quota exhausted — only applies to mock and API backends
+              (healthInfo?.backend !== 'cli' &&
+                healthInfo?.remainingDailyGenerations !== undefined &&
+                healthInfo.remainingDailyGenerations <= 0)
             }
           >
             {currentJob && (currentJob.status === 'queued' || currentJob.status === 'running') ? (
