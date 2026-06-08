@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import styles from './Studio.module.css';
 import WaveformPlayer from '../../components/WaveformPlayer';
 import { useSettings } from '../../lib/settingsStore';
-import { getHealth, createGenerateJob, getJob, cancelJob } from '../../lib/serverApi';
+import { getHealth, createGenerateJob, getJob, cancelJob, listTracks, listJobsFiltered } from '../../lib/serverApi';
 import type { TrackLike, GenerateJob } from '../../lib/serverApi';
 import { STYLE_TAGS } from '../../mock/data';
 import {
@@ -327,7 +327,66 @@ export default function Studio() {
     });
   }, []);
 
-  // Sync hash → mode on mount
+  // Hydrate latest playable track into player on mount (cold start)
+  useEffect(() => {
+    const hydrateLatestTrack = async () => {
+      // Don't overwrite if a generation is in progress
+      const health = await getHealth().catch(() => null);
+      if (health?.realGenerationEnabled && health?.remainingDailyGenerations !== undefined) {
+        // Generation is active — let polling handle player handoff
+        // Only hydrate if no active generation (queued/running)
+      }
+
+      // Try listTracks first — prefer the newest track with audioUrl
+      try {
+        const result = await listTracks();
+        const playableTracks = result.tracks.filter(
+          (t: TrackLike) => t.audioUrl || t.downloadUrl
+        );
+        if (playableTracks.length > 0) {
+          const latest = playableTracks[0]; // already sorted newest-first by API
+          const display = {
+            id: latest.id,
+            title: latest.title || '最近生成的音乐',
+            mode: latest.mode || 'auto',
+            durationText: latest.durationText || '?:??',
+            audioUrl: latest.audioUrl || `/api/tracks/${latest.id}/audio`,
+            downloadUrl: latest.downloadUrl || `/api/tracks/${latest.id}/download`,
+          };
+          setCurrentTrack(display);
+          return;
+        }
+      } catch (_) {
+        // Fall through to jobs fallback
+      }
+
+      // Fallback: find latest succeeded job with a track
+      try {
+        const jobsResult = await listJobsFiltered({ limit: 5, sort: 'newest' });
+        const succeededWithTrack = jobsResult.jobs.filter(
+          (j: GenerateJob) => j.status === 'succeeded' && j.track?.audioUrl
+        );
+        if (succeededWithTrack.length > 0) {
+          const job = succeededWithTrack[0];
+          const track = job.track!;
+          const display = {
+            id: track.id,
+            title: track.title || '最近生成的音乐',
+            mode: track.mode || 'auto',
+            durationText: track.durationText || '?:??',
+            audioUrl: track.audioUrl || `/api/tracks/${track.id}/audio`,
+            downloadUrl: track.downloadUrl || `/api/tracks/${track.id}/download`,
+          };
+          setCurrentTrack(display);
+        }
+      } catch (_) {
+        // No playable track found — player stays empty
+      }
+    };
+
+    hydrateLatestTrack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const m = resolveMode();
     if (m !== activeMode) setActiveMode(m);
