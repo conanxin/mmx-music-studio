@@ -1208,7 +1208,20 @@ async function handleListJobs(
 
   const result = listJobs(filters);
   const total = getTotalJobCount();
-  sendJson(res, 200, { ok: true, jobs: result, total });
+
+  // Attach full track object for succeeded jobs (Studio player handoff)
+  const jobsWithTracks = result.map(job => {
+    const enriched = { ...job };
+    if (job.trackId) {
+      const track = findTrackById(_config.outputDir, job.trackId);
+      if (track) {
+        (enriched as Record<string, unknown>).track = toTrackResponse(track);
+      }
+    }
+    return enriched;
+  });
+
+  sendJson(res, 200, { ok: true, jobs: jobsWithTracks, total });
 }
 
 async function handleGetJob(
@@ -1220,7 +1233,17 @@ async function handleGetJob(
   if (!match) { sendError(res, 'validation', '无效的 job ID', 400); return; }
   const job = getJob(match[1]);
   if (!job) { sendError(res, 'unknown', 'Job 不存在', 404); return; }
-  sendJson(res, 200, { ok: true, job });
+
+  // Attach full track object if job has trackId (Studio player handoff)
+  const jobWithTrack = { ...job };
+  if (job.trackId) {
+    const track = findTrackById(_config.outputDir, job.trackId);
+    if (track) {
+      (jobWithTrack as Record<string, unknown>).track = toTrackResponse(track);
+    }
+  }
+
+  sendJson(res, 200, { ok: true, job: jobWithTrack });
 }
 
 async function handleCancelJob(
