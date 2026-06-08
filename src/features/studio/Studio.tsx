@@ -212,6 +212,10 @@ export default function Studio() {
     previewAccessEnabled?: boolean;
     // Phase 5A: BYOK
     byokEnabled?: boolean;
+    // Phase 5B-C: Real API Attempt Guard
+    realApiAttemptLimitEnabled?: boolean;
+    realApiDailyAttemptLimit?: number;
+    remainingRealApiAttempts?: number;
   } | null>(null);
 
   // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
@@ -220,6 +224,9 @@ export default function Studio() {
     const isByokApi = healthInfo.byokEnabled && healthInfo.backend === 'api';
     if (isByokApi && !settings.apiKey) return '请先在设置页填写你的 MiniMax Token Plan Key，否则无法生成';
     if (isByokApi && settings.apiKey) return '将使用你的 Token Plan Key，生成会消耗你的额度';
+    if (isByokApi && healthInfo.realApiAttemptLimitEnabled && healthInfo.remainingRealApiAttempts === 0) {
+      return '真实 API 测试次数已用完，请明天再试';
+    }
     if (healthInfo.backend === 'cli') return 'MMX CLI 模式使用服务器登录状态，不读取页面 Key';
     if (healthInfo.backend === 'api' && !healthInfo.byokEnabled) return 'MiniMax API Adapter 实验中，建议使用 MMX CLI';
     if (healthInfo.backend === 'mock') return '当前为本地模拟，不消耗额度';
@@ -303,10 +310,12 @@ export default function Studio() {
         realGenerationEnabled: h.realGenerationEnabled,
         mockGenerationEnabled: h.mockGenerationEnabled,
         previewAccessEnabled: h.previewAccessEnabled,
-        // Phase 5A: BYOK
-        byokEnabled: h.byokEnabled ?? false,
+        byokEnabled: h.byokEnabled,
+        realApiAttemptLimitEnabled: h.realApiAttemptLimitEnabled,
+        realApiDailyAttemptLimit: h.realApiDailyAttemptLimit,
+        remainingRealApiAttempts: h.remainingRealApiAttempts,
       });
-    }).catch(() => {});
+    });
   }, []);
 
   // Sync hash → mode on mount
@@ -419,6 +428,8 @@ export default function Studio() {
           setGenError('生成请求过于频繁，请稍后再试');
         } else if (err?.type === 'daily_quota_exceeded') {
           setGenError('今日生成额度已用完，请明天再试');
+        } else if (err?.type === 'real_api_attempt_limit_exceeded') {
+          setGenError('今日真实 API 测试次数已用完，请明天再试');
         } else if (err?.type === 'missing_api_key') {
           setGenError('请先在设置中填写 Key，或选择服务器环境变量模式');
         } else if (err?.type === 'minimax_api') {
@@ -841,6 +852,11 @@ export default function Studio() {
             </span>
             {healthInfo?.realGenerationEnabled && (
               <span className={styles.statusWarn}>⚠️ 会消耗额度</span>
+            )}
+            {healthInfo?.realApiAttemptLimitEnabled && healthInfo?.remainingRealApiAttempts !== undefined && (
+              <span className={styles.statusWarn}>
+                真实测试剩余 {healthInfo.remainingRealApiAttempts} 次
+              </span>
             )}
             <span className={styles.statusSep}>·</span>
             <span>{getBackendLabel(healthInfo?.backend)}</span>

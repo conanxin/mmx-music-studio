@@ -8,7 +8,7 @@
 
 import type { PreviewAccessConfig } from './security.js';
 import type { GenerationAccessConfig } from './auth.js';
-import type { RateLimitConfig, DailyQuotaConfig } from './rate-limit.js';
+import type { RateLimitConfig, DailyQuotaConfig, RealApiAttemptConfig } from './rate-limit.js';
 
 export type KeyMode = 'server' | 'session';
 
@@ -28,6 +28,8 @@ export interface ServerConfig {
   generationAccess: GenerationAccessConfig;
   rateLimit: RateLimitConfig;
   dailyQuota: DailyQuotaConfig;
+  /** Phase 5B-C: Real API Attempt Guard — limits actual MiniMax API calls before they happen */
+  realApiAttempt: RealApiAttemptConfig;
   /** BYOK: allow users to supply their own API key via x-minimax-api-key header */
   byokEnabled: boolean;
   /** BYOK: if true, fall back to server MINIMAX_API_KEY when no session key provided */

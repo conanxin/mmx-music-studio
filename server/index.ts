@@ -65,10 +65,13 @@ import {
 import {
   buildRateLimitConfig,
   buildDailyQuotaConfig,
+  buildRealApiAttemptConfig,
   checkRateLimit,
   checkDailyQuota,
   getDailyQuotaStatus,
   incrementDailyQuota,
+  checkRealApiAttemptLimit,
+  getRealApiAttemptStats,
   getClientKey,
 } from './rate-limit.js';
 import { mockMiniMaxGenerate } from './mock-minimax.js';
@@ -160,6 +163,7 @@ function loadConfig(): ServerConfig {
     generationAccess: buildGenerationAccessConfig(),
     rateLimit: buildRateLimitConfig(),
     dailyQuota: buildDailyQuotaConfig(),
+    realApiAttempt: buildRealApiAttemptConfig(),
   };
 }
 
@@ -602,6 +606,9 @@ async function handleHealth(
   // Daily quota status (Phase 4C)
   const quotaStatus = getDailyQuotaStatus(config.dailyQuota);
 
+  // Phase 5B-C: Real API Attempt Guard
+  const attemptStats = getRealApiAttemptStats(config.realApiAttempt);
+
   sendJson(res, 200, {
     ok: true,
     service: 'mmx-music-studio',
@@ -623,6 +630,11 @@ async function handleHealth(
     dailyGenerationLimit: config.dailyQuota.limit,
     dailyGenerationUsed: quotaStatus.used,
     remainingDailyGenerations: quotaStatus.remaining,
+    // Phase 5B-C: Real API Attempt Guard
+    realApiAttemptLimitEnabled: config.realApiAttempt.enabled,
+    realApiDailyAttemptLimit: config.realApiAttempt.dailyLimit,
+    realApiAttemptsUsed: attemptStats.attempts,
+    remainingRealApiAttempts: attemptStats.remaining,
     // Existing fields
     demoMode: config.demoMode,
     realGenerationEnabled: config.realGenerationEnabled,

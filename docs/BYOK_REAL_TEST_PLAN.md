@@ -243,3 +243,50 @@ BYOK 模式的优势：**真实 key 不经过你的服务器存储**，只存在
 - [docs/BYOK_MODE.md](BYOK_MODE.md) — BYOK 完整说明
 - [docs/SECURITY.md](SECURITY.md) — 安全规范
 - [docs/AUTH_AND_QUOTA.md](AUTH_AND_QUOTA.md) — 额度保护
+- [docs/BYOK_REAL_TEST_POSTMORTEM.md](BYOK_REAL_TEST_POSTMORTEM.md) — Phase 5B-B 事故复盘
+
+---
+
+## Phase 5B-C: Real API Attempt Guard（必须满足）
+
+Phase 5B-C 新增 Real API Attempt Guard，确保真实 API 调用前先预约配额。
+
+### 启动前必须确认
+
+```bash
+# 1. 检查剩余 attempt 次数（应为 1 或 0）
+curl http://127.0.0.1:8787/api/health | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+print('realApiAttemptLimitEnabled:', d.get('realApiAttemptLimitEnabled'))
+print('realApiDailyAttemptLimit:', d.get('realApiDailyAttemptLimit'))
+print('remainingRealApiAttempts:', d.get('remainingRealApiAttempts'))
+"
+```
+
+### 真实测试前的硬门槛
+
+| 条件 | 要求 |
+|------|------|
+| `remainingRealApiAttempts` | 必须为 1（首次）或 0（禁止测试） |
+| `REAL_API_ATTEMPT_LIMIT_ENABLED` | 必须为 `true` |
+| `REAL_API_DAILY_ATTEMPT_LIMIT` | 建议为 1 |
+| 前端显示 | "真实测试剩余 N 次" |
+
+### 测试后必须检查
+
+```bash
+# 执行一次真实生成后，立即检查
+curl http://127.0.0.1:8787/api/health | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+print('remainingRealApiAttempts:', d.get('remainingRealApiAttempts'))
+print('realApiAttemptsUsed:', d.get('realApiAttemptsUsed'))
+"
+
+# 应显示: remainingRealApiAttempts=0, realApiAttemptsUsed=1
+```
+
+### 禁止条件
+
+- `remainingRealApiAttempts = 0` 时禁止触发任何真实生成
+- `REAL_API_DAILY_ATTEMPT_LIMIT` 不允许手动临时调高超过 1（除非明确知道会消耗）
+- 不要在 server 配置不确定时启动 realGeneration server

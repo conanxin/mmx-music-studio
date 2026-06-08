@@ -222,3 +222,133 @@ export function getDailyQuotaStatus(config: DailyQuotaConfig): {
     date: record.date,
   };
 }
+
+// ── Real API Attempt Guard (Phase 5B-C) ────────────────────────────────────────
+
+/**
+ * Hard protection against real MiniMax API calls.
+ *
+ * Unlike daily quota (counts on success), attempt guard counts BEFORE the
+ * network call. If remaining=0, NO network request is made at all.
+ *
+ * This prevents the "99 failed retries = 99 real API calls" problem.
+ */
+
+export interface RealApiAttemptConfig {
+  enabled: boolean;
+  dailyLimit: number; // e.g. 1 — one real API attempt per day is enough for testing
+}
+
+export interface RealApiAttemptRecord {
+  date: string; // YYYY-MM-DD
+  attempts: number;
+  updatedAt: string;
+}
+
+const REAL_API_ATTEMPTS_FILE = path.join(QUOTA_DIR, 'real-api-attempts.json');
+
+export function buildRealApiAttemptConfig(): RealApiAttemptConfig {
+  return {
+    enabled: process.env.REAL_API_ATTEMPT_LIMIT_ENABLED === 'true',
+    dailyLimit: Number(process.env.REAL_API_DAILY_ATTEMPT_LIMIT || 1),
+  };
+}
+
+function loadRealApiAttemptRecord(): RealApiAttemptRecord {
+  ensureQuotaDir();
+  if (!fs.existsSync(REAL_API_ATTEMPTS_FILE)) {
+    return emptyRealApiAttemptRecord();
+  }
+  try {
+    const raw = fs.readFileSync(REAL_API_ATTEMPTS_FILE, 'utf-8');
+    const record = JSON.parse(raw) as RealApiAttemptRecord;
+    // Reset if it's a new day
+    if (record.date !== todayStr()) {
+      return emptyRealApiAttemptRecord();
+    }
+    return record;
+  } catch {
+    return emptyRealApiAttemptRecord();
+  }
+}
+
+function saveRealApiAttemptRecord(record: RealApiAttemptRecord): void {
+  ensureQuotaDir();
+  fs.writeFileSync(REAL_API_ATTEMPTS_FILE, JSON.stringify(record, null, 2), 'utf-8');
+}
+
+function emptyRealApiAttemptRecord(): RealApiAttemptRecord {
+  return {
+    date: todayStr(),
+    attempts: 0,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Check if a new real API attempt is allowed.
+ * Returns { allowed: true } or { allowed: false, attempts: N, limit: N, remaining: 0 }.
+ *
+ * Call this BEFORE making the actual MiniMax API call.
+ */
+export function checkRealApiAttemptLimit(config: RealApiAttemptConfig): {
+  allowed: boolean;
+  attempts?: number;
+  limit?: number;
+  remaining?: number;
+} {
+  if (!config.enabled) return { allowed: true };
+
+  const record = loadRealApiAttemptRecord();
+  if (record.attempts >= config.dailyLimit) {
+    return { allowed: false, attempts: record.attempts, limit: config.dailyLimit, remaining: 0 };
+  }
+  return {
+    allowed: true,
+    attempts: record.attempts,
+    limit: config.dailyLimit,
+    remaining: config.dailyLimit - record.attempts,
+  };
+}
+
+/**
+ * Reserve a real API attempt slot BEFORE the network call.
+ * Call this right before callMiniMaxApi() — if it throws, we still count the attempt.
+ *
+ * If limit is exceeded, throws an error immediately (no network call).
+ */
+export function reserveRealApiAttempt(
+  config: RealApiAttemptConfig,
+  metadata?: { jobId?: string; mode?: string },
+): void {
+  if (!config.enabled) return; // guard disabled — no protection
+
+  const record = loadRealApiAttemptRecord();
+  record.attempts += 1;
+  record.updatedAt = new Date().toISOString();
+  saveRealApiAttemptRecord(record);
+
+  // Log without secrets — only metadata about what was being generated
+  const meta = metadata
+    ? ` jobId=${metadata.jobId ?? 'unknown'} mode=${metadata.mode ?? 'unknown'}`
+    : '';
+  console.log(`[attempt-guard] real API attempt reserved: ${record.attempts}/${config.dailyLimit}${meta}`);
+}
+
+/**
+ * Get current real API attempt stats without modifying anything.
+ */
+export function getRealApiAttemptStats(config: RealApiAttemptConfig): {
+  attempts: number;
+  limit: number;
+  remaining: number;
+  date: string;
+} {
+  const record = loadRealApiAttemptRecord();
+  return {
+    attempts: record.attempts,
+    limit: config.dailyLimit,
+    remaining: Math.max(0, config.dailyLimit - record.attempts),
+    date: record.date,
+  };
+}

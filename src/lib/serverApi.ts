@@ -81,6 +81,11 @@ export interface HealthInfo {
   byokEnabled?: boolean;
   serverKeyFallback?: boolean;
   byokKeyStorage?: string;
+  // Phase 5B-C: Real API Attempt Guard
+  realApiAttemptLimitEnabled?: boolean;
+  realApiDailyAttemptLimit?: number;
+  realApiAttemptsUsed?: number;
+  remainingRealApiAttempts?: number;
 }
 
 export interface CheckKeyResult {

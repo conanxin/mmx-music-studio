@@ -41,7 +41,11 @@ import {
   redactForLog,
   getKeyLengthBucket,
 } from './byok-secrets.js';
-import type { BackendMode, TrackMetadata, ServerConfig } from './types.js';
+import {
+  checkRealApiAttemptLimit,
+  reserveRealApiAttempt,
+} from './rate-limit.js';
+import type { BackendMode, ServerConfig } from './types.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -302,7 +306,7 @@ export function deleteJob(id: string): boolean {
 
 export function retryJob(
   id: string,
-  config: Pick<ServerConfig, 'outputDir' | 'mockGenerationEnabled' | 'realGenerationEnabled' | 'previewAccess' | 'generationAccess' | 'rateLimit' | 'dailyQuota' | 'backend'>,
+  config: Pick<ServerConfig, 'outputDir' | 'mockGenerationEnabled' | 'realGenerationEnabled' | 'previewAccess' | 'generationAccess' | 'rateLimit' | 'dailyQuota' | 'realApiAttempt' | 'backend'>,
 ): GenerateJob | null {
   const original = jobStore.get(id);
   if (!original) return null;
@@ -652,6 +656,30 @@ async function executeApiJob(
   });
 
   const payload = buildMiniMaxMusicPayload(job.input);
+
+  // ── Phase 5B-C: Real API Attempt Guard ────────────────────────────────────
+  // Check BEFORE the network call — this is the hard limit.
+  // If remaining=0, the job fails immediately without any MiniMax API call.
+  if (config.realApiAttempt.enabled) {
+    const check = checkRealApiAttemptLimit(config.realApiAttempt);
+    if (!check.allowed) {
+      updateJob(job.id, {
+        status: 'failed',
+        error: {
+          type: 'real_api_attempt_limit_exceeded',
+          message: `今日真实 API 测试次数已用完（${check.attempts}/${check.limit}）`,
+          hint: '请明天再试，或在设置中关闭真实 API 测试模式',
+        },
+        finishedAt: new Date().toISOString(),
+        progressMessage: '生成失败',
+      });
+      if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
+      return;
+    }
+  }
+
+  // Reserve the attempt BEFORE the network call
+  reserveRealApiAttempt(config.realApiAttempt, { jobId: job.id, mode: job.input.mode });
 
   let apiResult: Awaited<ReturnType<typeof callMiniMaxApi>>;
   try {
