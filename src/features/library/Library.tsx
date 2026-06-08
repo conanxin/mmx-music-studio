@@ -9,7 +9,7 @@ type TrackItem = {
   id: string;
   title: string;
   mode: string;
-  durationText: string;
+  durationText?: string;
   createdAt: Date;
   audioUrl?: string;
   downloadUrl?: string;
@@ -22,7 +22,7 @@ function serverTrackToItem(t: TrackLike): TrackItem {
     id: t.id,
     title: t.title,
     mode: t.mode,
-    durationText: t.durationText || '?:??',
+    durationText: t.durationText,
     createdAt: new Date(t.createdAt || Date.now()),
     audioUrl: t.audioUrl,
     downloadUrl: t.downloadUrl,
@@ -36,7 +36,7 @@ function mockTaskToItem(t: typeof MOCK_TASKS[0]): TrackItem {
     id: t.id,
     title: t.title,
     mode: t.mode,
-    durationText: t.duration ? formatDuration(t.duration) : '?:??',
+    durationText: t.duration ? formatDuration(t.duration) : undefined,
     createdAt: t.createdAt,
     isMock: true,
   };

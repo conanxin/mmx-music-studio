@@ -29,7 +29,7 @@ export default function WaveformPlayer({
   const [audioError, setAudioError] = useState(false);
 
   const hasAudio = !!audioUrl;
-  // Display duration: show "读取中" while audio is loading, then real time
+  // Display duration: show "读取中" while audio metadata is loading, then real time
   const isDurationKnown = totalDuration > 0 || !!durationText;
   const displayDuration = durationText
     ? durationText
@@ -39,7 +39,7 @@ export default function WaveformPlayer({
     ? formatSeconds(totalDuration)
     : '';
 
-  // Sync audio element when audioUrl changes
+  // Sync audio element when audioUrl changes — reset duration so "读取中" shows during load
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio();
@@ -49,13 +49,16 @@ export default function WaveformPlayer({
     if (audioUrl) {
       audio.src = audioUrl;
       audio.load();
+      // Reset duration so WaveformPlayer shows "读取中" while metadata loads
+      setTotalDuration(duration > 0 ? duration : 0);
     } else {
       audio.src = '';
+      setTotalDuration(0);
     }
     setPlaying(false);
     setCurrentTime(0);
     setAudioError(false);
-  }, [audioUrl]);
+  }, [audioUrl, duration]);
 
   const togglePlay = () => {
     if (!audioRef.current || !hasAudio || disabled) return;
@@ -78,11 +81,14 @@ export default function WaveformPlayer({
     const onEnded = () => { setPlaying(false); setCurrentTime(0); };
     const onError = () => setAudioError(true);
     const onCanPlay = () => {
-      if (audio.duration) setTotalDuration(audio.duration);
+      if (audio.duration && isFinite(audio.duration)) setTotalDuration(audio.duration);
+    };
+    const onLoadedMetadata = () => {
+      if (audio.duration && isFinite(audio.duration)) setTotalDuration(audio.duration);
     };
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
-      if (audio.duration) setTotalDuration(audio.duration);
+      if (audio.duration && isFinite(audio.duration)) setTotalDuration(audio.duration);
     };
 
     audio.addEventListener('play', onPlay);
@@ -90,6 +96,7 @@ export default function WaveformPlayer({
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
     audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('timeupdate', onTimeUpdate);
 
     return () => {
@@ -98,6 +105,7 @@ export default function WaveformPlayer({
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
       audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('timeupdate', onTimeUpdate);
     };
   });

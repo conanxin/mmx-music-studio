@@ -154,7 +154,7 @@ interface DisplayTrack {
   id: string;
   title: string;
   mode: string;
-  durationText: string;
+  durationText?: string;
   audioUrl?: string;
   downloadUrl?: string;
 }
@@ -164,7 +164,7 @@ function serverTrackToDisplay(t: TrackLike): DisplayTrack {
     id: t.id,
     title: t.title,
     mode: t.mode,
-    durationText: t.durationText || '?:??',
+    durationText: t.durationText,
     audioUrl: t.audioUrl,
     downloadUrl: t.downloadUrl,
   };
@@ -349,7 +349,7 @@ export default function Studio() {
             id: latest.id,
             title: latest.title || '最近生成的音乐',
             mode: latest.mode || 'auto',
-            durationText: latest.durationText || '?:??',
+            durationText: latest.durationText,
             audioUrl: latest.audioUrl || `/api/tracks/${latest.id}/audio`,
             downloadUrl: latest.downloadUrl || `/api/tracks/${latest.id}/download`,
           };
@@ -373,7 +373,7 @@ export default function Studio() {
             id: track.id,
             title: track.title || '最近生成的音乐',
             mode: track.mode || 'auto',
-            durationText: track.durationText || '?:??',
+            durationText: track.durationText,
             audioUrl: track.audioUrl || `/api/tracks/${track.id}/audio`,
             downloadUrl: track.downloadUrl || `/api/tracks/${track.id}/download`,
           };
