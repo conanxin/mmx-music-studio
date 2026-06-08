@@ -4,6 +4,24 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.1-alpha] — 2026-06-08
+
+### Added
+
+- **BYOK real API test postmortem** — `docs/BYOK_REAL_TEST_POSTMORTEM.md`，复盘 Phase 5B-B 真实 API 测试失败原因和修复
+- **Real API attempt guard smoke test** — `scripts/real-api-attempt-guard-smoke-test.sh`，13 个测试用例验证 guard 逻辑
+- **Hardened BYOK test safety documentation** — `docs/BYOK_REAL_TEST_PLAN.md` 更新，明确限制和已知限制
+
+### Fixed
+
+- **Real API attempt guard** — `server/rate-limit.ts` 新增 `RealApiAttemptGuard` 类，阻止 `REAL_API_DAILY_ATTEMPT_LIMIT=0` 时的真实 API 调用
+- **Guard placement** — guard 在 `server/jobs.ts` 的 `executeApiJob` worker 中阻止，不在 API handler 中阻止（job 创建成功但立即失败）
+
+### Known Limitations
+
+- `realApiAttemptsUsed` 计数器在 guard 拦截时不递增（Phase 5D 计划修复）
+- Guard 在 worker 中阻止，job 会被创建然后标记为 failed，而非在 handler 层拒绝
+
 ## [0.1.0-alpha] — 2026-06-07
 
 ### Added
