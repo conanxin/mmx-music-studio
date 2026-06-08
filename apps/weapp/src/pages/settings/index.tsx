@@ -8,6 +8,13 @@ import {
 } from '../../config/api'
 import { testConnection } from '../../adapters/request'
 import { HealthInfo } from '../../adapters/request'
+import {
+  setSessionApiKey,
+  clearSessionApiKey,
+  maskApiKey,
+  hasSessionApiKey,
+  getSessionApiKey,
+} from '../../adapters/byok'
 import './index.scss'
 
 export default class Settings extends Component<Record<string, unknown>, {
@@ -15,12 +22,18 @@ export default class Settings extends Component<Record<string, unknown>, {
   connectionStatus: 'idle' | 'testing' | 'ok' | 'error'
   healthInfo: HealthInfo | null
   statusMessage: string
+  byokInputKey: string
+  byokHasKey: boolean
+  byokMaskedKey: string
 }> {
   state = {
     apiBase: getApiBaseFromConfig() || DEFAULT_API_BASE,
     connectionStatus: 'idle' as 'idle' | 'testing' | 'ok' | 'error',
     healthInfo: null as HealthInfo | null,
     statusMessage: '',
+    byokInputKey: '',
+byokHasKey: hasSessionApiKey(),
+    byokMaskedKey: hasSessionApiKey() ? maskApiKey(getSessionApiKey() || '') : '',
   }
 
   async componentDidMount() {
@@ -77,6 +90,36 @@ export default class Settings extends Component<Record<string, unknown>, {
     setTimeout(() => this.setState({ statusMessage: '' }), 3000)
   }
 
+  // ── Phase 5C: BYOK Handlers ─────────────────────────────────────────────
+
+  handleByokInputChange = (e: { detail: { value: string } }) => {
+    this.setState({ byokInputKey: e.detail.value })
+  }
+
+  handleSaveByokKey = () => {
+    const { byokInputKey } = this.state
+    if (!byokInputKey.trim()) return
+    setSessionApiKey(byokInputKey.trim())
+    const key = byokInputKey.trim()
+    this.setState({
+      byokInputKey: '',
+      byokHasKey: true,
+      byokMaskedKey: maskApiKey(key),
+      statusMessage: 'Key 已保存到当前会话',
+    })
+    setTimeout(() => this.setState({ statusMessage: '' }), 2000)
+  }
+
+  handleClearByokKey = () => {
+    clearSessionApiKey()
+    this.setState({
+      byokHasKey: false,
+      byokMaskedKey: '',
+      statusMessage: 'Key 已清除',
+    })
+    setTimeout(() => this.setState({ statusMessage: '' }), 2000)
+  }
+
   getStatusDotClass = (): string => {
     const { connectionStatus } = this.state
     if (connectionStatus === 'ok') return 'status-dot connected'
@@ -104,7 +147,7 @@ export default class Settings extends Component<Record<string, unknown>, {
   }
 
   render() {
-    const { apiBase, healthInfo, statusMessage } = this.state
+    const { apiBase, healthInfo, statusMessage, byokInputKey, byokHasKey, byokMaskedKey } = this.state
     const statusDotClass = this.getStatusDotClass()
     const statusLabel = this.getStatusLabel()
     const backendModeLabel = this.getBackendModeLabel()
@@ -206,6 +249,64 @@ export default class Settings extends Component<Record<string, unknown>, {
                 <Text className="key-mode-desc">后端持有 Key，小程序不暴露</Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* MiniMax Token Plan Key — Phase 5C: Session BYOK */}
+        <View className="settings-section card byok-key-section">
+          <Text className="section-title">🔑 MiniMax Token Plan Key</Text>
+          <Text className="byok-subtitle">
+            当前小程序 BYOK 为会话级 Key，只保存在当前运行内存中，关闭小程序后会清空。
+          </Text>
+
+          {/* Status indicator */}
+          <View className="byok-status-row">
+            <Text className="byok-status-dot">{}</Text>
+            <Text className="byok-status-label">{byokHasKey ? 'Key 已填写' : 'Key 未填写'}</Text>
+          </View>
+
+          {/* Masked key display */}
+          {byokHasKey && (
+            <View className="byok-masked">
+              <Text className="byok-masked-text">{byokMaskedKey}</Text>
+            </View>
+          )}
+
+          {/* Key input */}
+          <View className="byok-input-row">
+            <View className="byok-input-wrap">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <Input
+                className="byok-input"
+                type="text"
+                password={false}
+                placeholder="输入您的 Key（sk- 开头）"
+                value={byokInputKey}
+                onInput={this.handleByokInputChange}
+              />
+            </View>
+          </View>
+
+          {/* Action buttons */}
+          <View className="byok-actions">
+            <View
+              className={`byok-btn primary ${!byokInputKey ? 'disabled' : ''}`}
+              onClick={this.handleSaveByokKey}
+            >
+              <Text className="byok-btn-text">保存到当前会话</Text>
+            </View>
+            {byokHasKey && (
+              <View className="byok-btn danger" onClick={this.handleClearByokKey}>
+                <Text className="byok-btn-text">清除 Key</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Security reminder */}
+          <View className="byok-security-note">
+            <Text className="byok-security-text">
+              ⛔ Key 不会写入本地存储，不会进入 URL 或请求 body。
+            </Text>
           </View>
         </View>
 

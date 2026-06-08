@@ -275,3 +275,124 @@
   opacity: 0.5;
   text-align: center;
 }
+
+// ── Phase 5C: BYOK Key Section ─────────────────────────────────────────────
+
+.byok-key-section {
+  margin-top: var(--space-4);
+}
+
+.byok-subtitle {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
+}
+
+.byok-status-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.byok-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ba1aa;
+  margin-right: var(--space-2);
+
+  .byok-key-section & {
+    background: #4ade80;
+  }
+}
+
+.byok-status-label {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.byok-masked {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.byok-masked-text {
+  font-size: 12px;
+  color: #9ba1aa;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.byok-input-row {
+  margin-bottom: var(--space-3);
+}
+
+.byok-input-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.byok-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-3);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  border: none;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+
+  &::placeholder {
+    color: #4b5563;
+  }
+}
+
+.byok-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.byok-btn {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  text-align: center;
+
+  &.primary {
+    background: var(--color-accent);
+    color: #09090b;
+
+    &.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+  }
+
+  &.danger {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+}
+
+.byok-btn-text {
+  font-size: 13px;
+  color: inherit;
+}
+
+.byok-security-note {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.byok-security-text {
+  font-size: 11px;
+  color: #f87171;
+  line-height: 1.5;
+}

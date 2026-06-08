@@ -4,7 +4,7 @@
 # Does NOT trigger real generation
 
 set -e
-API_BASE="${API_BASE:-http://118.195.129.137:8787}"
+API_BASE="${API_BASE:-http://localhost:8787}"
 PASS=0
 FAIL=0
 

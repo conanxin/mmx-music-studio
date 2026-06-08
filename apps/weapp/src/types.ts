@@ -116,3 +116,10 @@ export const MODE_BTN_LABELS: Record<MusicMode, string> = {
   lyrics: '按歌词生成',
   cover: '生成改编',
 }
+
+// ─── BYOK State (Phase 5C) ───────────────────────────────────────────────────
+
+export interface WeappByokState {
+  hasKey: boolean
+  maskedKey?: string
+}

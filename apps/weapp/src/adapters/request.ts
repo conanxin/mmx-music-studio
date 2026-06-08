@@ -3,15 +3,19 @@
  * 微信小程序 HTTP 请求适配层
  *
  * 安全原则：
- * - 不发送 API key / token / secret
- * - 不发送 x-minimax-api-key header
+ * - 不发送 API key / token / secret in URL / body / logs
  * - 不把错误对象中的敏感字段输出
  * - 中文错误文案
+ *
+ * Phase 5C: BYOK 支持
+ * - x-minimax-api-key header 仅用于 session key
+ * - body 不含 apiKey 字段
  */
 
 // @ts-ignore Taro types have internal esModuleInterop issues — ignored via skipLibCheck
 import Taro from '@tarojs/taro';
-import { getEffectiveApiBase, DEFAULT_API_BASE } from '../config/api';
+import { getEffectiveApiBase } from '../config/api';
+import { getSessionApiKey } from './byok';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +38,8 @@ export interface HealthInfo {
   region: string;
   hasServerKey: boolean;
   hasUserKey: boolean;
+  byokEnabled: boolean;
+  hasSessionKey: boolean;
 }
 
 export interface ServerTrack {
@@ -163,6 +169,19 @@ export interface JobStatsResponse {
   stats: JobStats;
 }
 
+// ── BYOK headers (Phase 5C) ────────────────────────────────────────────────
+
+/**
+ * Get HTTP headers for BYOK session key.
+ * Returns an object with x-minimax-api-key if a session key is set.
+ * Does NOT log the key value.
+ */
+export function getByokHeaders(): Record<string, string> {
+  const key = getSessionApiKey()
+  if (!key) return {}
+  return { 'x-minimax-api-key': key }
+}
+
 // ── Core request ─────────────────────────────────────────────────────────────
 
 async function requestJson<T = Record<string, unknown>>(
@@ -171,9 +190,10 @@ async function requestJson<T = Record<string, unknown>>(
     method?: 'GET' | 'POST' | 'DELETE';
     body?: Record<string, unknown>;
     timeout?: number;
+    extraHeaders?: Record<string, string>;
   } = {},
 ): Promise<T> {
-  const { method = 'GET', body, timeout = 120_000 } = options;
+  const { method = 'GET', body, timeout = 120_000, extraHeaders = {} } = options;
   const apiBase = getEffectiveApiBase();
 
   let fullUrl: string;
@@ -185,6 +205,7 @@ async function requestJson<T = Record<string, unknown>>(
 
   const headerMap: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...extraHeaders,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -223,10 +244,16 @@ export async function getHealth(): Promise<HealthInfo> {
   }
 }
 
-/** POST /api/generate — 使用 Server Mock（不消耗额度） */
+/** POST /api/generate — Phase 5C: supports BYOK via x-minimax-api-key header
+ *
+ * - Body does NOT contain apiKey field
+ * - BYOK key sent via x-minimax-api-key HTTP header (via getByokHeaders())
+ * - mock mode: key not required
+ */
 export async function generateTrack(
   input: GenerateInput,
 ): Promise<GenerateResponse> {
+  // Body intentionally does NOT include apiKey — key goes in header only
   const payload = {
     input,
     keyMode: 'server' as const,
@@ -236,12 +263,13 @@ export async function generateTrack(
     const res = await requestJson<GenerateResponse>('/api/generate', {
       method: 'POST',
       body: payload,
+      extraHeaders: getByokHeaders(),
     });
     return res;
   } catch (err) {
-    // 提供中文友好的错误提示，不暴露内部错误细节
+    // Provide Chinese-friendly error messages without exposing internal details
     const errMsg = err instanceof Error ? err.message : '生成请求失败';
-    // 尝试从错误消息中提取 JSON 错误体
+    // Try to extract JSON error body from message
     let msg = '生成请求失败';
     const colonIdx = errMsg.indexOf('：');
     if (colonIdx >= 0) {
@@ -253,6 +281,12 @@ export async function generateTrack(
           msg = '生成请求过于频繁，请稍后再试';
         } else if (errBody?.error?.type === 'daily_quota_exceeded') {
           msg = '今日生成额度已用完';
+        } else if (errBody?.error?.type === 'real_api_attempt_limit_exceeded') {
+          msg = '真实 API 测试次数已用完，请稍后再试';
+        } else if (errBody?.error?.type === 'missing_api_key') {
+          msg = '请先在设置页填写 MiniMax Token Plan Key';
+        } else if (errBody?.error?.type === 'validation') {
+          msg = 'Key 格式不正确，请检查后重新填写';
         } else {
           msg = errBody?.error?.message ?? errMsg;
         }

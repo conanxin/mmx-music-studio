@@ -9,10 +9,11 @@ import Taro from '@tarojs/taro'
 import type { MusicMode, AudioPlayer } from '../../types'
 import { MODE_LABELS, MODE_BTN_LABELS, STYLE_TAGS, type StyleTag } from '../../types'
 import { MOCK_TRACKS } from '../../mock/tracks'
-import { generateTrack } from '../../adapters/request'
+import { generateTrack, getHealth, HealthInfo } from '../../adapters/request'
 import { getApiBaseFromConfig, DEFAULT_API_BASE } from '../../config/api'
 import { createAudioController } from '../../adapters/audio'
 import { downloadAndSaveAudio } from '../../adapters/download'
+import { hasSessionApiKey } from '../../adapters/byok'
 import './index.scss'
 
 const MODE_ORDER: MusicMode[] = ['instrumental', 'auto', 'lyrics', 'cover']
@@ -51,6 +52,9 @@ export default function Studio() {
   const [generationSource, setGenerationSource] = useState('local-mock')
   const [playingState, setPlayingState] = useState<'idle' | 'loading' | 'playing' | 'paused' | 'error'>('idle')
   const [downloadState, setDownloadState] = useState<'idle' | 'loading'>('idle')
+  const [byokKeyMissing, setByokKeyMissing] = useState(false)
+  const [byokQuotaWarning, setByokQuotaWarning] = useState(false)
+  const [healthInfo, setHealthInfo] = useState<HealthInfo | null>(null)
 
   const audioCtrlRef = useRef<WeappAudioCtrl | null>(null)
 
@@ -75,6 +79,35 @@ export default function Studio() {
       audioCtrlRef.current?.destroy()
       audioCtrlRef.current = null
     }
+  }, [])
+
+  // Phase 5C: Check health info + BYOK key status on mount
+  useEffect(() => {
+    const checkByokStatus = async () => {
+      try {
+        const info = await getHealth()
+        setHealthInfo(info)
+        // Check if real generation requires BYOK key
+        if (
+          info.backend === 'api' &&
+          info.realGenerationEnabled &&
+          info.byokEnabled === true &&
+          !hasSessionApiKey()
+        ) {
+          setByokKeyMissing(true)
+        }
+        if (
+          info.backend === 'api' &&
+          info.realGenerationEnabled &&
+          info.byokEnabled
+        ) {
+          setByokQuotaWarning(true)
+        }
+      } catch {
+        // health check failed — ignore, continue in mock mode
+      }
+    }
+    checkByokStatus()
   }, [])
 
   const toggleStyle = (style: StyleTag) => {
@@ -310,11 +343,29 @@ export default function Studio() {
         </View>
       )}
 
+      {/* Phase 5C: BYOK key missing warning */}
+      {byokKeyMissing && (
+        <View className="byok-banner byok-banner--warn">
+          <Text className="byok-banner-text">
+            ⚠️ 请先在「设置」填入您的 MiniMax Token Plan Key，否则无法生成真实音乐
+          </Text>
+        </View>
+      )}
+
+      {/* Phase 5C: Quota warning for BYOK mode */}
+      {byokQuotaWarning && !byokKeyMissing && (
+        <View className="byok-banner byok-banner--info">
+          <Text className="byok-banner-text">
+            💡 您的额度由 MiniMax Token Plan 提供，请留意剩余额度
+          </Text>
+        </View>
+      )}
+
       {/* Generate button */}
       <Button
-        className={`btn-primary generate-btn ${isGenerating ? 'btn-disabled' : ''}`}
-        onClick={handleGenerate}
-        disabled={isGenerating}
+        className={`btn-primary generate-btn ${isGenerating ? 'btn-disabled' : ''} ${byokKeyMissing ? 'btn-disabled' : ''}`}
+        onClick={byokKeyMissing ? undefined : handleGenerate}
+        disabled={isGenerating || byokKeyMissing}
       >
         <Text>{isGenerating ? '生成中…' : MODE_BTN_LABELS[mode]}</Text>
       </Button>
