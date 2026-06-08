@@ -98,6 +98,9 @@ export function getClientKey(req: IncomingMessage): string {
 /**
  * Check if a client is within rate limits.
  * Returns { allowed: true } if OK, { allowed: false, retryAfterMs: N } if exceeded.
+ *
+ * NOTE: This function both checks AND records atomically.
+ * Each call to checkRateLimit() that returns allowed=true increments the counter.
  */
 export function checkRateLimit(key: string, config: RateLimitConfig): { allowed: boolean; retryAfterMs?: number } {
   if (!config.enabled) return { allowed: true };
@@ -124,6 +127,15 @@ export function checkRateLimit(key: string, config: RateLimitConfig): { allowed:
   valid.push(now);
   rateLimitStore.set(key, valid);
   return { allowed: true };
+}
+
+/**
+ * Reset the in-memory rate limit store.
+ * Used by smoke tests to ensure a clean state before running.
+ * Also useful when switching runtime modes or after a configuration change.
+ */
+export function resetRateLimitStore(): void {
+  rateLimitStore.clear();
 }
 
 // ── Daily quota ─────────────────────────────────────────────────────────────
@@ -221,6 +233,14 @@ export function getDailyQuotaStatus(config: DailyQuotaConfig): {
     remaining: Math.max(0, config.limit - record.total),
     date: record.date,
   };
+}
+
+/**
+ * Reset the daily quota to zero.
+ * Used by smoke tests to ensure a clean state before running.
+ */
+export function resetDailyQuota(): void {
+  saveQuota(emptyQuota());
 }
 
 // ── Real API Attempt Guard (Phase 5B-C) ────────────────────────────────────────

@@ -67,9 +67,11 @@ import {
   buildDailyQuotaConfig,
   buildRealApiAttemptConfig,
   checkRateLimit,
+  resetRateLimitStore,
   checkDailyQuota,
   getDailyQuotaStatus,
   incrementDailyQuota,
+  resetDailyQuota,
   checkRealApiAttemptLimit,
   getRealApiAttemptStats,
   getClientKey,
@@ -1376,8 +1378,24 @@ async function routeHandler(
   const url = req.url!.split('?')[0];
   if (tryServeStatic(req, res)) return;
 
+  const debugResetEndpointsEnabled = process.env.DEBUG_RESET_ENDPOINTS === 'true';
+
   if (url === '/api/health') {
     await handleHealth(req, res, config);
+  } else if (url === '/api/debug/reset-rate-limit') {
+    if (!debugResetEndpointsEnabled) {
+      res.writeHead(404).end();
+      return;
+    }
+    resetRateLimitStore();
+    res.writeHead(204).end();
+  } else if (url === '/api/debug/reset-daily-quota') {
+    if (!debugResetEndpointsEnabled) {
+      res.writeHead(404).end();
+      return;
+    }
+    resetDailyQuota();
+    res.writeHead(204).end();
   } else if (url === '/api/key/check') {
     await handleKeyCheck(req, res, config);
   } else if (url === '/api/preview-access/status') {

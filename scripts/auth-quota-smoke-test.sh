@@ -30,7 +30,7 @@ export GENERATION_ACCESS_ENABLED=true
 export GENERATION_ACCESS_PIN="smoke_test_pin_999"
 export RATE_LIMIT_ENABLED=true
 export RATE_LIMIT_WINDOW_MS=5000
-export RATE_LIMIT_MAX_REQUESTS=4
+export RATE_LIMIT_MAX_REQUESTS=3
 export DAILY_QUOTA_ENABLED=true
 export DAILY_GENERATION_LIMIT=5
 export MOCK_GENERATION_ENABLED=true
@@ -161,6 +161,7 @@ echo "Config: GENERATION_ACCESS_PIN=smoke_test_pin_999, RATE_LIMIT_MAX_REQUESTS=
 echo "        RATE_LIMIT_WINDOW_MS=5000, DAILY_GENERATION_LIMIT=5, MOCK mode"
 
 cd "$PROJECT_ROOT"
+DEBUG_RESET_ENDPOINTS=true \
 npx tsx "$SERVER_ENTRY" &
 SERVER_PID=$!
 echo "Server PID: $SERVER_PID"
@@ -328,6 +329,11 @@ secret_scan "$BODY" "correct_pin_response"
 echo ""
 echo "=== PHASE 5: POST /api/generate with cookie → mock job created ==="
 
+# Reset both quota stores to ensure clean state for this smoke test
+curl -sf -X POST "$API_BASE/api/debug/reset-rate-limit" > /dev/null || true
+curl -sf -X POST "$API_BASE/api/debug/reset-daily-quota" > /dev/null || true
+echo "(rate limit + daily quota stores reset)"
+
 RESP=$(curl -s -X POST \
   -H "Content-Type: application/json" \
   -b "$COOKIE_JAR" \
@@ -398,6 +404,10 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 echo ""
 echo "=== PHASE 6: Rate limit (3 requests in 5s window) → 429 ==="
+
+# Reset in-memory rate limit store to ensure clean state
+curl -sf -X POST "$API_BASE/api/debug/reset-rate-limit" > /dev/null || true
+echo "(rate limit store reset)"
 
 # RATE_LIMIT_MAX_REQUESTS=4, RATE_LIMIT_WINDOW_MS=5000
 # 4 requests allowed, 5th should be 429
