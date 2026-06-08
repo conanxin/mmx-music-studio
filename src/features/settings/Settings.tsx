@@ -165,9 +165,9 @@ export default function Settings() {
   const runtimeModeDesc = ((): string => {
     if (health === null) return '正在连接服务器…';
     if (health.previewAccessEnabled) return '已启用 PIN 访问保护，真实生成暂时关闭';
-    if (byokEnabled && backend === 'api') return '用户自带 Key（BYOK）模式，生成消耗用户自己的 Token Plan 额度';
-    if (health.realGenerationEnabled && backend === 'cli') return '真实调用 MiniMax mmx CLI，会消耗 Token Plan 额度';
-    if (health.realGenerationEnabled && backend === 'api') return '直接调用 MiniMax API，实验性，可能不稳定';
+    if (byokEnabled && backend === 'api') return '用户自带 Key（BYOK）模式，生成消耗用户自己的 Token Plan 额度；Telegram 生成成功使用的是 MMX CLI链路';
+    if (health.realGenerationEnabled && backend === 'cli') return '真实调用 MiniMax mmx CLI（与 Telegram 生成链路一致），会消耗 Token Plan 额度';
+    if (health.realGenerationEnabled && backend === 'api') return '直接调用 MiniMax API（实验性链路，与 Telegram MMX CLI 不同），可能不稳定';
     if (!health.realGenerationEnabled && backend === 'mock' && health.mockGenerationEnabled) return '本地模拟，不调用 MiniMax，不消耗额度';
     return '当前配置不属于标准运行模式';
   })();
@@ -530,9 +530,10 @@ export default function Settings() {
           </p>
           {health?.realApiAttemptLimitEnabled && (
             <div className={styles.backendDesc} style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: -6 }}>
-              真实 API 测试模式：限 {health.realApiDailyAttemptLimit} 次/天，剩余 <strong style={{ color: health.remainingRealApiAttempts === 0 ? '#FF8B8B' : '#B8FF6A' }}>{health.remainingRealApiAttempts ?? 0}</strong> 次。
+              真实 API 测试模式（项目本地保护）：限 {health.realApiDailyAttemptLimit} 次/天，剩余 <strong style={{ color: health.remainingRealApiAttempts === 0 ? '#FF8B8B' : '#B8FF6A' }}>{health.remainingRealApiAttempts ?? 0}</strong> 次。
+              这是项目保护限制，不代表 MiniMax 官方额度。
               测试时<strong style={{ color: '#B8FF6A' }}>请只点击一次生成按钮</strong>。
-              如已用完，请明天再试或关闭真实 API 模式。
+              如已用完，请明天再试或关闭真实 API 模式，或切换到 MMX CLI 模式。
             </div>
           )}
           <div className={styles.statusGrid}>
@@ -561,7 +562,7 @@ export default function Settings() {
               </div>
             </div>
             <div className={styles.statusCard}>
-              <div className={styles.statusLabel}>每日额度</div>
+              <div className={styles.statusLabel}>每日生成保护</div>
               <div className={`${styles.statusValue} ${health?.dailyQuotaEnabled ? styles.statusOk : styles.statusSecondary}`}>
                 {health?.dailyQuotaEnabled ? '开启' : '关闭'}
               </div>

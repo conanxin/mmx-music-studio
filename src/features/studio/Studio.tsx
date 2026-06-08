@@ -232,7 +232,7 @@ export default function Studio() {
     if (isByokApi && !settings.apiKey) return '请先在设置页填写你的 MiniMax Token Plan Key，否则无法生成';
     if (isByokApi && settings.apiKey) return '将使用你的 Token Plan Key，生成会消耗你的额度';
     if (isByokApi && healthInfo.realApiAttemptLimitEnabled && healthInfo.remainingRealApiAttempts === 0) {
-      return '真实 API 测试次数已用完，请明天再试';
+      return '本地真实 API 测试次数已用完（项目保护限制，不代表 MiniMax 官方额度）';
     }
     if (healthInfo.backend === 'cli') return 'MMX CLI 模式使用服务器登录状态，不读取页面 Key';
     if (healthInfo.backend === 'api' && !healthInfo.byokEnabled) return 'MiniMax API Adapter 实验中，建议使用 MMX CLI';
@@ -401,7 +401,7 @@ export default function Studio() {
       healthInfo?.realApiAttemptLimitEnabled &&
       (healthInfo?.remainingRealApiAttempts ?? 1) <= 0
     ) {
-      setGenError('今日真实 API 测试次数已用完，请明天再试。');
+      setGenError('本地真实 API 测试次数已用完（项目保护限制，不代表 MiniMax 官方额度）。请明天再试，或切换到 MMX CLI 模式。');
       return;
     }
 
@@ -410,7 +410,7 @@ export default function Studio() {
       healthInfo?.remainingDailyGenerations !== undefined &&
       healthInfo.remainingDailyGenerations <= 0
     ) {
-      setGenError('今日生成额度已用完，请明天再试。');
+      setGenError('本地每日生成保护次数已用完（项目保护限制，不代表 MiniMax 官方额度）。请明天再试。');
       return;
     }
 
