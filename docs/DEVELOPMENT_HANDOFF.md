@@ -277,6 +277,47 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 
 ---
 
+
+## Phase 5A: BYOK API Key Mode（已完成）
+
+### 核心文件
+
+| 文件 | 作用 |
+|------|------|
+| `server/byok-secrets.ts` | BYOK Key 内存存储，job.id → key，TTL 30min |
+| `server/index.ts` | BYOK guard，验证 x-minimax-api-key header |
+| `server/jobs.ts` | setJobApiKey / clearJobApiKey 接入 |
+| `src/features/settings/Settings.tsx` | BYOK 模式 UI |
+| `src/features/studio/Studio.tsx` | BYOK key 缺失时禁用/提示 |
+| `src/lib/serverApi.ts` | HealthInfo BYOK 字段 |
+
+### 安全模型
+
+- Key 只存 React state（页面内存，刷新清除）
+- Key 只存 server 内存 Map（job.id → key，30min TTL）
+- 不写 disk / localStorage / sessionStorage / manifest / logs
+- `x-minimax-api-key` 用 HTTP header 传递，不在 URL 或 JSON body
+- `REAL_GENERATION_ENABLED=false` 时走 mock 安全路径，不要求 key
+- `REAL_GENERATION_ENABLED=true` + `BYOK_ENABLED=true` 时必须有 session key
+- `SERVER_KEY_FALLBACK=false` 时不使用 server MINIMAX_API_KEY
+- 前端禁止把 key 放在 URL query param
+
+### CLI Adapter
+
+CLI Adapter（`mmx music generate/cover`）不使用页面 BYOK key，始终使用 server 本地 mmx auth login 的凭据。
+
+### 环境变量
+
+```bash
+BYOK_ENABLED=true          # 启用 BYOK 模式
+SERVER_KEY_FALLBACK=false # 推荐：不允许回退到 server key
+BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
+```
+
+详见 [docs/BYOK_MODE.md](BYOK_MODE.md)。
+
+---
+
 ## 推荐后续阶段
 
 | 阶段 | 目标 | 前置条件 |
@@ -285,8 +326,11 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 | **Phase 3F** | 微信小程序真机预览 | Phase 3E 完成 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
-| Phase 4E | API adapter 生产化 + HTTPS 域名实装 | Phase 3E 后 |
-| Phase 5 | 正式 Release v0.2.0-alpha | 规划 |
+| Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |
+| **Phase 5A** | **BYOK API Key 模式** | ✅ 完成 |
+| Phase 5B | BYOK 受控真实 API 测试 | 规划 |
+| Phase 5C | 小程序 BYOK 策略 | 规划 |
+| Phase 6 | 正式 Release v0.4.0-alpha | 规划 |
 
 ---
 

@@ -28,6 +28,12 @@ export interface ServerConfig {
   generationAccess: GenerationAccessConfig;
   rateLimit: RateLimitConfig;
   dailyQuota: DailyQuotaConfig;
+  /** BYOK: allow users to supply their own API key via x-minimax-api-key header */
+  byokEnabled: boolean;
+  /** BYOK: if true, fall back to server MINIMAX_API_KEY when no session key provided */
+  serverKeyFallback: boolean;
+  /** BYOK: storage method for session keys */
+  byokKeyStorage: 'memory';
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';

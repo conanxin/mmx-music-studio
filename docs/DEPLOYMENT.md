@@ -281,10 +281,14 @@ docker run -d \
 # 使用 .env 文件（不被 git 跟踪）
 
 # .env
-MINIMAX_API_KEY=<your_token_plan_key>
+MINIMAX_API_KEY=<your_minimax_key>
 MINIMAX_BACKEND=api
 REAL_GENERATION_ENABLED=true
+BYOK_ENABLED=true
+SERVER_KEY_FALLBACK=false
 ```
+
+详见 [docs/BYOK_MODE.md](BYOK_MODE.md)。
 
 ## 真实生成说明
 

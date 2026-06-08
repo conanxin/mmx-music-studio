@@ -259,3 +259,23 @@ PREVIEW_ACCESS_PIN=<same_or_different_pin>
 | `src/lib/serverApi.ts` | Frontend API functions for access gate unlock/logout |
 | `src/features/settings/Settings.tsx` | Settings UI for generation access + quota status |
 | `storage/quota/daily.json` | Runtime quota data (gitignored) |
+
+---
+
+## 与 BYOK 模式的兼容性
+
+Generation Access Gate（Phase 4C）和 BYOK（Phase 5A）是两个独立的安全层，可以同时启用：
+
+| 场景 | Generation Access | BYOK Key | 结果 |
+|------|------------------|----------|------|
+| 公开部署 | 需要 PIN | 不需要 | mock 生成（安全）|
+| 公开部署 + BYOK | 需要 PIN | 需要 | 需要 PIN + session key |
+| 个人自托管 | 不需要 | 不需要 | 直接生成 |
+| 个人自托管 + BYOK | 不需要 | 需要 | 直接生成 + session key |
+
+- Generation Access Gate 控制"是否可以触发生成"
+- BYOK 控制"生成时使用谁的 API key"
+- 两者是正交的，可以独立配置
+- `REAL_GENERATION_ENABLED=false` 时两者都被 bypass，走 mock
+
+详见 [docs/BYOK_MODE.md](BYOK_MODE.md)。

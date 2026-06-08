@@ -68,9 +68,11 @@ function deriveRuntimeModeLabel(health?: {
   realGenerationEnabled?: boolean;
   mockGenerationEnabled?: boolean;
   backend?: string;
+  byokEnabled?: boolean;
 } | null): string {
   if (!health) return '连接中…';
   if (health.previewAccessEnabled) return '访问保护';
+  if (health.byokEnabled && health.backend === 'api') return 'BYOK API';
   if (health.realGenerationEnabled && health.backend === 'cli') return '真实生成';
   if (health.realGenerationEnabled && health.backend === 'api') return 'API 实验';
   if (!health.realGenerationEnabled && health.backend === 'mock' && health.mockGenerationEnabled) return '安全预览';
@@ -191,7 +193,6 @@ export default function Studio() {
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
-  const [apiFallbackHint, setApiFallbackHint] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<'mock' | 'minimax' | 'mmx-cli' | null>(null);
   const [currentTrack, setCurrentTrack] = useState<DisplayTrack | null>(null);
   const [recentTracks, setRecentTracks] = useState<DisplayTrack[]>([]);
@@ -209,9 +210,21 @@ export default function Studio() {
     realGenerationEnabled?: boolean;
     mockGenerationEnabled?: boolean;
     previewAccessEnabled?: boolean;
+    // Phase 5A: BYOK
+    byokEnabled?: boolean;
   } | null>(null);
 
-  // ── Job queue helpers ─────────────────────────────────────────────────────────
+  // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
+  function getRuntimeModeHint(): string | null {
+    if (!healthInfo) return null;
+    const isByokApi = healthInfo.byokEnabled && healthInfo.backend === 'api';
+    if (isByokApi && !settings.apiKey) return '请先在设置页填写你的 MiniMax Token Plan Key，否则无法生成';
+    if (isByokApi && settings.apiKey) return '将使用你的 Token Plan Key，生成会消耗你的额度';
+    if (healthInfo.backend === 'cli') return 'MMX CLI 模式使用服务器登录状态，不读取页面 Key';
+    if (healthInfo.backend === 'api' && !healthInfo.byokEnabled) return 'MiniMax API Adapter 实验中，建议使用 MMX CLI';
+    if (healthInfo.backend === 'mock') return '当前为本地模拟，不消耗额度';
+    return null;
+  }
 
   function stopJobTimer() {
     if (jobTimerRef.current) {
@@ -290,6 +303,8 @@ export default function Studio() {
         realGenerationEnabled: h.realGenerationEnabled,
         mockGenerationEnabled: h.mockGenerationEnabled,
         previewAccessEnabled: h.previewAccessEnabled,
+        // Phase 5A: BYOK
+        byokEnabled: h.byokEnabled ?? false,
       });
     }).catch(() => {});
   }, []);
@@ -304,7 +319,7 @@ export default function Studio() {
   const handleModeChange = (mode: UIMode) => {
     setActiveMode(mode);
     setGenError(null);
-    setApiFallbackHint(null);
+
     const map: Record<UIMode, string> = {
       'pure-music': 'instrumental',
       'auto-song': 'auto',
@@ -346,7 +361,7 @@ export default function Studio() {
 
   const handleGenerate = async () => {
     setGenError(null);
-    setApiFallbackHint(null);
+
 
     const input = buildCoreInput(
       activeMode,
@@ -368,25 +383,23 @@ export default function Studio() {
       return;
     }
     if (validation.warnings.length > 0) {
-      const hint = validation.warnings.map(w => w.message).join('；');
-      setApiFallbackHint(hint);
+      // warnings are informational only — continue to generation
     }
 
     // Check server availability
     let useApi = false;
     try {
       const health = await getHealth();
+      setHealthInfo(health);
       if (health.ok && health.realGenerationEnabled) {
         useApi = true;
       } else if (health.ok && !health.realGenerationEnabled) {
-        setApiFallbackHint('当前为安全模式（REAL_GENERATION_ENABLED=false），使用本地模拟音频，未消耗 MiniMax 额度');
+        // safe mock mode, still route through server for job tracking
         useApi = true;
       } else {
-        setApiFallbackHint('未连接本地服务，使用客户端模拟生成');
         useApi = false;
       }
     } catch {
-      setApiFallbackHint('无法连接本地服务，使用客户端模拟生成');
       useApi = false;
     }
 
@@ -680,9 +693,9 @@ export default function Studio() {
             </div>
           )}
 
-          {/* API fallback hint */}
-          {apiFallbackHint && (
-            <div className={styles.apiHint}>{apiFallbackHint}</div>
+          {/* Phase 5A: BYOK runtime mode hint */}
+          {getRuntimeModeHint() && (
+            <div className={styles.apiHint}>{getRuntimeModeHint()}</div>
           )}
 
           {/* Validation / error */}
@@ -690,11 +703,11 @@ export default function Studio() {
             <div className={styles.errorBox}>{genError}</div>
           )}
 
-          {/* Generate button */}
+          {/* Generate button — disabled when BYOK needs key */}
           <button
             className={styles.generateBtn}
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey)}
           >
             {isGenerating ? (
               <>

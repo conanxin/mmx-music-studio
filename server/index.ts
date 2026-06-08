@@ -75,6 +75,7 @@ import { mockMiniMaxGenerate } from './mock-minimax.js';
 import { appendAuditEvent, auditUnlockSuccess, auditUnlockFailed, auditUnlockLocked, auditGenerationBlocked, auditGenerationRequested, auditJobEvent, auditTrackAccess, getAuditStats, listAuditEvents, type AuditEventType } from './audit.js';
 import { checkAuthGuard, recordFailedAttempt, recordSuccessfulUnlock, getAuthGuardStats } from './auth-guard.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
+import { setJobApiKey, getKeyLengthBucket } from './byok-secrets.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -151,6 +152,9 @@ function loadConfig(): ServerConfig {
     realGenerationEnabled,
     mockGenerationEnabled,
     backend,
+    byokEnabled: readBoolEnv('BYOK_ENABLED', false),
+    serverKeyFallback: readBoolEnv('SERVER_KEY_FALLBACK', false),
+    byokKeyStorage: 'memory' as const,
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -628,14 +632,16 @@ async function handleHealth(
     outputDirReady: fs.existsSync(config.outputDir),
     backend: config.backend,
     availableBackends: ['mock', 'api', 'cli'] as string[],
-    cliAvailable,
-    cliAuthenticated: cliDiagnostics?.authStatus === 'authenticated' || undefined,
+    // Phase 5A: BYOK
+    byokEnabled: config.byokEnabled,
+    serverKeyFallback: config.serverKeyFallback,
+    byokKeyStorage: config.byokKeyStorage,
     cliRegion: cliDiagnostics?.region ?? undefined,
     // Job queue (Phase 4B)
     jobQueueEnabled: true,
     queuedJobs,
     workerBusy,
-    // Phase 4F: Audit & Auth Guard
+    // Audit (Phase 4F)
     auditLogEnabled: process.env.AUDIT_LOG_ENABLED !== 'false',
     authGuardEnabled: process.env.AUTH_GUARD_ENABLED !== 'false',
     authGuard: getAuthGuardStats(),
@@ -751,7 +757,7 @@ async function handleGenerate(
     sendError(res, 'unknown', '无效请求体');
     return;
   }
-  const { input, keyMode, region } = body;
+  const { input, region } = body;
 
   // ── Input validation ─────────────────────────────────────────────────────────
   const validation = validateMusicInput(input as Parameters<typeof validateMusicInput>[0]);
@@ -779,9 +785,58 @@ async function handleGenerate(
   const effectiveBackend: BackendMode =
     !config.realGenerationEnabled ? 'mock' : backend;
 
-  const job = createJob(input as MusicGenerationInput, effectiveBackend);
+  // ── BYOK key mode resolution ─────────────────────────────────────────────────
+  // IMPORTANT: keyMode is server-controlled, never client-controlled.
+  // Client must NOT be able to choose 'server' to bypass BYOK restrictions.
+  const sessionApiKey = getSessionApiKey(req.headers as Record<string, string | string[] | undefined>);
+  let effectiveKeyMode: 'server' | 'session' = 'server';
+  let pendingByokApiKey: string | undefined;
 
-  console.log(`[server] job created: id=${job.id} mode=${input.mode} backend=${effectiveBackend}`);
+  if (effectiveBackend === 'api' && config.byokEnabled) {
+    // BYOK API mode: require user-supplied key, never use server key as fallback
+    if (sessionApiKey) {
+      // Validate format locally — do NOT call MiniMax in this check
+      const keyWarning = validateKeyLooksReasonable(sessionApiKey);
+      if (keyWarning) {
+        sendError(res, 'validation', keyWarning, 400);
+        return;
+      }
+      effectiveKeyMode = 'session';
+      pendingByokApiKey = sessionApiKey;
+    } else if (config.serverKeyFallback && config.minimaxApiKey) {
+      // Fallback only if explicitly enabled and server key is available
+      effectiveKeyMode = 'server';
+    } else {
+      // No session key, fallback disabled or no server key → reject
+      sendError(res, 'missing_api_key', '请先在设置页填写你的 MiniMax Token Plan Key', 400);
+      return;
+    }
+  } else if (effectiveBackend === 'cli') {
+    // CLI mode always uses server-side mmx auth
+    effectiveKeyMode = 'server';
+  } else {
+    // mock or non-BYOK api: no session key needed
+    effectiveKeyMode = 'server';
+  }
+
+  // Create job with server-controlled keyMode (client cannot override)
+  const job = createJob(input as MusicGenerationInput, effectiveBackend, undefined, effectiveKeyMode);
+
+  // Store BYOK key in memory-only Map AFTER job creation (needs job.id)
+  // This key is NEVER written to disk, logs, or audit
+  if (effectiveKeyMode === 'session' && pendingByokApiKey) {
+    try {
+      setJobApiKey(job.id, pendingByokApiKey);
+    } catch {
+      // Defensive: if storing fails, delete the orphaned job to avoid key-less worker run
+      // (the finally block in executeApiJob also cleans up on failure)
+      cancelJob(job.id);
+      sendError(res, 'storage', '会话密钥存储失败，请重试', 500);
+      return;
+    }
+  }
+
+  console.log(`[server] job created: id=${job.id} mode=${input.mode} backend=${effectiveBackend} keyMode=${effectiveKeyMode}`);
 
   sendJson(res, 202, {
     ok: true,
@@ -793,13 +848,17 @@ async function handleGenerate(
     },
   });
 
-  auditGenerationRequested(req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req), { mode: input.mode, jobId: job.id });
+  // Audit: log BYOK metadata without exposing the key
+  auditGenerationRequested(req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req), {
+    mode: input.mode,
+    jobId: job.id,
+    byok: effectiveKeyMode === 'session',
+    keyPresent: Boolean(pendingByokApiKey),
+    keyLengthBucket: pendingByokApiKey ? getKeyLengthBucket(pendingByokApiKey) : undefined,
+  });
 
-  // Enqueue and run in background
-  const sessionKey = keyMode === 'session'
-    ? getSessionApiKey(req.headers as Record<string, string | string[] | undefined>)
-    : undefined;
-  enqueueAndRun(keyMode as 'server' | 'session', sessionKey, region as 'cn' | 'global' | undefined);
+  // Enqueue and run in background — worker will retrieve BYOK key from byok-secrets
+  enqueueAndRun(effectiveKeyMode, undefined, region as 'cn' | 'global' | undefined);
 }
 
 async function handleGenerateSync(

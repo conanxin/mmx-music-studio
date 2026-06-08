@@ -145,10 +145,17 @@ export default function Settings() {
   const cliAuth = health?.cliAuthenticated ?? null;
   const cliRegion = health?.cliRegion ?? null;
 
+  // Phase 5A: BYOK helpers
+  const byokEnabled = health?.byokEnabled ?? false;
+  const serverKeyFallback = health?.serverKeyFallback ?? false;
+  const byokKeyStorage = health?.byokKeyStorage ?? 'memory';
+  const isByokApiMode = byokEnabled && backend === 'api';
+
   // Runtime mode derivation
   const runtimeMode = ((): string => {
     if (health === null) return '连接中…';
     if (health.previewAccessEnabled) return '访问保护';
+    if (byokEnabled && backend === 'api') return 'BYOK API';
     if (health.realGenerationEnabled && backend === 'cli') return '真实生成';
     if (health.realGenerationEnabled && backend === 'api') return 'API 实验';
     if (!health.realGenerationEnabled && backend === 'mock' && health.mockGenerationEnabled) return '安全预览';
@@ -158,6 +165,7 @@ export default function Settings() {
   const runtimeModeDesc = ((): string => {
     if (health === null) return '正在连接服务器…';
     if (health.previewAccessEnabled) return '已启用 PIN 访问保护，真实生成暂时关闭';
+    if (byokEnabled && backend === 'api') return '用户自带 Key（BYOK）模式，生成消耗用户自己的 Token Plan 额度';
     if (health.realGenerationEnabled && backend === 'cli') return '真实调用 MiniMax mmx CLI，会消耗 Token Plan 额度';
     if (health.realGenerationEnabled && backend === 'api') return '直接调用 MiniMax API，实验性，可能不稳定';
     if (!health.realGenerationEnabled && backend === 'mock' && health.mockGenerationEnabled) return '本地模拟，不调用 MiniMax，不消耗额度';
@@ -168,12 +176,18 @@ export default function Settings() {
   let hint: { type: 'safe' | 'warn' | 'info'; text: string } | null = null;
   if (safePreviewMode) {
     hint = { type: 'safe', text: '安全预览模式已开启：当前后端为本地模拟，不会调用 MiniMax，也不会消耗额度。' };
+  } else if (isByokApiMode && keyMode === 'session' && !settings.apiKey) {
+    hint = { type: 'warn', text: '请先填写你的 MiniMax Token Plan Key（见下方 Key 设置区域）。BYOK 模式下，生成会消耗你自己的 Token Plan 额度。' };
+  } else if (isByokApiMode) {
+    hint = { type: 'safe', text: '当前为 BYOK 模式：将使用你填写的 Token Plan Key，消耗你的额度。Key 仅在当前会话内存中，刷新即清空。' };
   } else if (backend === 'cli' && !cliAuth) {
     hint = { type: 'warn', text: '检测到 MMX CLI，但当前认证或配置异常。请在服务器终端修复 mmx auth 后再进行真实 CLI 生成。' };
   } else if (backend === 'cli' && !cliAvailable) {
     hint = { type: 'warn', text: '服务器未检测到 mmx CLI，请先安装或检查 PATH。' };
-  } else if (backend === 'api') {
+  } else if (backend === 'api' && !byokEnabled) {
     hint = { type: 'info', text: 'MiniMax API Adapter 当前为实验路径，若直连 API 不稳定，建议使用 MMX CLI Adapter。' };
+  } else if (backend === 'api' && byokEnabled) {
+    hint = { type: 'info', text: 'BYOK API 模式已启用，请确保已在下方填写你的 Token Plan Key。' };
   } else if (backend === 'mock') {
     hint = { type: 'info', text: 'Mock 后端用于安全开发和演示，不调用真实 MiniMax。' };
   }
@@ -291,6 +305,33 @@ export default function Settings() {
             </div>
           )}
         </div>
+
+        {/* Phase 5A: BYOK Status */}
+        {(isByokApiMode || byokEnabled) && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>BYOK 状态</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', color: byokEnabled ? '#4ADE80' : '#9BA1AA', fontWeight: 600 }}>{byokEnabled ? '开启' : '关闭'}</div>
+                <div style={{ fontSize: '11px', color: '#9BA1AA', marginTop: '2px' }}>BYOK 模式</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', color: '#B8FF6A', fontWeight: 600 }}>{byokKeyStorage}</div>
+                <div style={{ fontSize: '11px', color: '#9BA1AA', marginTop: '2px' }}>Key 存储</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', color: serverKeyFallback ? '#FFC16B' : '#4ADE80', fontWeight: 600 }}>{serverKeyFallback ? '允许' : '禁止'}</div>
+                <div style={{ fontSize: '11px', color: '#9BA1AA', marginTop: '2px' }}>Key 回退</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '10px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p style={{ fontSize: '12px', color: '#9BA1AA', lineHeight: 1.6, margin: 0 }}>
+                <span style={{ color: '#B8FF6A', fontWeight: 600 }}>BYOK</span>（Bring Your Own Key）：你的 Key 只保存在浏览器内存和服务器临时 Map 中，
+                30 分钟后自动清除或任务结束后立即删除。不会写入磁盘、日志、manifest 或作品库。
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Region section */}
         <div className={styles.section}>

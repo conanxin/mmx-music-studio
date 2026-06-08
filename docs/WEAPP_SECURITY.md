@@ -208,3 +208,40 @@ wx.setStorageSync('minimax_api_key', 'sk-xxx')
 - `docs/DEPLOYMENT.md` — 部署指南（含安全默认值）
 - `docs/WEAPP_ARCHITECTURE.md` — 小程序架构说明
 - `docs/WEAPP_ROADMAP.md` — 开发路线图
+
+
+---
+
+## 小程序 BYOK 策略（Phase 5C 规划）
+
+> ⚠️ **小程序端强烈不建议直接暴露用户 API key**
+
+### 推荐架构
+
+```
+用户小程序
+  → 填写 BYOK Key（存在小程序本地 storage，仅本人可见）
+    → 请求自托管后端（/api/generate + x-minimax-api-key header）
+      → 后端 BYOK guard
+        → 验证 key 格式
+        → 存入 job.id → key 内存 Map
+          → 调用 MiniMax API
+```
+
+### 关键安全要求
+
+1. **小程序本地存储 key**：用户 key 存在小程序 `wx.setStorageSync`，不经过你的服务器存储
+2. **后端 BYOK**：key 只存后端内存 Map，不落盘，不记录日志
+3. **自托管后端代理**：小程序不直接调用 MiniMax API，而是通过你的后端代理
+4. **HTTPS**：小程序必须使用 HTTPS，所有 key 传输走 HTTPS
+5. **域名白名单**：小程序必须通过已备案的服务器域名调用
+
+### Phase 5C 待实现
+
+- [ ] apps/weapp/src/adapters/byok-storage.ts（小程序 storage adapter）
+- [ ] 后端 BYOK 小程序白名单（可选）
+- [ ] 小程序端 BYOK UI
+- [ ] 安全提示页面
+
+详见 [docs/BYOK_MODE.md](BYOK_MODE.md)。
+

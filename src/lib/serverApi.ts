@@ -77,6 +77,10 @@ export interface HealthInfo {
   auditLogEnabled?: boolean;
   authGuardEnabled?: boolean;
   authGuard?: Record<string, unknown>;
+  // Phase 5A: BYOK
+  byokEnabled?: boolean;
+  serverKeyFallback?: boolean;
+  byokKeyStorage?: string;
 }
 
 export interface CheckKeyResult {
@@ -239,7 +243,7 @@ export function safeApiError(err: unknown): { type: string; message: string } {
       return { type: 'network', message: '无法连接本地服务，请确认 API Server 已启动' };
     }
     if (msg.includes('missing_api_key')) {
-      return { type: 'missing_api_key', message: '请先在设置中填写 Key，或在服务器环境变量配置 MINIMAX_API_KEY' };
+      return { type: 'missing_api_key', message: '请先在设置页填写你的 MiniMax Token Plan Key' };
     }
     if (msg.includes('real_generation_disabled')) {
       return { type: 'real_generation_disabled', message: '真实生成已禁用，当前为模拟模式' };

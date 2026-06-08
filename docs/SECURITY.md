@@ -159,9 +159,26 @@ Phase 4C 新增。保护 `/api/generate` 防止未授权用户触发真实生成
 
 若要支持多用户：
 
-- 方案 A：每个用户填自己的 Key（BYOK，Key 不经过你的服务器）
+- 方案 A：每个用户填自己的 Key（BYOK，Key 不经过你的服务器）✅ **Phase 5A 已实现**
 - 方案 B：你的服务器持有 Key，用户通过 OAuth 登录（你控制额度）
 - 方案 C：Stripe 订阅 + 你的服务器持有 Key（商业化）
+
+### 5.4 BYOK 安全模型（Phase 5A）
+
+BYOK 模式的安全原则：
+
+| 安全要求 | 实现 |
+|---------|------|
+| Key 不落盘 | ✅ 内存 Map，TTL 30 分钟 |
+| Key 不写 manifest | ✅ job.input 不含 key |
+| Key 不写 audit log | ✅ 只记录 keyLengthBucket |
+| Key 不写 server logs | ✅ `redactForLog()` → `sk_***redacted` |
+| Key 不在 URL/body | ✅ 仅 `x-minimax-api-key` header |
+| Server key fallback 默认关闭 | ✅ `SERVER_KEY_FALLBACK=false` |
+| Client 不能强制 server key mode | ✅ keyMode 服务器绝对控制 |
+| Key 在所有路径删除 | ✅ success/failure/cancel/TTL |
+
+详见 [docs/BYOK_MODE.md](BYOK_MODE.md)。
 
 ## 6. 前端安全
 
@@ -243,12 +260,23 @@ let apiKey = ''  // 内存变量，页面销毁即消失
 
 ### 8.1 任务历史安全（Phase 4D）
 
-Job History Admin 遵循以下安全原则：
+job input 永远不包含 API key / Authorization header — 只包含业务参数（mode, prompt, lyrics 等）。
+
+### 8.2 BYOK 安全（Phase 5A）
+
+- [ ] `BYOK_ENABLED=true` 时，`SERVER_KEY_FALLBACK=false`（强烈建议）
+- [ ] 不在代码/git/文档中写真实 MiniMax API key
+- [ ] `x-minimax-api-key` 只在 HTTP header 中，不在 URL 或 JSON body
+- [ ] `server/byok-secrets.ts` Map TTL 30 分钟，任务结束后立即删除 key
+- [ ] 公开部署不要把 `REAL_GENERATION_ENABLED=true` 和 `BYOK_ENABLED=true` 同时打开而不加访问保护
+
+### 8.3 API Adapter BYOK 注意事项
 
 - **不保存敏感信息。** Job record 不保存 API key / Authorization header / PIN
 - **Retry 保护。** Retry 操作仍受 Generation Access PIN + Rate Limit + Daily Quota 保护，真实生成不会绕过后端防护
 - **运行中任务不可删除。** DELETE 只允许对 succeeded/failed/cancelled 状态的任务执行
 - **操作可溯源。** 所有 DELETE / RETRY 操作均通过 HTTP method 区分，日志可查
+
 ## Phase 4F: Audit Logging and PIN Brute-Force Protection
 
 See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md) for details.

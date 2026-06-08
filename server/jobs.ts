@@ -34,6 +34,13 @@ import { buildMiniMaxMusicPayload, validateMusicInput, type MusicGenerationInput
 import { getSessionApiKey, redactSecrets } from './security.js';
 import { callMiniMaxApi } from './call-minimax.js';
 import { incrementDailyQuota } from './rate-limit.js';
+import {
+  setJobApiKey,
+  getJobApiKey,
+  deleteJobApiKey,
+  redactForLog,
+  getKeyLengthBucket,
+} from './byok-secrets.js';
 import type { BackendMode, TrackMetadata, ServerConfig } from './types.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -60,6 +67,8 @@ export interface GenerateJob {
   /** Mode/prompt/lyrics only — no keys */
   input: MusicGenerationInput;
   backend: BackendMode;
+  /** 'server' = server key, 'session' = BYOK user key */
+  keyMode?: 'server' | 'session';
   generationSource?: GenerationSource;
   trackId?: string;
   error?: GenerateJobError;
@@ -183,13 +192,14 @@ function pruneOldJobs(manifest?: JobsManifest): void {
 
 // ── Job CRUD ──────────────────────────────────────────────────────────────────
 
-export function createJob(input: MusicGenerationInput, backend: BackendMode, generationSource?: GenerationSource): GenerateJob {
+export function createJob(input: MusicGenerationInput, backend: BackendMode, generationSource?: GenerationSource, keyMode?: 'server' | 'session'): GenerateJob {
   const now = new Date().toISOString();
   const job: GenerateJob = {
     id: `job_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`,
     status: 'queued',
     input,
     backend,
+    keyMode,
     progressMessage: '任务已排队',
     createdAt: now,
     updatedAt: now,
@@ -298,7 +308,7 @@ export function retryJob(
   if (!original) return null;
   if (original.status !== 'failed' && original.status !== 'cancelled') return null;
 
-  const newJob = createJob(original.input, original.backend);
+  const newJob = createJob(original.input, original.backend, undefined, original.keyMode);
   // Enqueue the new job so it runs
   // createJob already enqueues and persists;
   return newJob;
@@ -335,6 +345,12 @@ export function cancelJob(id: string): GenerateJob | null {
   }
   jobStore.set(id, updated);
   persistJob(updated);
+
+  // Clean up BYOK session key if present
+  if (updated.keyMode === 'session') {
+    deleteJobApiKey(id);
+  }
+
   return updated;
 }
 
@@ -608,11 +624,15 @@ async function executeApiJob(
     updatedAt: now,
   });
 
+  // Use job's keyMode (set at createJob time from handleGenerate's keyMode)
+  const effectiveKeyMode = job.keyMode ?? keyMode;
+
   let apiKey: string | undefined;
-  if (keyMode === 'server') {
+  if (effectiveKeyMode === 'server') {
     apiKey = config.minimaxApiKey;
   } else {
-    apiKey = sessionApiKey;
+    // BYOK mode: retrieve from temporary secret store
+    apiKey = getJobApiKey(job.id) ?? sessionApiKey;
   }
 
   if (!apiKey) {
@@ -622,6 +642,7 @@ async function executeApiJob(
       finishedAt: new Date().toISOString(),
       progressMessage: '生成失败',
     });
+    if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
     return;
   }
 
@@ -648,6 +669,7 @@ async function executeApiJob(
       finishedAt: new Date().toISOString(),
       progressMessage: '生成失败',
     });
+    if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
     return;
   }
 
@@ -667,6 +689,7 @@ async function executeApiJob(
         finishedAt: new Date().toISOString(),
         progressMessage: '生成失败',
       });
+      if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
       return;
     }
   } else if (apiResult.audioKind === 'hex') {
@@ -679,6 +702,7 @@ async function executeApiJob(
       finishedAt: new Date().toISOString(),
       progressMessage: '生成失败',
     });
+    if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
     return;
   }
 
@@ -693,6 +717,7 @@ async function executeApiJob(
       finishedAt: new Date().toISOString(),
       progressMessage: '生成失败',
     });
+    if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
     return;
   }
 
@@ -708,6 +733,7 @@ async function executeApiJob(
       finishedAt: new Date().toISOString(),
       progressMessage: '生成失败',
     });
+    if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
     return;
   }
 
@@ -751,6 +777,9 @@ async function executeApiJob(
 
   // Count successful API generation toward daily quota
   incrementDailyQuota('minimax-api');
+
+  // Clean up BYOK session key on success
+  if (effectiveKeyMode === 'session') deleteJobApiKey(job.id);
 }
 
 // ── Worker ────────────────────────────────────────────────────────────────────

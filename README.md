@@ -72,7 +72,7 @@ bash scripts/package-weapp-dist.sh
 
 #### Phase 3E — HTTPS 域名与合法域名配置
 
-> 当前阶段：域名就绪文档与配置模板准备（不真实安装）
+> 当前阶段：BYOK API Key 模式 — 用户自携 Key，无登录
 
 **配置模板**：
 - `deploy/Caddyfile.example` — Caddy HTTPS 反代（自动 SSL，推荐）
@@ -248,16 +248,16 @@ MINIMAX_BACKEND=mock           # 后端模式
 
 ## 当前阶段
 
-**Phase 2J：手机浏览器体验验证** ✅
+**Phase 5A：BYOK API Key 模式** ✅
 
-- ✅ 移动端截图（9 张：5 mobile + 4 desktop）
-- ✅ `docs/MOBILE_BROWSER_CHECKLIST.md`（移动端检查清单）
-- ✅ `body { overflow-x: hidden }` 防御横向溢出
-- ✅ ModeTab min-height:44px，GenerateBtn min-height:52px
-- ✅ PlayBtn 44×44px，ActionBtn min-height:44px
-- ✅ 进度 UI（elapsed counter + progress messages）手机端可见
-- ✅ Contact sheet 更新
-- ✅ 移动端设置页 radio 单列布局
+- ✅ `server/byok-secrets.ts` — Key 内存存储，job.id → key，TTL 30min
+- ✅ `server/index.ts` — BYOK guard，验证 x-minimax-api-key header
+- ✅ `src/features/settings/Settings.tsx` — BYOK 模式 UI
+- ✅ `src/features/studio/Studio.tsx` — key 缺失时禁用/提示
+- ✅ `scripts/byok-mode-smoke-test.sh` — 13/13 PASS
+- ✅ `docs/BYOK_MODE.md` — 完整 BYOK 文档
+- ✅ 与 Phase 4C Generation Access Gate 正交兼容
+- ✅ CLI Adapter 不使用页面 BYOK key
 
 ---
 
@@ -327,13 +327,16 @@ mmx-music-studio/
 | Phase 1 | UI 原型 + 项目文档 | ✅ 完成 |
 | Phase 2A–F | Mock / API / CLI / Docker / 发布准备 | ✅ 完成 |
 | Phase 3A–E | 微信小程序接入（Taro v4, mock API, HTTPS 就绪） | ✅ 完成 |
-| **Phase 4A** | **三种运行模式 + 生产发布检查 + Systemd 部署** | **✅ 当前** |
+| Phase 4A | 三种运行模式 + 生产发布检查 + Systemd 部署 | ✅ 完成 |
 | **Phase 4B** | **生成任务队列（后台异步处理 + Web 轮询 UI）** | ✅ 完成 |
 | **Phase 4C** | **访问鉴权 + 速率限制 + 每日额度保护** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台（统计/筛选/详情/取消/删除/重试）** | ✅ 完成 |
 | Phase 4E | 域名 HTTPS 正式实装 | ✅ PASS |
 | Phase 4E-A | HTTPS 域名预检与方案准备 | ✅ 完成 |
-| Phase 5 | 正式 Release v0.2.0-alpha | 📋 规划 |
+| **Phase 5A** | **BYOK API Key 模式（用户自携 Key，无登录）** | ✅ 当前 |
+| Phase 5B | BYOK 受控真实 API 测试 | 📋 规划 |
+| Phase 5C | 小程序 BYOK 策略 | 📋 规划 |
+| Phase 6 | 正式 Release v0.4.0-alpha | 📋 规划 |
 
 ---
 
