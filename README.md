@@ -118,7 +118,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **Access Control / Quota** | ✅ PASS |
 | **Audit Logging** | ✅ PASS |
 | **PIN Brute-force Guard** | ✅ PASS |
-| **HTTPS** | ✅ PASS |
+| **HTTPS** | ✅ PASS（Caddy + Let's Encrypt） |
+| **域名 ICP 备案** | ⏳ 腾讯云大陆服务器需备案，当前外部访问被拦截 |
 | 微信小程序 | ✅ PASS（scaffold + adapters） |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
@@ -332,7 +333,7 @@ mmx-music-studio/
 | **Phase 4B** | **生成任务队列（后台异步处理 + Web 轮询 UI）** | ✅ 完成 |
 | **Phase 4C** | **访问鉴权 + 速率限制 + 每日额度保护** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台（统计/筛选/详情/取消/删除/重试）** | ✅ 完成 |
-| Phase 4E | 域名 HTTPS 正式实装 | ✅ PASS |
+| Phase 4E | 域名 HTTPS 正式实装 + 备案方案 | ✅ PASS |
 | Phase 4E-A | HTTPS 域名预检与方案准备 | ✅ 完成 |
 | **Phase 5A** | **BYOK API Key 模式（用户自携 Key，无登录）** | ✅ 完成 |
 | **Phase 5B-A** | **BYOK 真实测试预检（不调用真实 API）** | ✅ 完成 |

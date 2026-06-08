@@ -160,6 +160,14 @@ npm run start
 - **不要**把 API Key 写入前端、Dockerfile、docker-compose.yml 或公开文档
 - 公网 HTTPS 推荐使用 **Caddy** 或 **Nginx** 反向代理（HTTP 明文传输存在中间人攻击风险）
 
+### ⚠️ 腾讯云域名备案拦截（如遇浏览器跳转 webblock 页面）
+
+如果通过域名访问时浏览器被重定向到 `dnspod.qcloud.com/static/webblock.html`，说明域名未完成 ICP 备案或未完成腾讯云接入备案。这是国内法规要求，与 Caddy / HTTPS 配置无关。
+
+**解决方案：**
+- 完成 ICP 备案或腾讯云接入备案（推荐长期方案）
+- 临时开发方案：见 [docs/ICP_RECORDAL_AND_TEMP_ACCESS.md](docs/ICP_RECORDAL_AND_TEMP_ACCESS.md)
+
 ### ⚠️ 公网真实生成说明
 
 当前公网预览 `http://118.195.129.137:8787` 运行于真实生成模式（`MINIMAX_BACKEND=cli` + `REAL_GENERATION_ENABLED=true`），**会真实调用 MiniMax mmx CLI 并消耗 Token Plan 额度**。

@@ -2,17 +2,30 @@
 
 ---
 
+## ⚠️ 当前状态：域名 ICP 备案未完成
+
+`https://music.conanxin.com` 的 HTTPS / Caddy / 证书配置已全部完成，但从浏览器访问会被腾讯云拦截（显示 `dnspod.qcloud.com/static/webblock.html`）。
+
+这意味着微信小程序**暂时无法使用此域名**作为合法域名。需要先完成 ICP 备案接入。
+
+**临时访问方案：** 见 [docs/ICP_RECORDAL_AND_TEMP_ACCESS.md](docs/ICP_RECORDAL_AND_TEMP_ACCESS.md)
+
+**解决后：** HTTPS 地址 `https://music.conanxin.com` 可立即配置为微信合法域名（配置后次日生效）。
+
+---
+
 ## 正式生产地址（Phase 4E-B 实装）
 
 **HTTPS 地址：** https://music.conanxin.com
 
 | 域名类型 | 配置值 | 状态 |
 |---------|--------|------|
-| request 合法域名 | `https://music.conanxin.com` | ✅ 可配置 |
-| downloadFile 合法域名 | `https://music.conanxin.com` | ✅ 可配置 |
-| uploadFile 合法域名 | `https://music.conanxin.com` | ✅ 可配置 |
+| request 合法域名 | `https://music.conanxin.com` | ✅ 可配置（待 ICP 备案完成后） |
+| downloadFile 合法域名 | `https://music.conanxin.com` | ✅ 可配置（待 ICP 备案完成后） |
+| uploadFile 合法域名 | `https://music.conanxin.com` | ✅ 可配置（待 ICP 备案完成后） |
 
 > ⚠️ 微信公众平台域名配置通常次日生效（首次配置）。
+> ⚠️ 当前域名因 ICP 备案未完成，微信平台**暂时无法添加**。
 
 ---
 
