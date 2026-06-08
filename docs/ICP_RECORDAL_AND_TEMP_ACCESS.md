@@ -128,11 +128,20 @@ This tunnels port 8787 through SSH to your local machine. All traffic is encrypt
 On the server, install ngrok or use Cloudflare Tunnel:
 
 ```bash
-# ngrok example (create free account at ngrok.com)
-ngrok http 8787
+# Cloudflare Tunnel (installed at /usr/bin/cloudflared)
+cloudflared tunnel --url http://127.0.0.1:8787
+
+# Output: https://xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.trycloudflare.com
 ```
 
-This creates a public HTTPS URL (e.g., `https://random.ngrok.io`) that bypasses Tencent Cloud's block because the traffic goes through ngrok's servers, not directly to the Tencent Cloud IP.
+This creates a public HTTPS URL that bypasses Tencent Cloud's block because the traffic goes through Cloudflare's servers, not directly to the Tencent Cloud IP.
+
+**Live example (current):**
+- Tunnel URL: `https://seniors-query-ryan-ave.trycloudflare.com` (active as of 2026-06-08)
+- Local app: `http://127.0.0.1:8787`
+- Status: ✅ HTTP/2 200, mock mode, no real generation
+
+> ⚠️ URL changes each time cloudflared restarts.
 
 **Pros:** Public URL, no ICP required, easy to share  
 **Cons:** Third-party tunnel service, URL changes each session (unless paid)

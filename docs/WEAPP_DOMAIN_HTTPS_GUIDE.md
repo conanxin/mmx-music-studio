@@ -10,6 +10,11 @@
 
 **临时访问方案：** 见 [docs/ICP_RECORDAL_AND_TEMP_ACCESS.md](docs/ICP_RECORDAL_AND_TEMP_ACCESS.md)
 
+**当前 Cloudflare Tunnel 临时预览（Phase 4E-E）：**
+- Tunnel URL: `https://seniors-query-ryan-ave.trycloudflare.com`（mock 模式，不消耗额度）
+- 临时 URL 每次重启变化，适合开发测试，不适合正式生产
+- 微信开发者工具可临时使用，正式版仍建议备案域名
+
 **解决后：** HTTPS 地址 `https://music.conanxin.com` 可立即配置为微信合法域名（配置后次日生效）。
 
 ---

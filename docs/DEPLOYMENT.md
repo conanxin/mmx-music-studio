@@ -167,6 +167,7 @@ npm run start
 **解决方案：**
 - 完成 ICP 备案或腾讯云接入备案（推荐长期方案）
 - 临时开发方案：见 [docs/ICP_RECORDAL_AND_TEMP_ACCESS.md](docs/ICP_RECORDAL_AND_TEMP_ACCESS.md)
+- 当前 Cloudflare Tunnel 临时预览：`https://seniors-query-ryan-ave.trycloudflare.com`（mock 模式）
 
 ### ⚠️ 公网真实生成说明
 
