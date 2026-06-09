@@ -308,6 +308,35 @@ Phase API-Debug-B0 完成了 async task response 结构化识别：
 2. 或用户提供 API 文档
 3. polling endpoint 确认后才可进入 Phase API-Debug-B1
 
+## Phase API-Debug-B1 前置条件更新
+
+**状态**: ✅ 已完成 (2026-06-09)
+
+Phase API-Debug-B1 完成了官方 contract 对齐：
+- 新增 `test-fixtures/minimax-api/` — 4 个 official fixture
+- 确认 endpoint/auth/Content-Type/response shape 与官方文档一致
+- 确认 `extra_info.music_duration/size/bitrate/sample_rate` 均已映射
+- 确认 polling endpoint 未在官方文档中确认
+- `api-adapter-official-contract-smoke-test.sh`: 29/29 PASS
+
+## Phase API-Debug-C 真实调用前 Checklist
+
+真实 API 调用必须满足以下全部条件：
+
+| # | 前置条件 | 状态 |
+|---|---------|------|
+| C1 | Phase API-Debug-B1 已完成 | ✅ |
+| C2 | `REAL_API_DAILY_ATTEMPT_LIMIT=1` 已设置 | ⏳ |
+| C3 | 用户明确确认后才执行 | ⏳ |
+| C4 | 用户通过 Web UI 输入 BYOK key（不在聊天中粘贴） | ⏳ |
+| C5 | `output_format=url` / `stream=false` | ✅ 已配置 |
+| C6 | 成功后写入 track 并进入 Studio | ⏳ |
+| C7 | 失败时只记录脱敏响应摘要 | ⏳ |
+| C8 | 若收到 `task_id` → 立即停止并报告 `MINIMAX_API_ASYNC_POLLING_REQUIRED` | ✅ |
+| C9 | 不猜 polling endpoint | ✅ |
+
+**注意**: MiniMax 官方文档当前未展示 `task_id` / polling endpoint。官方主路径看起来是同步 `data.audio` 返回。如果真实调用返回 `task_id`，Phase API-Debug-C 失败并升级到 Phase API-Debug-C1（确认 polling endpoint）。
+
 ## v0.4.0-alpha 版本边界
 
 本文档描述的测试方案已冻结于 v0.4.0-alpha。

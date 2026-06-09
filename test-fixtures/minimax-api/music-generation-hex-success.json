@@ -1,0 +1,19 @@
+{
+  "data": {
+    "audio": "68656c6c6f20776f726c64",
+    "status": 2
+  },
+  "trace_id": "fixture-trace-id-hex",
+  "extra_info": {
+    "music_duration": 25364,
+    "music_sample_rate": 44100,
+    "music_channel": 2,
+    "bitrate": 256000,
+    "music_size": 813651
+  },
+  "analysis_info": null,
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "success"
+  }
+}

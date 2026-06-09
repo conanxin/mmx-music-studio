@@ -1,0 +1,7 @@
+{
+  "base_resp": {
+    "status_code": 1001,
+    "status_msg": "fixture_api_error_invalid_parameter"
+  },
+  "trace_id": "fixture-trace-id-error"
+}

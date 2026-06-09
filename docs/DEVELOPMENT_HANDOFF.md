@@ -359,22 +359,21 @@ See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md)
 - Phase 5E: realApiAttemptsUsed counter fix ✅
 |- Phase 5B-D: 真实 MiniMax API 生成 ⏳ PENDING
 
-## Phase API-Debug-B0: Async Task Response Preflight
+## Phase API-Debug-B1: Official Contract Alignment
 
-**Frozen in v0.4.1-alpha.** Async task response handling for API Adapter.
+**Frozen in v0.4.1-alpha.** Official MiniMax Music Generation API contract fixture + static alignment.
 
 **关键里程碑：**
 - Phase API-Debug-A: Static diagnosis of API Adapter ✅
 - Phase API-Debug-B0: Async task response parser + mock contract tests ✅
-  - 新增 `server/adapters/minimax-api/response.ts` — 5 response kinds
-  - async task → `MINIMAX_API_ASYNC_POLLING_REQUIRED` (不再"音频格式无法处理")
-  - 不猜 polling endpoint
-  - `api-adapter-async-contract-smoke-test.sh` 20/20 PASS
-  - `api-adapter-contract-smoke-test.sh` 21/21 PASS
-- Phase API-Debug-B1: 确认官方 polling endpoint ⏳ PENDING
+- Phase API-Debug-B1: Official contract fixtures + alignment ✅
+  - 新增 `test-fixtures/minimax-api/` — 4 个 official fixture
+  - 确认 endpoint/auth/Content-Type/response shape
+  - Parser 完整映射 `extra_info.*` 和 `base_resp.*`
+  - `api-adapter-official-contract-smoke-test.sh` 29/29 PASS
 - Phase API-Debug-C: 用户确认后单次真实 API 调用 ⏳ PENDING
 
-**推荐主链路：** Web + MMX CLI backend（`backend=cli`）。API Adapter 为研究方向，不宣称真实生成已稳定。
+**推荐主链路：** Web + MMX CLI backend（`backend=cli`）。API Adapter 为研究方向，contract preflight 已完成，真实调用待 Phase API-Debug-C。
 
 **查看详情：** [docs/API_ADAPTER_DEBUG_REPORT.md](docs/API_ADAPTER_DEBUG_REPORT.md) | [docs/BYOK_REAL_TEST_PLAN.md](docs/BYOK_REAL_TEST_PLAN.md)
 

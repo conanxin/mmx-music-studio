@@ -307,6 +307,114 @@ api-adapter-contract-smoke-test.sh: 21/21 PASS
 
 ---
 
+## Phase API-Debug-B1: Official Music Generation Contract Alignment
+
+**Date**: 2026-06-09
+**Status**: COMPLETE — No real API calls; official contract fixtures + static alignment
+
+### Official Contract Summary
+
+| Field | Value |
+|-------|-------|
+| Endpoint (CN) | `POST https://api.minimaxi.com/v1/music_generation` |
+| Endpoint (Global) | `POST https://api.minimax.io/v1/music_generation` |
+| Auth | `Authorization: Bearer <token>` |
+| Content-Type | `application/json` |
+| Default `output_format` | `url` (preferred for BYOK; hex available) |
+
+### Request Payload Fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `model` | string | e.g. `music-2.6` |
+| `prompt` | string | lyrics / description |
+| `lyrics` | string | structured lyrics (optional) |
+| `stream` | boolean | `false` (synchronous) |
+| `output_format` | string | `url` (recommended) or `hex` |
+| `audio_setting` | object | pitch_shift, etc. |
+| `is_instrumental` | boolean | `true` for pure music |
+| `lyrics_optimizer` | boolean | lyrics optimization |
+
+### Response Shape (Official Contract)
+
+```json
+{
+  "data": {
+    "audio": "<hex_string_or_url>",
+    "status": 2
+  },
+  "trace_id": "string",
+  "extra_info": {
+    "music_duration": 25364,       // milliseconds
+    "music_sample_rate": 44100,    // Hz
+    "music_channel": 2,            // stereo
+    "bitrate": 256000,             // bps
+    "music_size": 813651           // bytes
+  },
+  "base_resp": {
+    "status_code": 0,              // 0 = success, non-zero = error
+    "status_msg": "success"
+  }
+}
+```
+
+### Parser Alignment
+
+Current `server/adapters/minimax-api/response.ts` is fully aligned with official contract:
+
+| Official Field | Parser Field | Status |
+|---------------|-------------|--------|
+| `data.audio` (URL) | `direct_audio` | ✅ Supported |
+| `data.audio` (hex) | `hex_audio` | ✅ Supported |
+| `data.task_id` | `async_task` | ✅ Supported (defensive) |
+| `base_resp.status_code` | `failure.kind` | ✅ Supported |
+| `base_resp.status_msg` | `failure.message` | ✅ Supported |
+| `extra_info.music_duration` | `durationMs` | ✅ Supported |
+| `extra_info.music_sample_rate` | `sampleRate` | ✅ Supported |
+| `extra_info.bitrate` | `bitrate` | ✅ Supported |
+| `extra_info.music_size` | `sizeBytes` | ✅ Supported |
+| `trace_id` | `traceId` | ✅ Supported |
+
+### Official Fixtures Created
+
+- `test-fixtures/minimax-api/music-generation-hex-success.json` — hex audio + full extra_info
+- `test-fixtures/minimax-api/music-generation-url-success.json` — URL audio + full extra_info
+- `test-fixtures/minimax-api/music-generation-error.json` — error response
+- `test-fixtures/minimax-api/music-generation-async-defensive.json` — async task (defensive compatibility)
+
+### Polling Endpoint Status
+
+**Official polling endpoint is NOT confirmed in current MiniMax documentation.** The async task handling (`async_task` kind) is retained as **defensive compatibility** — if MiniMax ever returns `task_id`, the parser throws `MINIMAX_API_ASYNC_POLLING_REQUIRED` with a clear user-facing message. We do NOT guess the polling endpoint.
+
+### Recommended Real-Call Parameters
+
+```typescript
+{
+  output_format: 'url',   // URL preferred over hex (easier to debug)
+  stream: false,          // Synchronous completion
+  model: 'music-2.6',    // Current Token Plan model
+  is_instrumental: true, // For pure music (no lyrics)
+}
+```
+
+### Next Step: Phase API-Debug-C
+
+**Phase API-Debug-C** requires ALL of the following before a real API call:
+1. ✅ This contract alignment (Phase API-Debug-B1) — COMPLETE
+2. User explicitly confirms before real call
+3. `REAL_API_DAILY_ATTEMPT_LIMIT=1`
+4. User provides BYOK key via Web UI (not pasted in chat)
+5. If response contains `task_id` → stop and report `MINIMAX_API_ASYNC_POLLING_REQUIRED`
+6. Success: write track to storage + show in Studio
+7. Failure: log sanitized response summary only
+
+### Validation
+```
+api-adapter-official-contract-smoke-test.sh: 29/29 PASS
+```
+
+---
+
 ## Validation Status
 
 | Check | Result |

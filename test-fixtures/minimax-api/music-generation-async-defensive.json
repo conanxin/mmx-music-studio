@@ -1,0 +1,11 @@
+{
+  "data": {
+    "task_id": "fixture-task-id-async-defensive",
+    "status": "processing"
+  },
+  "trace_id": "fixture-trace-id-async",
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "accepted"
+  }
+}
