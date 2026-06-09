@@ -1,6 +1,6 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.9-alpha · 2026-06-10
+> 文档版本：v0.4.10-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
@@ -356,6 +356,8 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Release v0.4.8-alpha** | **Prompt templates and style presets release** | ✅ PASS |
 | **Phase Product Polish-G** | **Global mini player and playback continuity** | ✅ PASS | App-level currentPlayingTrack, fixed bottom player in Layout, Library and Studio play unified |
 | **Phase Release v0.4.9-alpha** | **Global mini player and playback continuity release** | ✅ PASS |
+| **Phase Product Polish-H** | **Playback queue: App-level queue state, prev/next buttons, audio ended → next, Library plays filtered list, detail drawer add-to-queue, queue panel with remove/clear, mobile responsive** | ✅ PASS |
+| **Phase Release v0.4.10-alpha** | **Playback queue and continuous playback release** | ⏳ PENDING |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |

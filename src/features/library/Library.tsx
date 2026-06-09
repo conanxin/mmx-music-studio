@@ -104,9 +104,13 @@ function useCopyToast() {
 export default function Library({
   currentPlayingTrack,
   onSetPlayingTrack,
+  onPlayQueue,
+  onAddToQueue,
 }: {
   currentPlayingTrack: GlobalPlayerTrack | null
   onSetPlayingTrack: (track: GlobalPlayerTrack | null) => void
+  onPlayQueue?: (tracks: GlobalPlayerTrack[], startIndex?: number, sourceLabel?: string) => void
+  onAddToQueue?: (track: GlobalPlayerTrack) => void
 }) {
   // currentPlayingTrack is received from App-level state for future highlight support
   void currentPlayingTrack
@@ -211,9 +215,21 @@ function itemToGlobal(track: TrackItem): GlobalPlayerTrack {
 }
 
 const handlePlay = (track: TrackItem) => {
-  // Phase Product Polish-G: delegate to global player
+  // Phase Product Polish-G + H: delegate to global player; play full filtered list as queue
   if (track.audioUrl) {
-    onSetPlayingTrack(itemToGlobal(track));
+    if (onPlayQueue) {
+      const queue = filteredTracks.map(itemToGlobal)
+      const idx = filteredTracks.findIndex(t => t.id === track.id)
+      const label = filterSource === 'all' ? '全部作品'
+        : filterSource === 'favorites' ? '收藏列表'
+        : filterSource === 'mmx-cli' ? 'MMX CLI 列表'
+        : filterSource === 'minimax-api' ? 'MiniMax API 列表'
+        : filterSource === 'mock' ? '示例列表'
+        : '当前列表'
+      onPlayQueue(queue, idx, label)
+    } else {
+      onSetPlayingTrack(itemToGlobal(track))
+    }
   }
 };
 
@@ -321,6 +337,28 @@ const handlePlay = (track: TrackItem) => {
               </button>
             ))}
           </div>
+
+          {/* Phase Product Polish-H: Play current filtered list */}
+          {filteredTracks.length > 0 && onPlayQueue && (
+            <div className={styles.playlistActions}>
+              <button
+                className={styles.playlistBtn}
+                onClick={() => {
+                  const label = filterSource === 'all' ? '全部作品'
+                    : filterSource === 'favorites' ? '收藏列表'
+                    : filterSource === 'mmx-cli' ? 'MMX CLI 列表'
+                    : filterSource === 'minimax-api' ? 'MiniMax API 列表'
+                    : filterSource === 'mock' ? '示例列表'
+                    : '当前列表'
+                  const queue = filteredTracks.map(itemToGlobal)
+                  onPlayQueue(queue, 0, searchQuery ? `搜索：${searchQuery}` : label)
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                播放当前列表
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Hint */}
@@ -531,6 +569,21 @@ const handlePlay = (track: TrackItem) => {
                   </button>
                 ) : (
                   <span className={`${styles.actionBtn} ${styles.disabled}`}>无可播放音频</span>
+                )}
+                {/* Phase Product Polish-H: Add to queue */}
+                {detailTrack.audioUrl && onAddToQueue && (
+                  <button
+                    className={`${styles.actionBtn} ${styles.secondary}`}
+                    onClick={() => {
+                      onAddToQueue(itemToGlobal(detailTrack))
+                      showCopy('已加入播放队列')
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    加入队列
+                  </button>
                 )}
                 {detailTrack.downloadUrl ? (
                   <a href={detailTrack.downloadUrl} download className={`${styles.actionBtn} ${styles.secondary}`}>

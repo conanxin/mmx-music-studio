@@ -119,11 +119,25 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  position: relative;
 }
 
 .globalMiniPlayerInfo {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.globalMiniPlayerLabel {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--color-accent);
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .globalMiniPlayerTitle {
@@ -134,6 +148,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.3;
+  max-width: 200px;
 }
 
 .globalMiniPlayerMeta {
@@ -151,11 +166,48 @@
   color: var(--color-text-secondary);
 }
 
+.globalMiniPlayerQueueLabel {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(184, 255, 106, 0.15);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
 .globalMiniPlayerActions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
+}
+
+/* Phase Product Polish-H: Prev/Next buttons */
+.globalMiniPlayerPrev,
+.globalMiniPlayerNext {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.globalMiniPlayerPrev:hover,
+.globalMiniPlayerNext:hover {
+  color: var(--color-text-primary);
+  background: var(--color-panel);
+}
+
+.globalMiniPlayerPrev.disabled,
+.globalMiniPlayerNext.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .globalMiniPlayerPlay {
@@ -196,6 +248,49 @@
   background: var(--color-panel);
 }
 
+/* Phase Product Polish-H: Queue button */
+.globalMiniPlayerQueue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  transition: all var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.globalMiniPlayerQueue:hover {
+  color: var(--color-text-primary);
+  background: var(--color-panel);
+}
+
+.globalMiniPlayerQueue.active {
+  color: var(--color-accent);
+  background: rgba(184, 255, 106, 0.1);
+}
+
+.queueBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--color-accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .globalMiniPlayerLibrary {
   display: flex;
   align-items: center;
@@ -213,7 +308,171 @@
   background: var(--color-panel);
 }
 
-/* Mobile: 390px */
+/* ─── Queue Panel ───────────────────────────────────────────── */
+.queuePanel {
+  position: absolute;
+  bottom: calc(100% + var(--space-3));
+  right: 0;
+  width: 280px;
+  max-height: 320px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 300;
+}
+
+.queuePanelHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-panel);
+  flex-shrink: 0;
+}
+
+.queuePanelTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.queueSourceLabel {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(184, 255, 106, 0.15);
+  color: var(--color-accent);
+  flex: 1;
+  text-align: center;
+}
+
+.queuePanelClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.queuePanelClose:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+.queuePanelBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.queueEmpty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.queueItem:hover {
+  background: var(--color-panel);
+}
+
+.queueItemActive {
+  background: rgba(184, 255, 106, 0.08);
+}
+
+.queueItemIndex {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.queueItemTitle {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.queueItemSource {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--color-panel);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.queueItemRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition);
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.queueItem:hover .queueItemRemove {
+  opacity: 1;
+}
+
+.queueItemRemove:hover {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.queuePanelFooter {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.clearQueueBtn {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.clearQueueBtn:hover {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+/* ─── Mobile: 390px ─────────────────────────────────────────── */
 @media (max-width: 639px) {
   .globalMiniPlayer {
     padding: var(--space-3) var(--space-4);
@@ -221,14 +480,46 @@
 
   .globalMiniPlayerInner {
     gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .globalMiniPlayerInfo {
+    flex-basis: 100%;
+    order: 1;
   }
 
   .globalMiniPlayerTitle {
     font-size: 13px;
+    max-width: 180px;
+  }
+
+  .globalMiniPlayerActions {
+    order: 2;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    gap: var(--space-3);
   }
 
   .globalMiniPlayerLibrary span {
     display: none;
+  }
+
+  .queuePanel {
+    width: calc(100vw - var(--space-8));
+    right: calc(-1 * var(--space-4));
+    max-height: 50vh;
+  }
+}
+
+@media (max-width: 390px) {
+  .globalMiniPlayerTitle {
+    max-width: 120px;
+  }
+
+  .globalMiniPlayerPrev,
+  .globalMiniPlayerNext {
+    width: 28px;
+    height: 28px;
   }
 }
 

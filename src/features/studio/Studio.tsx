@@ -1270,6 +1270,15 @@ export default function Studio({
                 <span>生成成功，已保存到作品库</span>
               </div>
               <div className={styles.successActions}>
+                {currentTrack.audioUrl && onSetPlayingTrack && (
+                  <button
+                    className={`${styles.successBtn} ${styles.primary}`}
+                    onClick={() => onSetPlayingTrack(displayToGlobal(currentTrack))}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    播放当前作品
+                  </button>
+                )}
                 <Link to="/library" className={styles.successBtn}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                   查看作品库

@@ -9,3 +9,10 @@ export interface GlobalPlayerTrack {
   generationSource?: string;
   mode?: string;
 }
+
+// Phase Product Polish-H: Playback queue
+export interface GlobalPlaybackQueue {
+  tracks: GlobalPlayerTrack[];
+  currentIndex: number;
+  sourceLabel?: string;
+}

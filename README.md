@@ -129,9 +129,10 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Library sharing / export | ✅ PASS | Share link, Markdown export, URL deep-link, share button |
 | Prompt template composer | ✅ PASS | 4 groups: scene/mood/instrument/use, apply to textarea |
 | Custom prompt templates | ✅ localStorage | `mmx-studio:prompt-templates`, max 20, browser-local only |
-| Global mini player | ✅ PASS | Shared current track state, fixed bottom player, Library + Studio unified |
+| Playback queue | ✅ PASS | App-level queue state, prev/next buttons, audio ended → next, Library plays filtered list, detail drawer add-to-queue, queue panel with remove/clear |
 
 **Product Polish releases:**
+- **Phase Product Polish-H** — Playback queue: App-level playbackQueue state, prev/next buttons, audio ended → next track, Library plays current filtered list, detail drawer add-to-queue, queue panel with remove/clear, mobile responsive
 - **Phase Product Polish-G** — Global mini player: App-level currentPlayingTrack state, fixed bottom player in Layout, Library and Studio play actions unified
 - **Phase Product Polish-E** — Library sharing / Markdown export / URL deep-link / mobile drawer polish
 
@@ -158,6 +159,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.10-alpha**：Phase Product Polish-H — Playback queue and continuous playback
 
 **v0.4.9-alpha**：Phase Product Polish-G — Global mini player and playback continuity
 

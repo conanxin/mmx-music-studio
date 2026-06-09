@@ -363,6 +363,16 @@
   border: 1px solid var(--color-success);
 }
 
+.successBtn.primary {
+  background: var(--color-success);
+  color: #fff;
+  border: 1px solid var(--color-success);
+}
+
+.successBtn.primary:hover {
+  opacity: 0.85;
+}
+
 /* Error card */
 .errorCard {
   background: var(--color-error-bg);

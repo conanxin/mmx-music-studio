@@ -6,12 +6,30 @@ import type { GlobalPlayerTrack } from '../lib/globalPlayerTrack'
 interface LayoutProps {
   currentPlayingTrack: GlobalPlayerTrack | null
   onSetPlayingTrack: (track: GlobalPlayerTrack | null) => void
+  playbackQueue: GlobalPlayerTrack[]
+  playbackIndex: number
+  queueSourceLabel?: string
+  onPlayNext: () => void
+  onPlayPrevious: () => void
+  onRemoveFromQueue: (index: number) => void
+  onClearQueue: () => void
 }
 
-export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: LayoutProps) {
+export default function Layout({
+  currentPlayingTrack,
+  onSetPlayingTrack,
+  playbackQueue,
+  playbackIndex,
+  queueSourceLabel,
+  onPlayNext,
+  onPlayPrevious,
+  onRemoveFromQueue,
+  onClearQueue,
+}: LayoutProps) {
   const location = useLocation()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [isQueueOpen, setIsQueueOpen] = useState(false)
 
   // Sync audio when track changes
   useEffect(() => {
@@ -35,6 +53,19 @@ export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: Layou
     }
   }, [currentPlayingTrack])
 
+  // Phase Product Polish-H: audio ended → auto-play next
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    const handleEnded = () => {
+      onPlayNext()
+    }
+    audio.addEventListener('ended', handleEnded)
+    return () => {
+      audio.removeEventListener('ended', handleEnded)
+    }
+  }, [onPlayNext])
+
   const togglePlay = () => {
     if (!audioRef.current || !currentPlayingTrack?.audioUrl) return
     if (playing) {
@@ -44,6 +75,14 @@ export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: Layou
       audioRef.current.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
     }
   }
+
+  const toggleQueue = () => setIsQueueOpen(prev => !prev)
+
+  // Derived: queue info
+  const queueLength = playbackQueue.length
+  const hasPrev = playbackIndex > 0
+  const hasNext = playbackIndex < queueLength - 1
+  const showQueueLabel = queueSourceLabel || (queueLength > 1 ? `第 ${playbackIndex + 1} / ${queueLength} 首` : queueLength === 1 ? '单曲播放' : '')
 
   return (
     <div className={styles.layout}>
@@ -84,18 +123,94 @@ export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: Layou
         <Outlet />
       </main>
 
-      {/* Phase Product Polish-G: Global mini player */}
+      {/* Phase Product Polish-G + H: Global mini player */}
       {currentPlayingTrack && (
         <div className={styles.globalMiniPlayer}>
           <div className={styles.globalMiniPlayerInner}>
+            {/* Queue panel (slides in from right) */}
+            {isQueueOpen && (
+              <div className={styles.queuePanel}>
+                <div className={styles.queuePanelHeader}>
+                  <span className={styles.queuePanelTitle}>播放队列</span>
+                  {queueSourceLabel && (
+                    <span className={styles.queueSourceLabel}>{queueSourceLabel}</span>
+                  )}
+                  <button
+                    className={styles.queuePanelClose}
+                    onClick={toggleQueue}
+                    aria-label="关闭队列"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <div className={styles.queuePanelBody}>
+                  {playbackQueue.length === 0 ? (
+                    <div className={styles.queueEmpty}>队列为空</div>
+                  ) : (
+                    playbackQueue.map((track, i) => (
+                      <div
+                        key={track.id}
+                        className={`${styles.queueItem} ${i === playbackIndex ? styles.queueItemActive : ''}`}
+                        onClick={() => {
+                          // Jump to this track by calling onPlayPrevious/onPlayNext repeatedly
+                          // We can't directly set index from here, so we just close the panel
+                          // The parent will handle navigation through normal prev/next
+                          setIsQueueOpen(false)
+                        }}
+                      >
+                        <span className={styles.queueItemIndex}>{i + 1}</span>
+                        <span className={styles.queueItemTitle}>{track.title}</span>
+                        {track.generationSource && (
+                          <span className={styles.queueItemSource}>{track.generationSource}</span>
+                        )}
+                        <button
+                          className={styles.queueItemRemove}
+                          onClick={e => { e.stopPropagation(); onRemoveFromQueue(i); }}
+                          aria-label="从队列移除"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                     </div>
+                    ))
+                  )}
+                </div>
+                {playbackQueue.length > 0 && (
+                  <div className={styles.queuePanelFooter}>
+                    <button className={styles.clearQueueBtn} onClick={() => { onClearQueue(); setIsQueueOpen(false); }}>
+                      清空队列
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className={styles.globalMiniPlayerInfo}>
               <span className={styles.globalMiniPlayerLabel}>当前播放</span>
               <span className={styles.globalMiniPlayerTitle}>{currentPlayingTrack.title}</span>
               {currentPlayingTrack.generationSource && (
                 <span className={styles.globalMiniPlayerSource}>{currentPlayingTrack.generationSource}</span>
               )}
+              {showQueueLabel && (
+                <span className={styles.globalMiniPlayerQueueLabel}>{showQueueLabel}</span>
+              )}
             </div>
             <div className={styles.globalMiniPlayerActions}>
+              {/* Phase Product Polish-H: Previous */}
+              <button
+                className={`${styles.globalMiniPlayerPrev} ${!hasPrev ? styles.disabled : ''}`}
+                onClick={hasPrev ? onPlayPrevious : undefined}
+                disabled={!hasPrev}
+                title="上一首"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                </svg>
+              </button>
+
               {currentPlayingTrack.audioUrl && (
                 <button
                   className={styles.globalMiniPlayerPlay}
@@ -114,6 +229,19 @@ export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: Layou
                   )}
                 </button>
               )}
+
+              {/* Phase Product Polish-H: Next */}
+              <button
+                className={`${styles.globalMiniPlayerNext} ${!hasNext ? styles.disabled : ''}`}
+                onClick={hasNext ? onPlayNext : undefined}
+                disabled={!hasNext}
+                title="下一首"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                </svg>
+              </button>
+
               {currentPlayingTrack.downloadUrl && (
                 <a
                   href={currentPlayingTrack.downloadUrl}
@@ -128,6 +256,24 @@ export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: Layou
                   </svg>
                 </a>
               )}
+
+              {/* Phase Product Polish-H: Queue toggle */}
+              <button
+                className={`${styles.globalMiniPlayerQueue} ${isQueueOpen ? styles.active : ''}`}
+                onClick={toggleQueue}
+                title="播放队列"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6"/>
+                  <line x1="8" y1="12" x2="21" y2="12"/>
+                  <line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/>
+                  <line x1="3" y1="12" x2="3.01" y2="12"/>
+                  <line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+                {queueLength > 1 && <span className={styles.queueBadge}>{queueLength}</span>}
+              </button>
+
               <Link
                 to="/library"
                 className={styles.globalMiniPlayerLibrary}
@@ -140,7 +286,7 @@ export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: Layou
               </Link>
               <button
                 className={styles.globalMiniPlayerClose}
-                onClick={() => onSetPlayingTrack(null)}
+                onClick={() => { onSetPlayingTrack(null); setIsQueueOpen(false); }}
                 title="关闭"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
