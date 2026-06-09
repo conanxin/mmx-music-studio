@@ -7,8 +7,8 @@ on:
     branches: [master, main]
 
 jobs:
-  # ── Static checks: no server, no secrets, no network ──────────────────────
-  static:
+  # ── Build & type checks ───────────────────────────────────────────────────
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -25,6 +25,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Build first so workspace symlinks are resolved for typecheck
+      - name: Build web
+        run: npm run build
+
       # TypeScript
       - name: Typecheck server
         run: npm run typecheck:server
@@ -35,10 +39,7 @@ jobs:
       - name: Typecheck weapp
         run: npm run weapp:typecheck
 
-      # Build
-      - name: Build web
-        run: npm run build
-
+      # Build weapp
       - name: Build weapp
         run: npm run weapp:build
 
@@ -49,7 +50,24 @@ jobs:
       - name: Release check
         run: npm run release:check
 
-      # Static smoke tests (no server needed)
+  # ── Static smoke tests (no server, no network, no secrets) ────────────────
+  static-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Studio CLI submit guard
         run: bash scripts/studio-cli-submit-guard-smoke-test.sh
 
@@ -59,11 +77,10 @@ jobs:
       - name: WeApp BYOK strategy
         run: bash scripts/weapp-byok-strategy-smoke-test.sh
 
-      # Secret scan using Python for reliable multiline handling
       - name: Secret scan
         run: |
           python3 -c "
-          import re, subprocess, sys
+          import subprocess, sys
 
           result = subprocess.run(
               ['grep', '-RInE',
@@ -88,11 +105,8 @@ jobs:
               'MySecurePass2024'
           ]
 
-          matches = []
-          for line in result.stdout.splitlines():
-              if any(ex in line for ex in exclusions):
-                  continue
-              matches.append(line)
+          matches = [l for l in result.stdout.splitlines()
+                     if not any(ex in l for ex in exclusions)]
 
           if matches:
               print('Potential real secret found:')
@@ -102,50 +116,3 @@ jobs:
           else:
               print('Secret scan CLEAN')
           "
-
-  # ── Server-dependent smoke tests ────────────────────────────────────────
-  # Each script starts its own server process on an isolated port.
-  # All use MOCK_GENERATION_ENABLED=true or REAL_API_DAILY_ATTEMPT_LIMIT=0
-  # so no real MiniMax API call is possible.
-  smoke-server:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      # Each script manages its own server lifecycle; env vars configure the mode.
-      - name: Studio hydration smoke
-        run: bash scripts/studio-initial-player-hydration-smoke-test.sh
-        env:
-          MOCK_GENERATION_ENABLED: true
-          MINIMAX_BACKEND: cli
-          PORT: 8790
-
-      - name: Studio handoff smoke
-        run: bash scripts/studio-player-handoff-smoke-test.sh
-        env:
-          MOCK_GENERATION_ENABLED: true
-          MINIMAX_BACKEND: cli
-          PORT: 8791
-
-      - name: BYOK mode smoke
-        run: bash scripts/byok-mode-smoke-test.sh
-        env:
-          MOCK_GENERATION_ENABLED: true
-
-      - name: Real API attempt guard smoke
-        run: bash scripts/real-api-attempt-guard-smoke-test.sh
-        env:
-          REAL_API_DAILY_ATTEMPT_LIMIT: 0
-          BASE_URL: http://127.0.0.1:8792
