@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version:22
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
@@ -59,47 +59,54 @@ jobs:
       - name: WeApp BYOK strategy
         run: bash scripts/weapp-byok-strategy-smoke-test.sh
 
-      # Secret scan
+      # Secret scan using Python for reliable multiline handling
       - name: Secret scan
         run: |
-          grep -RInE \
-            "sk-[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|Authorization: Bearer|MINIMAX_API_KEY=.*[A-Za-z0-9_-]{10,}|PREVIEW_ACCESS_PIN=.*[0-9A-Za-z_-]{6,}|GENERATION_ACCESS_PIN=.*[0-9A-Za-z_-]{6,}" \
-            . \
-            --exclude-dir=node_modules \
-            --exclude-dir=dist \
-            --exclude-dir=.git \
-            --exclude-dir=storage \
-            --exclude-dir=tmp \
-            --exclude="*.png" \
-            --exclude="*.zip" \
-            --exclude="*.mp3" \
-            --exclude="*.wav" \
-            > /tmp/ci-secret-scan-raw.txt 2>&1 || true
+          python3 -c "
+          import re, subprocess, sys
 
-          grep -v "\.env\.example" /tmp/ci-secret-scan-raw.txt \
-          | grep -v "\.env\.demo\.example" \
-          | grep -v "\.env\.private-real\.example" \
-          | grep -v "\.env\.production-locked\.example" \
-          | grep -v "fake" \
-          | grep -v "FAKE" \
-          | grep -v "placeholder" \
-          | grep -v "<your" \
-          | grep -v "smoke-test" \
-          | grep -v "BYOK_REAL_TEST" \
-          | grep -v "package-lock.json" \
-          > /tmp/ci-secret-scan-filtered.txt || true
+          result = subprocess.run(
+              ['grep', '-RInE',
+               'sk-[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|Authorization: Bearer|MINIMAX_API_KEY=.*[A-Za-z0-9_-]{10,}|PREVIEW_ACCESS_PIN=.*[0-9A-Za-z_-]{6,}|GENERATION_ACCESS_PIN=.*[0-9A-Za-z_-]{6,}',
+               '.',
+               '--exclude-dir=node_modules',
+               '--exclude-dir=dist',
+               '--exclude-dir=.git',
+               '--exclude-dir=storage',
+               '--exclude-dir=tmp',
+               '--exclude=*.png',
+               '--exclude=*.zip',
+               '--exclude=*.mp3',
+               '--exclude=*.wav'],
+              capture_output=True, text=True
+          )
 
-          if [ -s /tmp/ci-secret-scan-filtered.txt ]; then
-            echo "Potential real secret found:"
-            cat /tmp/ci-secret-scan-filtered.txt
-            exit 1
-          else
-            echo "Secret scan CLEAN"
-          fi
+          exclusions = [
+              '.env.example', '.env.demo.example', '.env.private-real.example',
+              '.env.production-locked.example', 'fake', 'FAKE', 'placeholder',
+              '<your', 'smoke-test', 'BYOK_REAL_TEST', 'package-lock.json',
+              'MySecurePass2024'
+          ]
 
-  # ── Server-dependent checks: starts mock server on a random port ─────────
-  # These tests start their own server process and do NOT share a port.
-  # They use MOCK_GENERATION_ENABLED=true so no real generation is possible.
+          matches = []
+          for line in result.stdout.splitlines():
+              if any(ex in line for ex in exclusions):
+                  continue
+              matches.append(line)
+
+          if matches:
+              print('Potential real secret found:')
+              for m in matches:
+                  print(m)
+              sys.exit(1)
+          else:
+              print('Secret scan CLEAN')
+          "
+
+  # ── Server-dependent smoke tests ────────────────────────────────────────
+  # Each script starts its own server process on an isolated port.
+  # All use MOCK_GENERATION_ENABLED=true or REAL_API_DAILY_ATTEMPT_LIMIT=0
+  # so no real MiniMax API call is possible.
   smoke-server:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -111,19 +118,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "22"
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      # Studio hydration — needs a running server with existing tracks
+      # Each script manages its own server lifecycle; env vars configure the mode.
       - name: Studio hydration smoke
         run: bash scripts/studio-initial-player-hydration-smoke-test.sh
         env:
-          # CI always uses mock backend — no real tracks needed for the static checks,
-          # but the script also verifies /api/tracks returns audioUrl/downloadUrl.
-          # Start a mock server on port 8790 so the script's curl hits it.
           MOCK_GENERATION_ENABLED: true
           MINIMAX_BACKEND: cli
           PORT: 8790
@@ -138,13 +142,10 @@ jobs:
       - name: BYOK mode smoke
         run: bash scripts/byok-mode-smoke-test.sh
         env:
-          # byok-mode-smoke-test.sh starts its own server on dynamically chosen ports
           MOCK_GENERATION_ENABLED: true
 
       - name: Real API attempt guard smoke
         run: bash scripts/real-api-attempt-guard-smoke-test.sh
         env:
-          # Uses REAL_API_DAILY_ATTEMPT_LIMIT=0 so guard blocks before network call.
-          # No real MiniMax API is called.
           REAL_API_DAILY_ATTEMPT_LIMIT: 0
           BASE_URL: http://127.0.0.1:8792
