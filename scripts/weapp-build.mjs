@@ -31,9 +31,13 @@ const isWin = process.platform === 'win32';
 const binName     = isWin ? 'taro.cmd' : 'taro';
 
 const candidates = [
-  join(root,      'node_modules', '.bin', binName),
-  join(weappDir, 'node_modules', '.bin', binName),
+  join(root, 'node_modules', '.bin', binName),
 ];
+
+const weappNodeModulesTaro = join(weappDir, 'node_modules', '@tarojs', 'cli', 'bin', binName);
+if (existsSync(weappNodeModulesTaro)) {
+  candidates.push(weappNodeModulesTaro);
+}
 
 function log(msg) {
   console.log(`[weapp-build] ${msg}`);

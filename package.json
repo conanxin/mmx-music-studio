@@ -1,8 +1,11 @@
 {
   "name": "mmx-music-studio",
+  "version": "0.4.1-alpha",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "dev:server": "tsx server/index.ts",

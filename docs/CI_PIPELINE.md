@@ -68,7 +68,9 @@ GitHub Actions now runs WeApp build as a **blocking gate** with a stable Issue v
 - Prints diagnostics (node version, platform, binary path) for CI visibility
 - Exits with the build's real exit code
 
-This replaces `npm --prefix apps/weapp run build:weapp` which was unstable in CI (npm 10.9.8 on GitHub Actions runner failed to resolve workspace executable).
+This replaces `npm --prefix apps/weapp run build:weapp` which was unstable in CI (npm 10.9.8 on GitHub Actions runner failed to resolve workspace script executable).
+
+Root cause: `apps/weapp/node_modules/` did not contain `@tarojs/cli` (CLI only at root `node_modules/@tarojs/cli`). The wrapper now resolves the binary from root `node_modules/.bin/taro`.
 
 ### GitHub diagnostic issue
 
