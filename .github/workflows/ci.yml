@@ -48,27 +48,33 @@ jobs:
         run: bash scripts/ci-weapp-build-diagnostic.sh
 
       # ── Blocking gate: fail CI if WeApp build actually failed ─────────────────
+      # This step exits 1 if build failed, which triggers the issue creation via
+      # the 'if: failure()' condition on the next step.
       - name: WeApp build gate
         id: weapp_gate
         run: |
           SUMMARY="/tmp/mmx-ci-diagnostics/weapp-build-summary.md"
           if [ ! -f "$SUMMARY" ]; then
-            echo "ERROR: weapp-build-summary.md not found — diagnostic script may have failed"
+            echo "ERROR: weapp-build-summary.md not found"
             exit 1
           fi
           if grep -q "\*\*WeApp build: FAIL" "$SUMMARY"; then
-            echo "ERROR: WeApp build failed in CI."
+            echo "=== WeApp build FAILED in CI ==="
             cat "$SUMMARY"
-            echo "WEAPP_BUILD_FAILED=1" >> $GITHUB_ENV
+            echo "=== build log tail ==="
+            tail -n 80 "/tmp/mmx-ci-diagnostics/weapp-build.log"
+            # Set flag for issue creation step (persists via GITHUB_ENV)
+            echo "WEAPP_BUILD_FAILED=true" >> $GITHUB_ENV
             exit 1
           fi
           echo "WeApp build: PASS"
           cat "$SUMMARY"
 
       # ── Create GitHub Issue if WeApp build failed (for agent visibility) ─────────
-      # GITHUB_TOKEN is automatically available and has write access to repo issues
+      # GITHUB_TOKEN is automatically available and has write access to repo issues.
+      # Runs ONLY if weapp_gate step failed (via 'if: failure()').
       - name: Create WeApp CI diagnostic issue
-        if: env.WEAPP_BUILD_FAILED == '1'
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
@@ -78,7 +84,7 @@ jobs:
             const body = [
               '## Automated: WeApp CI Build Failure',
               '',
-              '> This issue is auto-created by GitHub Actions CI. It is intended for agent review — no secrets are included.',
+              '> This issue is auto-created by GitHub Actions CI. No secrets are included.',
               '',
               '### Summary',
               summary,
@@ -100,8 +106,10 @@ jobs:
 
             if (existing) {
               await github.rest.issues.update({ ...repo, issue_number: existing.number, body });
+              console.log('Updated existing issue:', existing.number);
             } else {
               await github.rest.issues.create({ ...repo, title, body, labels: ['ci-diagnostic'] });
+              console.log('Created new issue');
             }
 
       # ── Print diagnostics (always runs) ─────────────────────────────────────────
