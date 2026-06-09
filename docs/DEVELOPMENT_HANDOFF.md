@@ -357,4 +357,18 @@ See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md)
 - Phase 5B-A/B-C: Real API attempt guard ✅
 - Phase 5C: WeChat BYOK strategy ✅
 - Phase 5E: realApiAttemptsUsed counter fix ✅
-- Phase 5B-D: 真实 MiniMax API 生成 ⏳ PENDING
+|- Phase 5B-D: 真实 MiniMax API 生成 ⏳ PENDING
+
+## GitHub Actions CI
+
+CI 自动验证链路稳定性和 BYOK 安全修复，防止后续改动破坏已完成的主链路。
+
+**查看运行状态：** https://github.com/conanxin/mmx-music-studio/actions
+
+**CI 特点：**
+- 无需真实 MiniMax key
+- CI 不会生成音乐
+- 所有 smoke tests 使用 mock 或 `REAL_API_DAILY_ATTEMPT_LIMIT=0` guard
+- CI 失败时优先看 typecheck/build/smoke test 输出
+
+详见 [docs/CI_PIPELINE.md](docs/CI_PIPELINE.md)。

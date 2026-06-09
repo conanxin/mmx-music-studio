@@ -3,6 +3,7 @@
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Phase](https://img.shields.io/badge/Phase-v0.4.1--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha)
+[![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
@@ -131,7 +132,9 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **WeChat BYOK strategy** | ✅ Phase 5C | key 管理方案已文档化 |
 | **Real API attempt guard** | ✅ Phase 5B-C/5E | 计数器在 check 前递增 |
 | **BYOK safety smoke tests** | ✅ Phase 5E | 8 个 smoke tests 全部 PASS |
-| **Real BYOK API 成功生成** | ⏳ PENDING | guard 验证通过；真实生成待 Phase 5B-D |
+| **CI smoke pipeline** | ✅ Phase 5G | GitHub Actions CI，静态 +独立 mock server |
+| Real generation in CI | ❌ Disabled | CI 使用 mock / limit=0 guard |
+| Secrets required for CI | ❌ None | 无需真实 key/token |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
