@@ -133,6 +133,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **Real API attempt guard** | ✅ Phase 5B-C/5E | 计数器在 check 前递增 |
 | **BYOK safety smoke tests** | ✅ Phase 5E | 8 个 smoke tests 全部 PASS |
 | **CI smoke pipeline** | ✅ Phase 5G | GitHub Actions CI，静态 +独立 mock server |
+| **WeApp build in CI** | ⚠️ Phase 5G-C | diagnostic-only（非 blocking），本地 full-verify.sh 强制 |
 | Real generation in CI | ❌ Disabled | CI 使用 mock / limit=0 guard |
 | Secrets required for CI | ❌ None | 无需真实 key/token |
 
