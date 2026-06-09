@@ -4,6 +4,28 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.8-alpha] — 2026-06-09
+
+### Highlights
+
+- **Prompt templates and style presets release** — Studio gains a structured template composer
+- **New Studio "🎵 模板组合器"** — collapsible panel below the prompt textarea
+- **Four preset groups**:场景 (8 options), 情绪 (8 options), 乐器 (8 options), 用途 (8 options)
+- **One-click "应用到描述"** — selects one chip per group, composes a natural-language prompt, fills the textarea
+- **Composed prompt remains fully editable** — user reviews before submitting generation
+- **Browser-local custom templates** — save current prompt as a named template in `localStorage` (`mmx-studio:prompt-templates`)
+  - Up to 20 templates per browser
+  - Re-apply or delete saved templates
+  - Duplicate / empty / cap-limit cases show inline error messages
+- **Existing "示例灵感" chips preserved** — complementary, not a replacement
+- **Mobile template layout polish** — chips wrap, buttons stack to full-width, input/save row reflows to single column
+
+### Notes
+
+- Applying a template preset does **not** trigger music generation — user reviews and submits manually
+- Templates are `localStorage`-only — no cloud sync, cleared if browser data is cleared
+- CLI backend remains the recommended default path; BYOK API Adapter remains experimental
+
 ## [v0.4.7-alpha] — 2026-06-09
 
 ### Highlights

@@ -126,7 +126,13 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Public landing / onboarding | ✅ PASS | Hero, quick-start, status card, mobile polish |
 | Audio duration display | ✅ PASS | Reads HTMLAudioElement metadata |
 | Download endpoint | ✅ PASS | MP3 download supported |
-| Library sharing / export | ✅ PASS | Share link, Markdown export, URL deep-link |
+| Library sharing / export | ✅ PASS | Share link, Markdown export, URL deep-link, share button |
+| Prompt template composer | ✅ PASS | 4 groups: scene/mood/instrument/use, apply to textarea |
+| Custom prompt templates | ✅ localStorage | `mmx-studio:prompt-templates`, max 20, browser-local only |
+
+**Product Polish releases:**
+- **Phase Product Polish-E** — Track share link, Markdown export, URL deep-link, mobile drawer polish
+- **Phase Product Polish-F** — Studio prompt template composer, 4 preset groups, browser-local custom templates, mobile layout
 
 ### CI and Safety
 
@@ -142,11 +148,11 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 | Area | Status | Notes |
 |------|--------|-------|
-| HTTPS | ✅ PASS | Caddy + Let's Encrypt |
-| Mainland custom domain | ⚠️ ICP required | Tencent Cloud blocks unrecorded custom domain |
-| SSH Tunnel | ✅ Fallback | Debug / fallback access only; primary is public URL |
-| Cloudflare Tunnel | ✅ PASS | `music.conanxin.com` → `127.0.0.1:8787`, public access |
-| systemd service | ✅ PASS | `mmx-music-studio.service` active/enabled, `Restart=always` |
+| HTTPS | ✅ PASS | Cloudflare Tunnel `https://music.conanxin.com` |
+| Public URL | ✅ PASS | `https://music.conanxin.com` — no SSH Tunnel needed |
+| systemd service | ✅ PASS | `mmx-music-studio.service`, active/enabled |
+| Cloudflare Tunnel | ✅ PASS | 4 San Jose connections, boot-persistent |
+| systemd service | ✅ PASS | `mmx-music-studio.service`, active/enabled, `Restart=always` |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
