@@ -4,6 +4,44 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.3-alpha] — 2026-06-09
+
+### Highlights
+
+- **Public UX polish release** — Studio and Library UX significantly improved after public URL went live at `https://music.conanxin.com`
+- **Cloudflare Tunnel public URL verified** — `music.conanxin.com` → `127.0.0.1:8787` live; SSH Tunnel no longer required for normal access
+- **Studio prompt example chips** — 6 clickable inspiration chips below the prompt textarea; click appends to prompt without triggering generation
+- **Productized runtime mode labels** — status bar shows `MMX CLI 模式` / `BYOK API 模式` / `API 实验模式` / `本地预览` instead of raw technical strings
+- **API warnings gated to API backend** — `⚠️ 会消耗额度` / `真实测试剩余 N 次` hidden when `backend === 'cli'`
+- **Library search** — full-text search across title, prompt, lyrics, source, and mode; combines with source filters
+- **Library favorites** — browser-local star/unstar via `localStorage`; dedicated Favorites filter tab with count badge
+- **Track detail drawer** — right-side panel with title, source, mode, duration, format, Track ID (copyable), prompt, lyrics, and action buttons
+- **Copy prompt / Copy Track ID** — one-click copy with 2-second toast confirmation
+- **Mobile bottom-sheet detail view** — detail drawer becomes a bottom sheet on 390px screens
+- **README table rendering fixed** — `||` double-pipe prefix replaced with `|`; long table split into 4 focused tables
+- **Cloudflare Tunnel deployment documented** — `docs/CLOUDFLARE_TUNNEL_DEPLOYMENT.md` + helper script created
+
+### Backend
+
+- CLI backend remains recommended default (`MINIMAX_BACKEND=cli`, `REAL_GENERATION_ENABLED=true`)
+- BYOK API Adapter: verified once in v0.4.2-alpha; still experimental
+- No real generation performed for this release
+
+### Safety
+
+- No automatic generation during release prep
+- No additional MiniMax quota consumed
+- No API key/token printed in logs or committed
+- Favorites are `localStorage`-only (no server persistence)
+
+### Known Limitations
+
+- Cloudflare Access not enabled — `music.conanxin.com` is open to public internet
+- Favorites are browser-local only — clearing browser data erases them
+- Async API task polling (`task_id` response) unconfirmed
+
+---
+
 ## [v0.4.2-alpha] — 2026-06-09
 
 ### Highlights
