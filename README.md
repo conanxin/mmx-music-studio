@@ -129,10 +129,10 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Library sharing / export | ✅ PASS | Share link, Markdown export, URL deep-link, share button |
 | Prompt template composer | ✅ PASS | 4 groups: scene/mood/instrument/use, apply to textarea |
 | Custom prompt templates | ✅ localStorage | `mmx-studio:prompt-templates`, max 20, browser-local only |
+| Global mini player | ✅ PASS | Shared current track state, fixed bottom player, Library + Studio unified |
 
 **Product Polish releases:**
-- **Phase Product Polish-E** — Track share link, Markdown export, URL deep-link, mobile drawer polish
-- **Phase Product Polish-F** — Studio prompt template composer, 4 preset groups, browser-local custom templates, mobile layout
+- **Phase Product Polish-G** — Global mini player: App-level currentPlayingTrack state, fixed bottom player in Layout, Library and Studio play actions unified
 
 ### CI and Safety
 

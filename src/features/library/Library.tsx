@@ -4,6 +4,7 @@ import styles from './Library.module.css';
 import { MOCK_TASKS, formatDuration, formatRelativeTime, MODE_LABELS } from '../../mock/data';
 import { listTracks, deleteTrack } from '../../lib/serverApi';
 import type { TrackLike } from '../../lib/serverApi';
+import type { GlobalPlayerTrack } from '../../lib/globalPlayerTrack';
 
 const FAVORITES_KEY = 'mmx-studio:favorites';
 
@@ -100,7 +101,15 @@ function useCopyToast() {
   return { toast, showCopy };
 }
 
-export default function Library() {
+export default function Library({
+  currentPlayingTrack,
+  onSetPlayingTrack,
+}: {
+  currentPlayingTrack: GlobalPlayerTrack | null
+  onSetPlayingTrack: (track: GlobalPlayerTrack | null) => void
+}) {
+  // currentPlayingTrack is received from App-level state for future highlight support
+  void currentPlayingTrack
   const [searchParams, setSearchParams] = useSearchParams();
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,12 +197,25 @@ export default function Library() {
     navigator.clipboard.writeText(md).then(() => showCopy('作品信息已复制')).catch(() => showCopy('复制失败'));
   };
 
-  const handlePlay = (track: TrackItem) => {
-    if (track.audioUrl) {
-      const audio = new Audio(track.audioUrl);
-      audio.play().catch(() => {});
-    }
+  // Phase Product Polish-G: Convert TrackItem → GlobalPlayerTrack
+function itemToGlobal(track: TrackItem): GlobalPlayerTrack {
+  return {
+    id: track.id,
+    title: track.title,
+    audioUrl: track.audioUrl ?? '',
+    downloadUrl: track.downloadUrl,
+    durationText: track.durationText,
+    generationSource: track.generationSource,
+    mode: track.mode,
   };
+}
+
+const handlePlay = (track: TrackItem) => {
+  // Phase Product Polish-G: delegate to global player
+  if (track.audioUrl) {
+    onSetPlayingTrack(itemToGlobal(track));
+  }
+};
 
   const handleDelete = async (track: TrackItem) => {
     if (!apiConnected || track.isMock) return;

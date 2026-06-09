@@ -6,6 +6,7 @@ import { useSettings } from '../../lib/settingsStore';
 import { getHealth, createGenerateJob, getJob, cancelJob, listTracks, listJobsFiltered } from '../../lib/serverApi';
 import type { TrackLike, GenerateJob } from '../../lib/serverApi';
 import { STYLE_TAGS } from '../../mock/data';
+import type { GlobalPlayerTrack } from '../../lib/globalPlayerTrack';
 import {
   validateMusicInput,
   createMockJob,
@@ -302,6 +303,7 @@ interface DisplayTrack {
   durationText?: string;
   audioUrl?: string;
   downloadUrl?: string;
+  generationSource?: string;
 }
 
 function serverTrackToDisplay(t: TrackLike): DisplayTrack {
@@ -312,10 +314,32 @@ function serverTrackToDisplay(t: TrackLike): DisplayTrack {
     durationText: t.durationText,
     audioUrl: t.audioUrl,
     downloadUrl: t.downloadUrl,
+    generationSource: t.generationSource,
   };
 }
 
-export default function Studio() {
+// Phase Product Polish-G: Convert DisplayTrack → GlobalPlayerTrack
+function displayToGlobal(track: DisplayTrack): GlobalPlayerTrack {
+  return {
+    id: track.id,
+    title: track.title,
+    audioUrl: track.audioUrl ?? '',
+    downloadUrl: track.downloadUrl,
+    durationText: track.durationText,
+    generationSource: track.generationSource,
+    mode: track.mode,
+  };
+}
+
+export default function Studio({
+  currentPlayingTrack,
+  onSetPlayingTrack,
+}: {
+  currentPlayingTrack: GlobalPlayerTrack | null
+  onSetPlayingTrack: (track: GlobalPlayerTrack | null) => void
+}) {
+  // currentPlayingTrack is received from App-level state for future highlight support
+  void currentPlayingTrack
   const { settings } = useSettings();
 
   const [activeMode, setActiveMode] = useState<UIMode>(resolveMode);
@@ -449,6 +473,8 @@ export default function Studio() {
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
           setGenerationSource(fresh.track.generationSource as 'mock' | 'minimax' | 'mmx-cli' ?? null);
           setGenerationSuccess(true);
+          // Phase Product Polish-G: sync to global player
+          onSetPlayingTrack(displayToGlobal(display));
         }
         setIsGenerating(false);
         setCurrentJob(null);
@@ -728,6 +754,8 @@ export default function Studio() {
         setRecentTracks(prev => [display, ...prev].slice(0, 3));
         setGenerationSource(job.track.generationSource as 'mock' | 'minimax' | 'mmx-cli' ?? null);
         setGenerationSuccess(true);
+        // Phase Product Polish-G: sync to global player
+        onSetPlayingTrack(displayToGlobal(display));
         return;
       }
 
@@ -750,11 +778,14 @@ export default function Studio() {
             title: job.track.title,
             mode: job.track.mode,
             durationText: job.track.durationText || '2:31',
+            generationSource: 'mock',
           };
           setCurrentTrack(display);
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
           setGenerationSuccess(true);
           setIsGenerating(false);
+          // Phase Product Polish-G: sync to global player
+          onSetPlayingTrack(displayToGlobal(display));
         } else {
           setTimeout(tick, 500);
         }

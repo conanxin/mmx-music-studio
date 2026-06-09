@@ -1,17 +1,49 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
 import styles from './Layout.module.css'
+import type { GlobalPlayerTrack } from '../lib/globalPlayerTrack'
 
-const navItems = [
-  { path: '/', label: '首页' },
-  { path: '/studio', label: '创作' },
-  { path: '/library', label: '作品' },
-  { path: '/jobs', label: '任务' },
-  { path: '/settings', label: '设置' },
-  { path: '/docs', label: '文档' },
-]
+interface LayoutProps {
+  currentPlayingTrack: GlobalPlayerTrack | null
+  onSetPlayingTrack: (track: GlobalPlayerTrack | null) => void
+}
 
-export default function Layout() {
+export default function Layout({ currentPlayingTrack, onSetPlayingTrack }: LayoutProps) {
   const location = useLocation()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+
+  // Sync audio when track changes
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio()
+    }
+    const audio = audioRef.current
+    if (currentPlayingTrack?.audioUrl) {
+      if (audio.src !== currentPlayingTrack.audioUrl) {
+        audio.src = currentPlayingTrack.audioUrl
+        setPlaying(false)
+      }
+    }
+  }, [currentPlayingTrack])
+
+  // Stop when track is cleared
+  useEffect(() => {
+    if (!currentPlayingTrack && audioRef.current) {
+      audioRef.current.pause()
+      setPlaying(false)
+    }
+  }, [currentPlayingTrack])
+
+  const togglePlay = () => {
+    if (!audioRef.current || !currentPlayingTrack?.audioUrl) return
+    if (playing) {
+      audioRef.current.pause()
+      setPlaying(false)
+    } else {
+      audioRef.current.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+    }
+  }
 
   return (
     <div className={styles.layout}>
@@ -51,6 +83,84 @@ export default function Layout() {
       <main className={styles.main}>
         <Outlet />
       </main>
+
+      {/* Phase Product Polish-G: Global mini player */}
+      {currentPlayingTrack && (
+        <div className={styles.globalMiniPlayer}>
+          <div className={styles.globalMiniPlayerInner}>
+            <div className={styles.globalMiniPlayerInfo}>
+              <span className={styles.globalMiniPlayerLabel}>当前播放</span>
+              <span className={styles.globalMiniPlayerTitle}>{currentPlayingTrack.title}</span>
+              {currentPlayingTrack.generationSource && (
+                <span className={styles.globalMiniPlayerSource}>{currentPlayingTrack.generationSource}</span>
+              )}
+            </div>
+            <div className={styles.globalMiniPlayerActions}>
+              {currentPlayingTrack.audioUrl && (
+                <button
+                  className={styles.globalMiniPlayerPlay}
+                  onClick={togglePlay}
+                  title={playing ? '暂停' : '播放'}
+                >
+                  {playing ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="6" y="4" width="4" height="16"/>
+                      <rect x="14" y="4" width="4" height="16"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                  )}
+                </button>
+              )}
+              {currentPlayingTrack.downloadUrl && (
+                <a
+                  href={currentPlayingTrack.downloadUrl}
+                  className={styles.globalMiniPlayerDownload}
+                  download
+                  title="下载 MP3"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </a>
+              )}
+              <Link
+                to="/library"
+                className={styles.globalMiniPlayerLibrary}
+                title="查看作品库"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                </svg>
+              </Link>
+              <button
+                className={styles.globalMiniPlayerClose}
+                onClick={() => onSetPlayingTrack(null)}
+                title="关闭"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+const navItems = [
+  { path: '/', label: '首页' },
+  { path: '/studio', label: '创作' },
+  { path: '/library', label: '作品' },
+  { path: '/jobs', label: '任务' },
+  { path: '/settings', label: '设置' },
+  { path: '/docs', label: '文档' },
+]

@@ -8,17 +8,36 @@ import Settings from './features/settings/Settings';
 import Docs from './features/docs/Docs';
 import Jobs from './features/jobs/Jobs';
 import PreviewAccessGate from './components/PreviewAccessGate';
+import { useState } from 'react';
+import type { GlobalPlayerTrack } from './lib/globalPlayerTrack';
 
 export default function App() {
+  const [currentPlayingTrack, setCurrentPlayingTrack] = useState<GlobalPlayerTrack | null>(null);
+
   return (
     <SettingsProvider>
       <PreviewAccessGate>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/" element={
+              <Layout
+                currentPlayingTrack={currentPlayingTrack}
+                onSetPlayingTrack={setCurrentPlayingTrack}
+              />
+            }>
               <Route index element={<Home />} />
-              <Route path="studio" element={<Studio />} />
-              <Route path="library" element={<Library />} />
+              <Route path="studio" element={
+                <Studio
+                  currentPlayingTrack={currentPlayingTrack}
+                  onSetPlayingTrack={setCurrentPlayingTrack}
+                />
+              } />
+              <Route path="library" element={
+                <Library
+                  currentPlayingTrack={currentPlayingTrack}
+                  onSetPlayingTrack={setCurrentPlayingTrack}
+                />
+              } />
               <Route path="settings" element={<Settings />} />
               <Route path="docs" element={<Docs />} />
               <Route path="jobs" element={<Jobs />} />
