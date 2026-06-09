@@ -453,6 +453,12 @@ export default function Studio() {
       return;
     }
 
+    // Phase 5B-D-A: Block if BYOK API mode but no key provided
+    if (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey) {
+      setGenError('请先在设置中填写你的 MiniMax Token Plan Key，BYOK 模式需要用户提供自己的 Key。');
+      return;
+    }
+
     // Phase 5B-D-A: Block if real API quota exhausted
     if (
       healthInfo?.backend === 'api' &&
@@ -858,7 +864,11 @@ export default function Studio() {
           {/* Phase 5B-D-A: Real API warning banner */}
           {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
             <div className={styles.realApiWarning}>
-              ⚠️ 真实 API 测试会消耗额度，请只点击一次
+              {healthInfo?.byokEnabled && !settings.apiKey ? (
+                <>⚠️ 请先在设置中输入 BYOK Key，再点击生成</>
+              ) : (
+                <>⚠️ 真实 API 测试会消耗额度，请只点击一次</>
+              )}
             </div>
           )}
 
