@@ -16,7 +16,7 @@
     "release:check": "bash scripts/release-check.sh",
     "preview": "vite preview",
     "weapp:dev": "npm --prefix apps/weapp run dev:weapp",
-    "weapp:build": "npm --prefix apps/weapp run build:weapp",
+    "weapp:build": "node scripts/weapp-build.mjs",
     "weapp:typecheck": "npm --prefix apps/weapp run typecheck",
     "production:check": "bash scripts/production-readiness-check.sh"
   },

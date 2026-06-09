@@ -48,15 +48,27 @@ CI is **safe by default** — it never calls real MiniMax APIs, never generates 
 
 ### Current policy
 
-GitHub Actions treats **WeApp build as diagnostic-only** but now with a stable Issue visibility mechanism:
+**Phase WeApp-CI-RootCause-C** replaced the unstable `npm --prefix` workspace script with a deterministic Node.js wrapper at `scripts/weapp-build.mjs`.
 
-1. `Build weapp diagnostic` step runs `scripts/ci-weapp-build-diagnostic.sh` — always exits 0
+GitHub Actions now runs WeApp build as a **blocking gate** with a stable Issue visibility mechanism:
+
+1. `Build weapp diagnostic` step runs `scripts/ci-weapp-build-diagnostic.sh` → calls `npm run weapp:build` → calls `scripts/weapp-build.mjs` → deterministic Taro binary lookup → runs `taro build --type weapp`
 2. Machine-readable `weapp-build-result.env` is generated (`WEAPP_BUILD_STATUS=success|failure`)
 3. `Read WeApp diagnostic result` step reads the result.env and writes to `$GITHUB_OUTPUT`
-4. `WeApp build gate` step exits 1 if status is `failure`
+4. `WeApp build gate` step exits 1 if status is `failure` (this is the blocking gate)
 5. **`Create or update WeApp CI diagnostic issue`** step: `if: always() && steps.weapp_result.outputs.status == 'failure'` — creates or updates a stable issue titled `CI diagnostic: WeApp build failure`
 6. Issue body contains: run URL, SHA, machine-readable result.env, sanitized summary.md, build log tail
 7. Issue is readable by future agents via GitHub Issues public API (no artifact download needed)
+
+### WeApp build wrapper
+
+`scripts/weapp-build.mjs` is a deterministic Node.js script that:
+- Locates the Taro CLI binary explicitly at `apps/weapp/node_modules/.bin/taro`
+- Runs `taro build --type weapp` from the `apps/weapp` directory
+- Prints diagnostics (node version, platform, binary path) for CI visibility
+- Exits with the build's real exit code
+
+This replaces `npm --prefix apps/weapp run build:weapp` which was unstable in CI (npm 10.9.8 on GitHub Actions runner failed to resolve workspace executable).
 
 ### GitHub diagnostic issue
 
@@ -70,12 +82,6 @@ This avoids relying on GitHub Actions artifact access and allows future agents t
 ```
 https://api.github.com/repos/conanxin/mmx-music-studio/issues?state=open&labels=ci-diagnostic
 ```
-
-The issue body includes:
-- Run URL + SHA
-- `weapp-build-result.env` (machine-readable)
-- `weapp-build-summary.md` (sanitized markdown)
-- Last 80 lines of build log (redacted)
 
 ### GitHub Step Summary
 
