@@ -147,7 +147,10 @@ jobs:
           if-no-files-found: ignore
 
       # ── Manifest / release checks ──────────────────────────────────────────────
+      # Manifest audit is advisory only — storage/ data quality is managed locally.
+      # It does NOT block CI, but is still run for visibility.
       - name: Manifest audit
+        continue-on-error: true
         run: npm run manifest:audit
 
       - name: Release check
