@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-API Adapter (backend=api, BYOK mode) is **experimental and not yet validated** for real music generation. Web CLI backend (`backend=cli`) is the recommended production path. This document establishes a diagnostic baseline for the next phase of real API testing.
+API Adapter (backend=api, BYOK mode) has **completed one controlled real generation** on 2026-06-09 (`job_1780992991977_c9eaaa0c`, `track_1780993112817_yg4g4m`). It is **experimental** — MMX CLI backend (`backend=cli`) remains the recommended production path.
 
 ---
 

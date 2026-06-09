@@ -371,9 +371,14 @@ See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md)
   - 确认 endpoint/auth/Content-Type/response shape
   - Parser 完整映射 `extra_info.*` 和 `base_resp.*`
   - `api-adapter-official-contract-smoke-test.sh` 29/29 PASS
-- Phase API-Debug-C: 用户确认后单次真实 API 调用 ⏳ PENDING
+- Phase API-Debug-C: 用户确认后单次真实 API 调用 ✅ COMPLETE
+  - `job_1780992991977_c9eaaa0c` → succeeded
+  - Track `track_1780993112817_yg4g4m` "轻柔钢琴测试音乐" 已写入并可播放
+  - Audio endpoint `/api/tracks/{id}/audio` → 200 OK, 4.76 MB
+  - Response kind: `direct_audio` (binary → local storage)
+  - 详情见 [docs/API_DEBUG_C_REAL_CALL_REPORT.md](docs/API_DEBUG_C_REAL_CALL_REPORT.md)
 
-**推荐主链路：** Web + MMX CLI backend（`backend=cli`）。API Adapter 为研究方向，contract preflight 已完成，真实调用待 Phase API-Debug-C。
+**推荐主链路：** Web + MMX CLI backend（`backend=cli`）。API Adapter 已完成一次真实 BYOK 生成验证，但仍为实验性路径。
 
 **查看详情：** [docs/API_ADAPTER_DEBUG_REPORT.md](docs/API_ADAPTER_DEBUG_REPORT.md) | [docs/BYOK_REAL_TEST_PLAN.md](docs/BYOK_REAL_TEST_PLAN.md)
 
