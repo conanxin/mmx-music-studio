@@ -96,13 +96,35 @@ curl -I https://music.conanxin.com
 - Keep Node.js bound to `127.0.0.1:8787` — never expose it directly to the internet
 - Cloudflare Tunnel uses outbound connections from the VPS; the server firewall only needs to allow outgoing connections to `cloudflare.com`
 
+## After Tunnel Setup — Phase B
+
+**Phase Deploy-CF-B (complete):** App server now runs as a **systemd service** (`mmx-music-studio`) instead of a manual process. Cloudflare Tunnel continues to forward to `http://127.0.0.1:8787`.
+
+**What changed:**
+- `tsx server/index.ts` is no longer run manually in an SSH session
+- The service auto-restarts on crash (`Restart=always`)
+- The service starts on boot (`enabled`)
+
+```bash
+# Check service status
+sudo systemctl status mmx-music-studio
+
+# Restart service
+sudo systemctl restart mmx-music-studio
+
+# View logs
+journalctl -u mmx-music-studio -f
+```
+
+**Cloudflare Tunnel still forwards to `127.0.0.1:8787`** — no changes needed on the Cloudflare dashboard side.
+
 ## Helper script
 
 Use `scripts/cloudflare-tunnel-setup.sh` for automated setup:
 
 ```bash
 # Set token first (from Cloudflare dashboard)
-export CLOUDFLARE_TUNNEL_TOKEN='<your-token>'
+export CLOUDFLARE_TUNNEL_TOKEN='***'
 
 # Run setup
 bash scripts/cloudflare-tunnel-setup.sh

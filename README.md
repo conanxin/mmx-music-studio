@@ -412,6 +412,36 @@ bash scripts/cli-backend-readiness-smoke-test.sh
 curl -s http://127.0.0.1:8787/api/health | python3 -m json.tool
 ```
 
+### systemd Service
+
+项目已将 Web Server 注册为 systemd 服务，支持崩溃自动重启和开机自启。
+
+**安装（首次）：**
+```bash
+sudo bash scripts/install-systemd-service.sh
+```
+
+**常用运维命令：**
+```bash
+sudo systemctl status mmx-music-studio          # 查看状态
+sudo systemctl restart mmx-music-studio          # 重启服务
+sudo systemctl stop mmx-music-studio            # 停止服务
+journalctl -u mmx-music-studio -f               # 实时日志
+journalctl -u mmx-music-studio -n 50            # 最近 50 条日志
+```
+
+**配置：**
+- Service name: `mmx-music-studio`
+- 绑定地址: `127.0.0.1:8787`（Cloudflare Tunnel 转发至此）
+- Backend: `cli`（MMX CLI 主链路）
+- 每日生成上限: 50 次（`DAILY_GENERATION_LIMIT=50`）
+- 崩溃后自动重启: `Restart=always`
+- Unit 文件: `deploy/systemd/mmx-music-studio.service`
+
+**注意事项：**
+- 不在项目中存储任何 API key 或 Cloudflare token
+- mmx CLI 认证凭据在 `~/.mmx/config.json`（服务器本地）
+
 ### 访问保护（Preview Access Gate）
 
 公网部署时推荐开启 PIN 访问保护：

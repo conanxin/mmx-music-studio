@@ -1,0 +1,52 @@
+[Unit]
+Description=mmx-music-studio Web Server
+Documentation=https://github.com/conanxin/mmx-music-studio
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+
+# Working directory — project root
+WorkingDirectory=/home/ubuntu/projects/mmx-music-studio
+
+# Environment — CLI backend (recommended path)
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=MINIMAX_BACKEND=cli
+Environment=REAL_GENERATION_ENABLED=true
+Environment=MOCK_GENERATION_ENABLED=false
+Environment=GENERATION_ACCESS_ENABLED=false
+Environment=RATE_LIMIT_ENABLED=true
+Environment=RATE_LIMIT_WINDOW_MS=60000
+Environment=RATE_LIMIT_MAX_REQUESTS=3
+Environment=DAILY_QUOTA_ENABLED=true
+Environment=DAILY_GENERATION_LIMIT=50
+Environment=PREVIEW_ACCESS_ENABLED=false
+
+# PATH — includes mmx CLI binary
+Environment=PATH=/home/ubuntu/.npm-global/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+# Launch via npm run start (tsx server/index.ts)
+ExecStart=/usr/bin/npm run start
+
+# Auto-restart on crash, after 5s delay
+Restart=always
+RestartSec=5
+
+# Graceful shutdown
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+# Journalctl logging (view with: journalctl -u mmx-music-studio -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mmx-music-studio
+
+# No API keys, no tokens — server uses mmx CLI auth (~/mmx/config.json)
+
+[Install]
+WantedBy=multi-user.target

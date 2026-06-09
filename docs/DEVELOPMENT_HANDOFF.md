@@ -315,6 +315,24 @@ bash scripts/cli-backend-diagnostics.sh
 bash scripts/cli-backend-readiness-smoke-test.sh
 ```
 
+**systemd Service（Phase CLI-Debug-B）：**
+```bash
+# 安装
+sudo bash scripts/install-systemd-service.sh
+
+# 状态 / 重启 / 停止
+sudo systemctl status mmx-music-studio
+sudo systemctl restart mmx-music-studio
+sudo systemctl stop mmx-music-studio
+
+# 日志
+journalctl -u mmx-music-studio -f
+
+# systemd smoke test
+bash scripts/systemd-service-smoke-test.sh
+```
+Unit 文件: `deploy/systemd/mmx-music-studio.service`
+
 ### 环境变量
 
 ```bash
@@ -332,7 +350,7 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | 阶段 | 目标 | 前置条件 |
 |------|------|----------|
 | **Phase CLI-Debug-A** | **MMX CLI 主链路体检与稳定化** | ✅ PASS |
-| **Phase CLI-Debug-B** | **MMX CLI systemd auto-restart** | 📋 规划 |
+| **Phase CLI-Debug-B** | **MMX CLI systemd auto-restart（systemd service 已安装并运行）** | ✅ PASS |
 | **Phase API-Debug-E** | **async polling `task_id` confirmation** | 📋 规划 |
 | **Phase Product-Polish-E** | **未定义打磨项** | 📋 规划 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |

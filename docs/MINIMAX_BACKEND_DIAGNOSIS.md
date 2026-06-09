@@ -329,7 +329,7 @@ User Web → /api/generate → executeCliJob() → generateWithMmxCli()
 | Risk | Severity | Status |
 |------|----------|--------|
 | `dailyQuotaEnabled=true` + `remainingDailyGenerations=1` | 🔴 Watch | Currently 1 remaining; if exhausted, users cannot generate. No auto-reset within day. |
-| Server crash → no auto-restart | 🟡 Medium | No systemd service; `tsx` process dies = site down. Phase CLI-Debug-B recommends systemd. |
+| Server crash → no auto-restart | ✅ Resolved | **Phase CLI-Debug-B**: systemd service installed with `Restart=always` — auto-restarts on crash |
 | mmx auth expiry | 🟡 Medium | `~/.mmx/config.json` token expires; no health check monitors this |
 | CLI metadata gap | 🟡 Medium | `durationMs` undefined for CLI tracks; relies on HTMLAudioElement at playback |
 | BYOK + CLI interaction | ✅ Low | BYOK is `byokEnabled: false`; CLI does not use BYOK keys |
