@@ -103,40 +103,46 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 **Version:** `v0.4.2-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.2-alpha)
 
-## Current Status
-
 > **推荐主链路**：Web + MMX CLI backend（`backend=cli`）。与 Telegram 生成链路一致，稳定性已验证。
 
-|| 模块 | 状态 | 备注 |
-|------|------|------|
-| UI | ✅ PASS | |
-| Mock generation | ✅ PASS | |
-| **MMX CLI backend** | ✅ **推荐** | `backend=cli`，与 Telegram 链路一致 |
-| MMX CLI 真实生成 | ✅ PASS | 已验证 |
-| MMX API adapter (BYOK) | ⚠️ 实验性 | 研究方向，非生产推荐 |
-| Docker 部署 | ✅ PASS | |
-| **三种运行模式** | ✅ Phase 4A 新增 | |
-| **Systemd 部署模板** | ✅ Phase 4A 新增 | |
-| **生产发布检查** | ✅ Phase 4A 新增 | |
-| **Job Queue** | ✅ PASS | |
-| **Job History Admin** | ✅ PASS | |
-| Studio 冷启动播放器 | ✅ Phase CLI-Web-E | 自动加载最新 track |
-| Audio duration 显示 | ✅ Phase CLI-Web-F | 从 HTMLAudioElement 读取 metadata |
-| **Access Control / Quota** | ✅ PASS | |
-| **Audit Logging** | ✅ PASS | |
-| **PIN Brute-force Guard** | ✅ PASS | |
-| **HTTPS** | ✅ PASS（Caddy + Let's Encrypt） | |
-| **域名 ICP 备案** | ⏳ 腾讯云大陆服务器需备案，当前外部访问被拦截 | |
-| 微信小程序 | ✅ PASS（scaffold + adapters） | |
-| **Web BYOK API Key Mode** | ✅ Phase 5A | sessionStorage + x-minimax-api-key header |
-| **WeChat BYOK strategy** | ✅ Phase 5C | key 管理方案已文档化 |
-| **Real API attempt guard** | ✅ Phase 5B-C/5E | 计数器在 check 前递增 |
-| **CI smoke pipeline** | ✅ Phase 5G | GitHub Actions CI，静态 +独立 mock server |
-| **WeApp build in CI** | ✅ Phase WeApp-CI-RootCause-D | deterministic `scripts/weapp-build.mjs` wrapper; blocking gate if wrapper passes; diagnostic issue on failure; `scripts/ci-secret-scan.py` replaces inline grep |
-| **API Adapter official contract alignment** | ✅ Phase API-Debug-B1 | official fixtures in `test-fixtures/minimax-api/`; parser aligned with `data.audio`/`extra_info`/`base_resp`; `api-adapter-official-contract-smoke-test.sh` 29/29 PASS; CLI backend recommended, API Adapter preflight complete |
-| **API Adapter real BYOK generation** | ✅ Phase API-Debug-C | one controlled real call succeeded — `job_1780992991977_c9eaaa0c` → `track_1780993112817_yg4g4m` "轻柔钢琴测试音乐"; response kind `direct_audio`; audio endpoint 200 OK, 4.76 MB; key never in logs/disk; still experimental, CLI recommended default |
-| Real generation in CI | ❌ Disabled | CI 使用 mock / limit=0 guard |
-| Secrets required for CI | ❌ None | 无需真实 key/token |
+## Current Status
+
+### Generation Backends
+
+| Backend | Status | Notes |
+|---------|--------|-------|
+| Mock generation | ✅ PASS | Safe local preview |
+| MMX CLI backend | ✅ **Recommended** | Same route as Telegram |
+| BYOK API Adapter | ✅ Verified once / Experimental | Real `direct_audio` success; not production-ready |
+| Real generation in CI | ❌ Disabled | CI uses mock / guards only |
+
+### Studio and Library
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Studio player handoff | ✅ PASS | Job track handoff fixed |
+| Studio cold-start hydration | ✅ PASS | Loads latest playable track |
+| Audio duration display | ✅ PASS | Reads HTMLAudioElement metadata |
+| Download endpoint | ✅ PASS | MP3 download supported |
+
+### CI and Safety
+
+| Area | Status | Notes |
+|------|--------|-------|
+| GitHub Actions CI | ✅ PASS | Web/server/weapp gates |
+| WeApp build in CI | ✅ PASS | Blocking gate restored |
+| Secret scan | ✅ PASS | `scripts/ci-secret-scan.py` |
+| BYOK key storage | ✅ Memory only | No disk persistence |
+| API Adapter real BYOK call | ✅ One succeeded | `direct_audio` response kind |
+
+### Deployment
+
+| Area | Status | Notes |
+|------|--------|-------|
+| HTTPS | ✅ PASS | Caddy + Let's Encrypt |
+| Mainland custom domain | ⚠️ ICP required | Tencent Cloud blocks unrecorded custom domain |
+| SSH Tunnel | ✅ Works | Current dev access |
+| Cloudflare Tunnel | 🚧 Planned | Phase Deploy-CF-A |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
@@ -250,36 +256,6 @@ MINIMAX_BACKEND=mock           # 后端模式
 - **不要**在生产构建中写死 `VITE_API_BASE_URL=http://localhost:8787`（会导致浏览器向用户本机 localhost 发请求）
 - 本地开发如果需要可设置 `VITE_API_BASE_URL=http://localhost:8787`
 - 不要在环境变量中写入任何真实 Key
-
----
-
-## 当前状态
-
-| 模块 | 状态 |
-|------|------|
-| UI | ✅ PASS |
-| Mock generation | ✅ PASS |
-| MMX CLI adapter | ✅ PASS |
-| MMX CLI 真实生成 | ✅ PASS（2次instrumental） |
-| MMX API adapter | 🔧 实验性 |
-| Docker 部署 | ✅ PASS |
-| 微信小程序 | 📋 规划中 |
-
----
-
-## 当前阶段
-
-**Phase 5A + 5B-A：BYOK API Key 模式** ✅
-
-- ✅ `server/byok-secrets.ts` — Key 内存存储，job.id → key，TTL 30min
-- ✅ `server/index.ts` — BYOK guard，验证 x-minimax-api-key header
-- ✅ `src/features/settings/Settings.tsx` — BYOK 模式 UI
-- ✅ `src/features/studio/Studio.tsx` — key 缺失时禁用/提示
-- ✅ `scripts/byok-mode-smoke-test.sh` — 13/13 PASS
-- ✅ Phase 5B-A 预检：guard 拦截 ✅ / fake key 安全路径 ✅ / key 不泄露 ✅
-- ✅ `docs/BYOK_MODE.md` + `docs/BYOK_REAL_TEST_PLAN.md`
-- ✅ 与 Phase 4C Generation Access Gate 正交兼容
-- ✅ CLI Adapter 不使用页面 BYOK key
 
 ---
 
