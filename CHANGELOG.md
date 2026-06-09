@@ -4,6 +4,55 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.1-alpha] — 2026-06-09
+
+### Highlights
+
+- **Web CLI backend is now the recommended main path** — Web 生成可以使用与 Telegram/Hermes CLI 相同的 MMX CLI 路由
+- **Studio player cold-start hydration** — 页面加载时自动从 `listTracks()` 获取最新可播放 track，无需用户手动操作
+- **Studio player handoff after generation** — 生成完成后 handoff 携带 track audio/download URL，解决播放器无音频可放的 bug
+- **Audio duration display from metadata** — WaveformPlayer 监听 `loadedmetadata` 事件从 HTMLAudioElement 读取真实时长，移除 `?:??` 硬编码
+- **cli-web-readonly-smoke-test.sh** — 综合只读 smoke test，覆盖 backend=cli、tracks、audio/download、duration、hydration
+- **Documentation clarifies backend paths** — 明确区分 MMX CLI backend（推荐主链路）vs API Adapter / BYOK API（实验性研究路径）
+
+### Safety
+
+- No automatic generation during release checks
+- No MiniMax quota consumed during release prep
+- No generated audio committed
+- No .env committed
+- No API keys, PINs, or tokens committed
+
+### Known Limitations
+
+- API Adapter / BYOK API remains experimental
+- Successful real MiniMax API Adapter generation is not claimed in this release
+- Tencent Cloud mainland custom domain still requires ICP recordal
+- For personal self-hosted usage, MMX CLI backend is the recommended path
+
+### Added
+
+- **Studio hydration useEffect** — `Studio.tsx` 冷启动优先调用 `listTracks()`，fallback 到 `listJobsFiltered()`
+- **Player handoff with track metadata** — Studio 生成完成后通过 `playerHandoff()` 传递完整 track 对象
+- **WaveformPlayer duration from HTMLAudioElement** —监听 `loadedmetadata`，依赖数组加入 `duration`
+- **cli-web-readonly-smoke-test.sh** — 20-case read-only smoke test for Web CLI path
+- **studio-initial-player-hydration-smoke-test.sh** — 15-case Studio hydration smoke test
+- **studio-player-handoff-smoke-test.sh** — 17-case Studio handoff smoke test
+- **audio-duration-display-smoke-test.sh** — 11-case audio duration display smoke test
+
+### Changed
+
+- **Studio.tsx** — 移除 3 处 `'?:??'` 硬编码 duration fallback，改为 `durationText?: string`
+- **Library.tsx** — 移除 2 处 `'?:??'` 硬编码 duration fallback，改为 `durationText?: string`
+- **WaveformPlayer.tsx** — 添加 `loadedmetadata` 事件监听，`duration` 加入 useEffect 依赖数组
+
+### Documentation
+
+- **README.md** — 更新版本至 v0.4.1-alpha，标注 MMX CLI backend 为推荐主链路
+- **docs/MINIMAX_BACKEND_DIAGNOSIS.md** — 新增 Post-CLI-Web-G 状态章节，记录完整修复链
+- **docs/BYOK_MODE.md** —明确 CLI 为推荐主链路、BYOK 为实验性研究方向
+- **docs/DEVELOPMENT_HANDOFF.md** — 更新 backend 表格，标注 `backend=cli` 为主链路
+
 ## [0.4.0-alpha] — 2026-06-08
 
 ### Highlights

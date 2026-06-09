@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.3.0--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.3.0-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.1--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
 
@@ -100,7 +100,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ---
 
-**Version:** `v0.4.1-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.0-alpha)
+**Version:** `v0.4.1-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha)
 
 ## Current Status
 
@@ -119,8 +119,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **生产发布检查** | ✅ Phase 4A 新增 | |
 | **Job Queue** | ✅ PASS | |
 | **Job History Admin** | ✅ PASS | |
-| Studio 冷启动播放器 | ✅ Phase CLI-Web-E | |
-| Audio duration 显示 | ✅ Phase CLI-Web-F | |
+| Studio 冷启动播放器 | ✅ Phase CLI-Web-E | 自动加载最新 track |
+| Audio duration 显示 | ✅ Phase CLI-Web-F | 从 HTMLAudioElement 读取 metadata |
 | **Access Control / Quota** | ✅ PASS | |
 | **Audit Logging** | ✅ PASS | |
 | **PIN Brute-force Guard** | ✅ PASS | |
@@ -137,7 +137,9 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ## Release
 
-**v0.3.0-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.3.0-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.3.0-alpha)
+**v0.4.1-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.4.1-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha) | Web CLI 主链路稳定版，Studio 播放器修复
+
+**v0.4.0-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.4.0-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.0-alpha) | BYOK Safety + WeChat BYOK Strategy
 
 **v0.2.0-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.2.0-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.2.0-alpha)
 
