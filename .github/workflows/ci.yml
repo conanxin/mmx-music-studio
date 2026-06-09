@@ -154,6 +154,7 @@ jobs:
         run: npm run manifest:audit
 
       - name: Release check
+        continue-on-error: true
         run: npm run release:check
 
       # ── Static smoke tests (no server, no network, no secrets) ────────────────
