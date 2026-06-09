@@ -141,4 +141,6 @@ When `AUDIT_LOG_ENABLED=true`, `auditGenerationRequested` records:
 
 本文档描述的功能已冻结于 v0.4.0-alpha（Phase 5A-5E）。
 
-**本版本不包含：** 成功的真实 MiniMax API 音频生成。下次真实测试建议 `REAL_API_DAILY_ATTEMPT_LIMIT=3` + 前端防抖 + 人工确认窗口。
+**本版本不包含：** 成功的真实 MiniMax API 音频生成。下次真实测试建议 `REAL_API_DAILY_ATTEMPT_LIMIT=1` + 前端防抖 + 人工确认窗口。
+
+**Phase API-Debug-A (2026-06-09)**: API Adapter 静态诊断完成。新增 `docs/API_ADAPTER_DEBUG_REPORT.md`。关键发现：response parser 只支持直接 audio URL/hex，无 async polling 支持（如 MiniMax 返回 task_id 则当前代码会失败）。BYOK 安全模型、guard 层、track mapping 均已验证通过。Phase API-Debug-B 待用户确认后进行单次受控真实 API 调用。

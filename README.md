@@ -131,9 +131,9 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **Web BYOK API Key Mode** | ✅ Phase 5A | sessionStorage + x-minimax-api-key header |
 | **WeChat BYOK strategy** | ✅ Phase 5C | key 管理方案已文档化 |
 | **Real API attempt guard** | ✅ Phase 5B-C/5E | 计数器在 check 前递增 |
-| **BYOK safety smoke tests** | ✅ Phase 5E | 8 个 smoke tests 全部 PASS |
 | **CI smoke pipeline** | ✅ Phase 5G | GitHub Actions CI，静态 +独立 mock server |
 | **WeApp build in CI** | ✅ Phase WeApp-CI-RootCause-D | deterministic `scripts/weapp-build.mjs` wrapper; blocking gate if wrapper passes; diagnostic issue on failure; `scripts/ci-secret-scan.py` replaces inline grep |
+| **API Adapter diagnostic baseline** | ✅ Phase API-Debug-A | static contract smoke test 21/21 PASS; `docs/API_ADAPTER_DEBUG_REPORT.md`; no async polling gap identified |
 | Real generation in CI | ❌ Disabled | CI 使用 mock / limit=0 guard |
 | Secrets required for CI | ❌ None | 无需真实 key/token |
 

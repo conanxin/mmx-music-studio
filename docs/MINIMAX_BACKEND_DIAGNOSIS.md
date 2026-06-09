@@ -243,3 +243,51 @@ DAILY_GENERATION_LIMIT=20
 - `src/features/library/Library.tsx` — library track listing
 - `src/components/WaveformPlayer.tsx` — audio metadata duration reading
 - `docs/MINIMAX_BACKEND_DIAGNOSIS.md` — this document
+- `docs/API_ADAPTER_DEBUG_REPORT.md` — NEW (Phase API-Debug-A diagnostic baseline)
+
+## Phase API-Debug-A Update (2026-06-09)
+
+**Status**: COMPLETE — Static diagnosis only, no real API calls
+
+### API Adapter Diagnostic Baseline (API-Debug-A)
+
+Key findings from static code review:
+
+**Endpoint**:
+- CN: `https://api.minimaxi.com/v1/music_generation`
+- Global: `https://api.minimax.io/v1/music_generation`
+- Defined in `packages/core/src/constants.ts` → `MINI_MAX_ENDPOINTS`
+
+**Payload fields** (`buildMiniMaxMusicPayload`):
+- All modes covered: `instrumental`/`auto`/`lyrics`/`cover-url`/`cover-file`
+- `output_format: 'url'` forced in `call-minimax.ts` line 32
+- `audio_setting`: sample_rate, bitrate, format
+
+**Response parser** (`callMiniMaxApi` lines 75–109):
+- Supports: `data.audio` (URL or hex), `data.audio_url`, `data.url`
+- Error: `base_resp.status_code !== 0`
+- **Gap**: No async polling support. If MiniMax returns `task_id` for async processing, parser fails with "音频格式无法处理"
+
+**BYOK safety** ✅:
+- Key stored in memory Map only, 30min TTL
+- Deleted on job success/failure/cancel/TTL expiry
+- `GenerateJob` interface has NO apiKey field
+- Logs use `redactSecrets()` / `redactForLog()`
+
+**Guards** (two distinct layers) ✅:
+- `realApiAttempt`: pre-call counter, prevents retry storms, stored in `real-api-attempts.json`
+- `dailyGeneration`: post-success counter, general quota, stored in `daily.json`
+- Neither is related to MiniMax official Token Plan quota
+
+**Track mapping** ✅:
+- Both `executeCliJob` and `executeApiJob` use `createTrackRecord()`
+- API path gets `durationMs`/`sampleRate`/`bitrate` from MiniMax response `extra_info`
+- CLI path: `durationMs` undefined (relies on HTMLAudioElement at playback time)
+
+**Known gaps**:
+1. **No async polling** — Critical if MiniMax uses async `task_id` pattern
+2. **Response parser** only handles direct URL/hex — `task_id` response will error
+3. **CLI metadata** — no `durationMs` extraction from CLI-generated files
+4. **Error trace_id** — `HTTP_ERROR`/`NETWORK_ERROR` don't include `trace_id`
+
+**Next: Phase API-Debug-B** — One controlled real API attempt with user confirmation. Pre-condition: `REAL_API_DAILY_ATTEMPT_LIMIT=1`, user provides BYOK key, single attempt only.
