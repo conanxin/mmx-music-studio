@@ -112,19 +112,31 @@ BUILD_EXIT=${PIPESTATUS[0]}
   tail -n 120 "$LOG" | redact
   echo '```'
   echo ""
+  echo ""
   echo "## Summary"
   if [ "$BUILD_EXIT" -eq 0 ]; then
     echo "**WeApp build: PASS** (exit_code=0)"
   else
     echo "**WeApp build: FAIL** (exit_code=$BUILD_EXIT)"
     echo ""
-    echo "This failure is CI-only — local \`npm ci && npm run weapp:build\` passes."
-    echo "Review the error lines above for root cause."
+    echo "The build failed in CI. Error lines from log:"
+    echo ""
+    grep -RInE "error|failed|cannot find|module not found|ENOENT|EACCES|ENOMEM|heap out|OutOfMemory|TypeScript|tsc|vite|ESBUILD|plugin" "$LOG" 2>/dev/null \
+      | redact | tail -60 \
+      || echo "(no error keywords found)"
   fi
 } > "$SUMMARY"
 
-# ── Print summary to stdout ──────────────────────────────────────────────────
-cat "$SUMMARY"
+# ── Also print error lines directly to stdout for step output ─────────────────
+if [ "$BUILD_EXIT" -ne 0 ]; then
+  echo ""
+  echo "=== CI WeApp build FAILED — error lines ==="
+  grep -RInE "error|failed|cannot find|module not found|ENOENT|EACCES|ENOMEM|heap out|OutOfMemory|TypeScript|tsc|vite|ESBUILD|plugin" "$LOG" 2>/dev/null \
+    | redact | head -60
+  echo ""
+  echo "=== build log tail ==="
+  tail -n 80 "$LOG" | redact
+fi
 
 # ── Always exit 0 after diagnostics written ──────────────────────────────────
 exit 0
