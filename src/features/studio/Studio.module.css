@@ -816,6 +816,279 @@
   pointer-events: none;
 }
 
+/* Phase Product Polish-F: Template Composer */
+.templateComposer {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.templateComposerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.templateComposerTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.templateToggleBtn {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 6px;
+  transition: background0.15s;
+}
+
+.templateToggleBtn:hover {
+  background: rgba(184, 255, 106, 0.1);
+}
+
+.templateComposerDesc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.templateGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.templateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.templateGroupLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.templateGroupChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.templateChip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 30px;
+}
+
+.templateChip:hover {
+  border-color: rgba(184, 255, 106, 0.4);
+  color: var(--color-text-primary);
+}
+
+.templateChipActive {
+  background: rgba(184, 255, 106, 0.15);
+  border-color: rgba(184, 255, 106, 0.6);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.templateActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.templateApplyBtn {
+  flex: 1;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(184, 255, 106, 0.15);
+  border: 1px solid rgba(184, 255, 106, 0.4);
+  color: var(--color-accent);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 40px;
+}
+
+.templateApplyBtn:hover {
+  background: rgba(184, 255, 106, 0.22);
+  border-color: rgba(184, 255, 106, 0.6);
+}
+
+.templateClearBtn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 40px;
+}
+
+.templateClearBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary);
+}
+
+.templateSaveRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.templateSaveInput {
+  flex: 1;
+  min-width: 120px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  min-height: 36px;
+}
+
+.templateSaveInput:focus {
+  border-color: rgba(184, 255, 106, 0.4);
+}
+
+.templateSaveInput::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
+.templateSaveBtn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(138, 124, 255, 0.15);
+  border: 1px solid rgba(138, 124, 255, 0.35);
+  color: #B4FF6A;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  min-height: 36px;
+}
+
+.templateSaveBtn:hover {
+  background: rgba(138, 124, 255, 0.22);
+  border-color: rgba(138, 124, 255, 0.5);
+}
+
+.templateSaveMsg {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.templateSaveMsgOk {
+  color: var(--color-accent);
+  background: rgba(184, 255, 106, 0.1);
+}
+
+.templateSaveMsgErr {
+  color: #FF8B8B;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.templateNote {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+  margin: 8px 0 0 0;
+}
+
+.savedTemplates {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.savedTemplatesLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.savedTemplateList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.savedTemplateItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.savedTemplateApply {
+  flex: 1;
+  text-align: left;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 34px;
+}
+
+.savedTemplateApply:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.savedTemplateDelete {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.25);
+  color: #FF8B8B;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.savedTemplateDelete:hover {
+  background: rgba(255, 107, 107, 0.2);
+}
+
 /* ── Responsive: Mobile (< 640px) ── */
 @media (max-width: 639px) {
   .page {
@@ -848,6 +1121,62 @@
     padding: 3px 10px;
     font-size: 11px;
     min-height: 28px;
+  }
+
+  /* Phase Product Polish-F: Mobile template composer */
+  .templateComposer {
+    padding: 12px 12px;
+    margin-top: 10px;
+  }
+
+  .templateComposerTitle {
+    font-size: 13px;
+  }
+
+  .templateComposerDesc {
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+
+  .templateChip {
+    padding: 3px 10px;
+    font-size: 11px;
+    min-height: 28px;
+  }
+
+  .templateActions {
+    flex-direction: column;
+  }
+
+  .templateApplyBtn,
+  .templateClearBtn {
+    width: 100%;
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .templateSaveRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .templateSaveInput {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .templateSaveBtn {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .savedTemplateApply {
+    font-size: 11px;
+    min-height: 32px;
+  }
+
+  .savedTemplateList {
+    gap: 5px;
   }
 }
 

@@ -24,7 +24,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | MMX CLI 生成 | ✅ 已验证 | `MINIMAX_BACKEND=cli`，需 auth login，Web+CLI 主链路 |
 | API adapter | ⚠️ 实验性 | `MINIMAX_BACKEND=api`，需真实 key |
 | 微信小程序 | ✅ Phase 3C/3D | Taro v4，mock API，音频播放/下载 adapter |
-| HTTPS 域名 | ⏳ 待办 | Phase 3E：需用户提供域名 |
+| HTTPS 域名 | ✅ 已完成 | `https://music.conanxin.com` via Cloudflare Tunnel（Phase Deploy-CF-B） |
 | 微信合法域名 | ⏳ 待办 | Phase 3E：request + downloadFile |
 | 多用户鉴权 | ✅ 完成 | Phase 4C：Generation Access PIN |
 | 额度限制/限流 | ✅ 完成 | Phase 4C：Rate Limit + Daily Quota |
@@ -352,9 +352,8 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase CLI-Debug-A** | **MMX CLI 主链路体检与稳定化** | ✅ PASS |
 | **Phase CLI-Debug-B** | **MMX CLI systemd auto-restart（systemd service 已安装并运行）** | ✅ PASS |
 | **Phase Product-Polish-E** | **Library 分享链接 / Markdown 导出 / URL deep-link / 移动端 drawer 适配** | ✅ PASS |
-| **Phase Release v0.4.7-alpha** | **Track sharing and export polish release** | ✅ PASS |
-| **Phase API-Debug-E** | **async polling `task_id` confirmation** | 📋 规划 |
-| **Phase Product-Polish-F** | **未定义打磨项** | 📋 规划 |
+| **Phase Product-Polish-F** | **Studio模板组合器 / 场景+情绪+乐器+用途预设 / localStorage 我的模板 / 移动端适配 /灵感示例保留** | ✅ PASS |
+| **Phase Release v0.4.8-alpha** | **Prompt templates and style presets release** | 📋 规划 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |

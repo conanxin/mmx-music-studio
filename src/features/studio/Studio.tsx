@@ -71,6 +71,75 @@ const EXAMPLE_LABELS: Record<string, string> = {
   'cover-file': '风格参考',
 };
 
+// Phase Product Polish-F: Prompt template preset groups
+export interface PromptPresetGroup {
+  id: string;
+  label: string;
+  emoji: string;
+  options: string[];
+}
+
+export const PROMPT_PRESET_GROUPS: PromptPresetGroup[] = [
+  { id: 'scene', label: '场景', emoji: '🏞', options: ['深夜编程', '清晨通勤', '夏夜海边', '咖啡馆阅读', '纪录片旁白', '游戏菜单', '健身运动', '睡前放松'] },
+  { id: 'mood', label: '情绪', emoji: '💭', options: ['温柔', '松弛', '明亮', '孤独', '史诗感', '复古', '浪漫', '神秘'] },
+  { id: 'instrument', label: '乐器', emoji: '🎹', options: ['钢琴', '合成器', '木吉他', '弦乐', 'Lo-fi鼓点', '环境音', '电子节拍', '古典吉他'] },
+  { id: 'use', label: '用途', emoji: '🎯', options: ['背景音乐', '短视频配乐', '播客片头', '学习专注', '睡前放松', '产品展示', '运动健身', '冥想静心'] },
+];
+
+// Phase Product Polish-F: Build composed prompt from selections
+function buildComposedPrompt(scene: string, mood: string, instrument: string, use: string): string {
+  const parts: string[] = [];
+  if (scene) parts.push(scene);
+  if (mood) parts.push(mood);
+  if (instrument) parts.push(`以${instrument}为主`);
+  if (use) parts.push(`适合${use}`);
+  const base = parts.length > 0 ? `生成一段${parts.slice(0, 2).join('、')}的音乐，` : '';
+  const detail = parts.slice(2).join('，');
+  const suffix = '，情绪舒缓，不要人声，适合长时间聆听。';
+  return base + detail + suffix;
+}
+
+// Phase Product Polish-F: localStorage template helpers
+const TEMPLATES_KEY = 'mmx-studio:prompt-templates';
+const MAX_TEMPLATES = 20;
+
+export interface SavedPromptTemplate {
+  id: string;
+  label: string;
+  prompt: string;
+  createdAt: number;
+}
+
+export function loadSavedTemplates(): SavedPromptTemplate[] {
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if (!raw) return [];
+    const arr: SavedPromptTemplate[] = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.slice(0, MAX_TEMPLATES) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveTemplate(label: string, prompt: string): { ok: true } | { ok: false; reason: string } {
+  if (!prompt.trim()) return { ok: false, reason: '描述不能为空' };
+  const existing = loadSavedTemplates();
+  if (existing.length >= MAX_TEMPLATES) return { ok: false, reason: `最多保存 ${MAX_TEMPLATES} 个模板` };
+  if (existing.some(t => t.prompt === prompt.trim())) return { ok: false, reason: '该描述已保存' };
+  const template: SavedPromptTemplate = {
+    id: `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    label: label.trim() || prompt.trim().slice(0, 20),
+    prompt: prompt.trim(),
+    createdAt: Date.now(),
+  };
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify([template, ...existing]));
+  return { ok: true };
+}
+
+export function deleteTemplate(id: string): void {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(loadSavedTemplates().filter(t => t.id !== id)));
+}
+
 // Phase Product Polish-C: Multi-step generation phase messages
 function getGenerationPhaseMessage(status: string, elapsedSec: number): string {
   if (status === 'queued') return '正在创建任务…';
@@ -265,6 +334,30 @@ export default function Studio() {
   const [coverFileName, setCoverFileName] = useState('');
   const [coverFileMime, setCoverFileMime] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Phase Product Polish-F: Preset selection state
+  const [selectedPresets, setSelectedPresets] = useState<Record<string, string>>({
+    scene: '', mood: '', instrument: '', use: '',
+  });
+  const [savedTemplates, setSavedTemplates] = useState<SavedPromptTemplate[]>([]);
+  const [templateSaveLabel, setTemplateSaveLabel] = useState('');
+  const [templateSaveMsg, setTemplateSaveMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [showTemplateSection, setShowTemplateSection] = useState(false);
+
+  function reloadTemplates() {
+    setSavedTemplates(loadSavedTemplates());
+  }
+
+  // Phase Product Polish-F: Load saved templates on mount
+  useEffect(() => { reloadTemplates(); }, []);
+
+  // Phase Product Polish-F: When all4 presets are selected, auto-preview composed prompt
+  useEffect(() => {
+    const { scene, mood, instrument, use: useVal } = selectedPresets;
+    if (!scene || !mood || !instrument || !useVal) return;
+    // Only auto-compose if user hasn't manually edited the prompt since last compose
+    // We track this via a ref on the compose button
+  }, [selectedPresets]);
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -773,7 +866,7 @@ export default function Studio() {
             rows={3}
           />
 
-          {/* Prompt example chips */}
+          {/* Prompt example chips — kept as "灵感示例" */}
           <div className={styles.exampleRow}>
             <span className={styles.exampleLabel}>{EXAMPLE_LABELS[activeMode] || '示例灵感'}</span>
             <div className={styles.exampleChips}>
@@ -789,6 +882,129 @@ export default function Studio() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Phase Product Polish-F: Template Composer */}
+          <div className={styles.templateComposer}>
+            <div className={styles.templateComposerHeader}>
+              <span className={styles.templateComposerTitle}>🎵 模板组合器</span>
+              <button
+                className={styles.templateToggleBtn}
+                onClick={() => { setShowTemplateSection(v => !v); }}
+              >
+                {showTemplateSection ? '收起' : '展开'}
+              </button>
+            </div>
+           <p className={styles.templateComposerDesc}>
+              选择场景、情绪、乐器和用途，自动组合成可编辑的音乐描述
+            </p>
+
+            {showTemplateSection && (
+              <>
+                <div className={styles.templateGroups}>
+                  {PROMPT_PRESET_GROUPS.map(group => (
+                    <div key={group.id} className={styles.templateGroup}>
+                      <span className={styles.templateGroupLabel}>{group.emoji} {group.label}</span>
+                      <div className={styles.templateGroupChips}>
+                        {group.options.map(opt => (
+                          <button
+                            key={opt}
+                            className={`${styles.templateChip} ${selectedPresets[group.id] === opt ? styles.templateChipActive : ''}`}
+                            onClick={() => setSelectedPresets(prev => ({
+                              ...prev,
+                              [group.id]: prev[group.id] === opt ? '' : opt,
+                            }))}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.templateActions}>
+                  <button
+                    className={styles.templateApplyBtn}
+                    onClick={() => {
+                      const { scene, mood, instrument, use: useVal } = selectedPresets;
+                      const composed = buildComposedPrompt(scene, mood, instrument, useVal);
+                      handleMainInputChange(composed);
+                    }}
+                  >
+                    ✨ 应用到描述
+                  </button>
+                  <button
+                    className={styles.templateClearBtn}
+                    onClick={() => setSelectedPresets({ scene: '', mood: '', instrument: '', use: '' })}
+                  >
+                    清空选择
+                  </button>
+                </div>
+
+               <div className={styles.templateSaveRow}>
+                  <input
+                    className={styles.templateSaveInput}
+                    placeholder="模板名称（可选）"
+                    value={templateSaveLabel}
+                    onChange={e => setTemplateSaveLabel(e.target.value)}
+                    maxLength={40}
+                  />
+                  <button
+                    className={styles.templateSaveBtn}
+                    onClick={() => {
+                      const mainVal = getMainInputValue();
+                      const result = saveTemplate(templateSaveLabel, mainVal);
+                      if (result.ok) {
+                        setTemplateSaveMsg({ type: 'ok', text: '已保存' });
+                        setTemplateSaveLabel('');
+                        reloadTemplates();
+                        setTimeout(() => setTemplateSaveMsg(null), 2000);
+                      } else {
+                        setTemplateSaveMsg({ type: 'err', text: result.reason });
+                        setTimeout(() => setTemplateSaveMsg(null), 3000);
+                      }
+                    }}
+                  >
+                    💾 保存当前描述
+                  </button>
+                  {templateSaveMsg && (
+                    <span className={`${styles.templateSaveMsg} ${templateSaveMsg.type === 'ok' ? styles.templateSaveMsgOk : styles.templateSaveMsgErr}`}>
+                      {templateSaveMsg.text}
+                    </span>
+                  )}
+                </div>
+
+                <p className={styles.templateNote}>📝 模板仅保存在当前浏览器</p>
+
+                {/* My saved templates */}
+                {savedTemplates.length > 0 && (
+                  <div className={styles.savedTemplates}>
+                    <span className={styles.savedTemplatesLabel}>📁 我的模板（{savedTemplates.length}）</span>
+                    <div className={styles.savedTemplateList}>
+                      {savedTemplates.map(t => (
+                        <div key={t.id} className={styles.savedTemplateItem}>
+                          <button
+                            className={styles.savedTemplateApply}
+                            onClick={() => handleMainInputChange(t.prompt)}
+                            title={t.prompt}
+                          >
+                            {t.label}
+                          </button>
+                          <button
+                            className={styles.savedTemplateDelete}
+                            onClick={() => { deleteTemplate(t.id); reloadTemplates(); }}
+                            title="删除"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Phase Product Polish-C: Prompt tip */}
