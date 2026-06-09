@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import styles from './Layout.module.css'
-import type { GlobalPlayerTrack } from '../lib/globalPlayerTrack'
+import type { GlobalPlayerTrack, PlaybackMode } from '../lib/globalPlayerTrack'
 
 interface LayoutProps {
   currentPlayingTrack: GlobalPlayerTrack | null
@@ -9,10 +9,13 @@ interface LayoutProps {
   playbackQueue: GlobalPlayerTrack[]
   playbackIndex: number
   queueSourceLabel?: string
+  playbackMode: PlaybackMode
+  onPlaybackModeChange: (mode: PlaybackMode) => void
   onPlayNext: () => void
   onPlayPrevious: () => void
   onRemoveFromQueue: (index: number) => void
   onClearQueue: () => void
+  onJumpToQueueItem: (index: number) => void
 }
 
 export default function Layout({
@@ -21,17 +24,20 @@ export default function Layout({
   playbackQueue,
   playbackIndex,
   queueSourceLabel,
+  playbackMode,
+  onPlaybackModeChange,
   onPlayNext,
   onPlayPrevious,
   onRemoveFromQueue,
   onClearQueue,
+  onJumpToQueueItem,
 }: LayoutProps) {
   const location = useLocation()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [isQueueOpen, setIsQueueOpen] = useState(false)
 
-  // Sync audio when track changes
+  // Phase Product Polish-I: Sync audio when track changes + restore progress
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio()
@@ -43,6 +49,42 @@ export default function Layout({
         setPlaying(false)
       }
     }
+  }, [currentPlayingTrack])
+
+  // Phase Product Polish-I: Restore playback progress on loadedmetadata
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || !currentPlayingTrack) return
+    const handleLoadedMetadata = () => {
+      const savedTime = (window as any).__mmx_progress?.[currentPlayingTrack.id]
+      if (typeof savedTime === 'number' && savedTime > 0 && savedTime < audio.duration - 10) {
+        audio.currentTime = savedTime
+      }
+    }
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    return () => { audio.removeEventListener('loadedmetadata', handleLoadedMetadata) }
+  }, [currentPlayingTrack])
+
+  // Phase Product Polish-I: Throttled progress save on timeupdate
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio || !currentPlayingTrack) return
+    let lastSave = 0
+    const handleTimeUpdate = () => {
+      const now = Date.now()
+      if (now - lastSave < 5000) return // save every 5s
+      lastSave = now
+      if (currentPlayingTrack?.id && audio.currentTime > 0) {
+        try {
+          const raw = localStorage.getItem('mmx-studio:playback-progress:v1')
+          const map: Record<string, any> = raw ? JSON.parse(raw) : {}
+          map[currentPlayingTrack.id] = { currentTime: audio.currentTime, duration: audio.duration, updatedAt: new Date().toISOString() }
+          localStorage.setItem('mmx-studio:playback-progress:v1', JSON.stringify(map))
+        } catch { /* ignore */ }
+      }
+    }
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    return () => { audio.removeEventListener('timeupdate', handleTimeUpdate) }
   }, [currentPlayingTrack])
 
   // Stop when track is cleared
@@ -130,8 +172,11 @@ export default function Layout({
             {/* Queue panel (slides in from right) */}
             {isQueueOpen && (
               <div className={styles.queuePanel}>
-                <div className={styles.queuePanelHeader}>
+              <div className={styles.queuePanelHeader}>
                   <span className={styles.queuePanelTitle}>播放队列</span>
+                  <span className={styles.queueModeLabel}>
+                    {playbackMode === 'sequence' ? '顺序' : playbackMode === 'repeat-all' ? '列表循环' : playbackMode === 'repeat-one' ? '单曲循环' : '随机'}
+                  </span>
                   {queueSourceLabel && (
                     <span className={styles.queueSourceLabel}>{queueSourceLabel}</span>
                   )}
@@ -154,9 +199,7 @@ export default function Layout({
                         key={track.id}
                         className={`${styles.queueItem} ${i === playbackIndex ? styles.queueItemActive : ''}`}
                         onClick={() => {
-                          // Jump to this track by calling onPlayPrevious/onPlayNext repeatedly
-                          // We can't directly set index from here, so we just close the panel
-                          // The parent will handle navigation through normal prev/next
+                          onJumpToQueueItem(i)
                           setIsQueueOpen(false)
                         }}
                       >
@@ -257,6 +300,38 @@ export default function Layout({
                 </a>
               )}
 
+              {/* Phase Product Polish-I: Playback mode toggle */}
+              <button
+                className={`${styles.globalMiniPlayerMode} ${playbackMode !== 'sequence' ? styles.active : ''}`}
+                onClick={() => {
+                  const modes: PlaybackMode[] = ['sequence', 'repeat-all', 'repeat-one', 'shuffle']
+                  const idx = modes.indexOf(playbackMode)
+                  onPlaybackModeChange(modes[(idx + 1) % modes.length])
+                }}
+                title={`播放模式：${playbackMode === 'sequence' ? '顺序' : playbackMode === 'repeat-all' ? '列表循环' : playbackMode === 'repeat-one' ? '单曲循环' : '随机'}`}
+              >
+                {playbackMode === 'sequence' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                )}
+                {playbackMode === 'repeat-all' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="171 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4 4 44"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+                  </svg>
+                )}
+                {playbackMode === 'repeat-one' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4 4 4 4"/><path d="M21 13v2a4 4 0 01-4 4H3"/><line x1="9" y1="9" x2="9" y2="14" strokeWidth="3"/>
+                  </svg>
+                )}
+                {playbackMode === 'shuffle' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>
+                  </svg>
+                )}
+              </button>
+
               {/* Phase Product Polish-H: Queue toggle */}
               <button
                 className={`${styles.globalMiniPlayerQueue} ${isQueueOpen ? styles.active : ''}`}
@@ -264,12 +339,8 @@ export default function Layout({
                 title="播放队列"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="8" y1="6" x2="21" y2="6"/>
-                  <line x1="8" y1="12" x2="21" y2="12"/>
-                  <line x1="8" y1="18" x2="21" y2="18"/>
-                  <line x1="3" y1="6" x2="3.01" y2="6"/>
-                  <line x1="3" y1="12" x2="3.01" y2="12"/>
-                  <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                  <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
                 </svg>
                 {queueLength > 1 && <span className={styles.queueBadge}>{queueLength}</span>}
               </button>

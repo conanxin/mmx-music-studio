@@ -8,8 +8,68 @@ import Settings from './features/settings/Settings';
 import Docs from './features/docs/Docs';
 import Jobs from './features/jobs/Jobs';
 import PreviewAccessGate from './components/PreviewAccessGate';
-import { useState, useCallback } from 'react';
-import type { GlobalPlayerTrack } from './lib/globalPlayerTrack';
+import { useState, useCallback, useRef } from 'react';
+import type { GlobalPlayerTrack, PlaybackMode } from './lib/globalPlayerTrack';
+
+const QUEUE_KEY = 'mmx-studio:playback-queue:v1';
+
+// Phase Product Polish-I: Load persisted queue from localStorage
+function loadPersistedQueue(): { tracks: GlobalPlayerTrack[]; currentIndex: number; sourceLabel?: string; playbackMode: PlaybackMode } | null {
+  try {
+    const raw = localStorage.getItem(QUEUE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data.tracks) || data.tracks.length === 0) return null;
+    // Validate at least id + audioUrl present
+    if (!data.tracks[0]?.id || !data.tracks[0]?.audioUrl) return null;
+    return {
+      tracks: data.tracks,
+      currentIndex: typeof data.currentIndex === 'number' ? data.currentIndex : 0,
+      sourceLabel: data.sourceLabel,
+      playbackMode: (data.playbackMode || 'sequence'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Phase Product Polish-I: Save queue + mode to localStorage
+function saveQueueToStorage(tracks: GlobalPlayerTrack[], currentIndex: number, sourceLabel: string | undefined, playbackMode: PlaybackMode) {
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify({
+      tracks,
+      currentIndex,
+      sourceLabel,
+      playbackMode,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch { /* storage full — ignore */ }
+}
+
+// Phase Product Polish-I: Clear queue from localStorage
+function clearQueueFromStorage() {
+  try { localStorage.removeItem(QUEUE_KEY); } catch { /* ignore */ }
+}
+
+// Phase Product Polish-I: Pick next track index based on mode
+function getNextTrackIndex(tracks: GlobalPlayerTrack[], currentIndex: number, playbackMode: PlaybackMode): number {
+  if (tracks.length === 0) return currentIndex;
+  switch (playbackMode) {
+    case 'repeat-one':
+      return currentIndex; // replay same
+    case 'shuffle': {
+      // Random, avoid same track if queue > 1
+      const available = tracks.map((_, i) => i).filter(i => i !== currentIndex);
+      if (available.length === 0) return currentIndex;
+      return available[Math.floor(Math.random() * available.length)];
+    }
+    case 'repeat-all':
+      return (currentIndex + 1) % tracks.length;
+    case 'sequence':
+    default:
+      return currentIndex + 1 < tracks.length ? currentIndex + 1 : currentIndex;
+  }
+}
 
 export default function App() {
   const [currentPlayingTrack, setCurrentPlayingTrack] = useState<GlobalPlayerTrack | null>(null);
@@ -19,6 +79,23 @@ export default function App() {
   const [playbackIndex, setPlaybackIndex] = useState(0);
   const [queueSourceLabel, setQueueSourceLabel] = useState<string | undefined>();
 
+  // Phase Product Polish-I: Playback mode
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('sequence');
+
+  // Phase Product Polish-I: Restore queue from localStorage on mount
+  const restoredRef = useRef(false);
+  if (!restoredRef.current) {
+    const persisted = loadPersistedQueue();
+    if (persisted && persisted.tracks.length > 0) {
+      playbackQueue.length === 0 && setPlaybackQueue(persisted.tracks);
+      setPlaybackIndex(persisted.currentIndex);
+      setQueueSourceLabel(persisted.sourceLabel);
+      setCurrentPlayingTrack(persisted.tracks[persisted.currentIndex] || null);
+      setPlaybackMode(persisted.playbackMode || 'sequence');
+    }
+    restoredRef.current = true;
+  }
+
   // Play a list as queue starting at a given index
   const playQueue = useCallback((tracks: GlobalPlayerTrack[], startIndex = 0, sourceLabel?: string) => {
     if (tracks.length === 0) return;
@@ -27,24 +104,29 @@ export default function App() {
     setPlaybackIndex(safeIndex);
     setQueueSourceLabel(sourceLabel);
     setCurrentPlayingTrack(tracks[safeIndex]);
-  }, []);
+    saveQueueToStorage(tracks, safeIndex, sourceLabel, playbackMode);
+  }, [playbackMode]);
 
-  // Add a track to the end of the current queue
+  // Phase Product Polish-I: Add to queue + persist
   const addToQueue = useCallback((track: GlobalPlayerTrack) => {
-    setPlaybackQueue(prev => [...prev, track]);
-  }, []);
+    setPlaybackQueue(prev => {
+      const next = [...prev, track];
+      saveQueueToStorage(next, playbackIndex, queueSourceLabel, playbackMode);
+      return next;
+    });
+  }, [playbackIndex, queueSourceLabel, playbackMode]);
 
-  // Advance to next track in queue
+  // Phase Product Polish-I: Advance based on playbackMode
   const playNextTrack = useCallback(() => {
     setPlaybackQueue(prev => {
       if (prev.length === 0) return prev;
-      const nextIndex = playbackIndex + 1;
-      if (nextIndex >= prev.length) return prev; // at end, do nothing
+      const nextIndex = getNextTrackIndex(prev, playbackIndex, playbackMode);
       setPlaybackIndex(nextIndex);
       setCurrentPlayingTrack(prev[nextIndex]);
+      saveQueueToStorage(prev, nextIndex, queueSourceLabel, playbackMode);
       return prev;
     });
-  }, [playbackIndex]);
+  }, [playbackIndex, playbackMode, queueSourceLabel]);
 
   // Go to previous track in queue
   const playPreviousTrack = useCallback(() => {
@@ -54,9 +136,10 @@ export default function App() {
       if (prevIndex < 0) return prev; // at start, do nothing
       setPlaybackIndex(prevIndex);
       setCurrentPlayingTrack(prev[prevIndex]);
+      saveQueueToStorage(prev, prevIndex, queueSourceLabel, playbackMode);
       return prev;
     });
-  }, [playbackIndex]);
+  }, [playbackIndex, queueSourceLabel, playbackMode]);
 
   // Remove a track from queue by index
   const removeFromQueue = useCallback((index: number) => {
@@ -68,19 +151,22 @@ export default function App() {
         setPlaybackQueue([]);
         setPlaybackIndex(0);
         setQueueSourceLabel(undefined);
+        clearQueueFromStorage();
         return [];
       }
       // adjust playbackIndex if needed
+      let newIndex = playbackIndex;
       if (index < playbackIndex) {
-        setPlaybackIndex(playbackIndex - 1);
+        newIndex = playbackIndex - 1;
       } else if (index === playbackIndex) {
-        const newIndex = Math.min(playbackIndex, next.length - 1);
-        setPlaybackIndex(newIndex);
-        setCurrentPlayingTrack(next[newIndex]);
+        newIndex = Math.min(playbackIndex, next.length - 1);
       }
+      setPlaybackIndex(newIndex);
+      setCurrentPlayingTrack(next[newIndex]);
+      saveQueueToStorage(next, newIndex, queueSourceLabel, playbackMode);
       return next;
     });
-  }, [playbackIndex]);
+  }, [playbackIndex, queueSourceLabel, playbackMode]);
 
   // Clear the entire queue
   const clearQueue = useCallback(() => {
@@ -88,6 +174,7 @@ export default function App() {
     setPlaybackQueue([]);
     setPlaybackIndex(0);
     setQueueSourceLabel(undefined);
+    clearQueueFromStorage();
   }, []);
 
   return (
@@ -95,17 +182,25 @@ export default function App() {
       <PreviewAccessGate>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={
+ <Route path="/" element={
               <Layout
                 currentPlayingTrack={currentPlayingTrack}
                 onSetPlayingTrack={setCurrentPlayingTrack}
                 playbackQueue={playbackQueue}
                 playbackIndex={playbackIndex}
                 queueSourceLabel={queueSourceLabel}
+                playbackMode={playbackMode}
+                onPlaybackModeChange={setPlaybackMode}
                 onPlayNext={playNextTrack}
                 onPlayPrevious={playPreviousTrack}
                 onRemoveFromQueue={removeFromQueue}
                 onClearQueue={clearQueue}
+                onJumpToQueueItem={(index: number) => {
+                  if (index < 0 || index >= playbackQueue.length) return;
+                  setPlaybackIndex(index);
+                  setCurrentPlayingTrack(playbackQueue[index]);
+                  saveQueueToStorage(playbackQueue, index, queueSourceLabel, playbackMode);
+                }}
               />
             }>
               <Route index element={<Home />} />

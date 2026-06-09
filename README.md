@@ -132,6 +132,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Playback queue | ✅ PASS | App-level queue state, prev/next buttons, audio ended → next, Library plays filtered list, detail drawer add-to-queue, queue panel with remove/clear |
 
 **Product Polish releases:**
+- **Phase Product Polish-I** — Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence / repeat-all / repeat-one / shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label
 - **Phase Product Polish-H** — Playback queue: App-level playbackQueue state, prev/next buttons, audio ended → next track, Library plays current filtered list, detail drawer add-to-queue, queue panel with remove/clear, mobile responsive
 - **Phase Product Polish-G** — Global mini player: App-level currentPlayingTrack state, fixed bottom player in Layout, Library and Studio play actions unified
 - **Phase Product Polish-E** — Library sharing / Markdown export / URL deep-link / mobile drawer polish
@@ -160,6 +161,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ## Release
 
+**v0.4.11-alpha**：Phase Product Polish-I — Playback queue persistence and playback modes
 **v0.4.10-alpha**：Phase Product Polish-H — Playback queue and continuous playback
 
 **v0.4.9-alpha**：Phase Product Polish-G — Global mini player and playback continuity

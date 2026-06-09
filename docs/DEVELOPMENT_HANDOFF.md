@@ -357,7 +357,9 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Product Polish-G** | **Global mini player and playback continuity** | ✅ PASS | App-level currentPlayingTrack, fixed bottom player in Layout, Library and Studio play unified |
 | **Phase Release v0.4.9-alpha** | **Global mini player and playback continuity release** | ✅ PASS |
 | **Phase Product Polish-H** | **Playback queue: App-level queue state, prev/next buttons, audio ended → next, Library plays filtered list, detail drawer add-to-queue, queue panel with remove/clear, mobile responsive** | ✅ PASS |
-| **Phase Release v0.4.10-alpha** | **Playback queue and continuous playback release** | ⏳ PENDING |
+| **Phase Release v0.4.10-alpha** | **Playback queue and continuous playback release** | ✅ PASS |
+| **Phase Product Polish-I** | **Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence/repeat-all/repeat-one/shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label** | ✅ PASS |
+| **Phase Release v0.4.11-alpha** | **Playback queue persistence and playback modes release** | ⏳ Pending |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |

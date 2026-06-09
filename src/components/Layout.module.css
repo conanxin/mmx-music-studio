@@ -511,6 +511,50 @@
   }
 }
 
+/* Phase Product Polish-I: Playback mode button */
+.globalMiniPlayerMode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.globalMiniPlayerMode:hover {
+  color: var(--color-text-primary);
+  background: var(--color-panel);
+}
+
+.globalMiniPlayerMode.active {
+  color: var(--color-accent);
+  background: rgba(184, 255, 106, 0.1);
+}
+
+/* Phase Product Polish-I: Mode label in queue panel */
+.queueModeLabel {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(184, 255, 106, 0.15);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+/* Phase Product Polish-I: Restored toast */
+.restoredToast {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(184, 255, 106, 0.15);
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
 @media (max-width: 390px) {
   .globalMiniPlayerTitle {
     max-width: 120px;
@@ -520,6 +564,13 @@
   .globalMiniPlayerNext {
     width: 28px;
     height: 28px;
+  }
+
+  /* Phase Product Polish-I: Queue panel mobile */
+  .queuePanel {
+    width: 100vw;
+    right: calc(-1 * var(--space-4));
+    max-height: 70vh;
   }
 }
 
