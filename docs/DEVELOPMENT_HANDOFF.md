@@ -306,6 +306,15 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 
 CLI Adapter（`mmx music generate/cover`）不使用页面 BYOK key，始终使用 server 本地 mmx auth login 的凭据。
 
+**运行时诊断命令：**
+```bash
+# 运行时诊断（health + mmx binary + storage，不生成音乐）
+bash scripts/cli-backend-diagnostics.sh
+
+# 静态 smoke test（代码完整性，不调 API，可用于 CI）
+bash scripts/cli-backend-readiness-smoke-test.sh
+```
+
 ### 环境变量
 
 ```bash
@@ -322,8 +331,10 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 
 | 阶段 | 目标 | 前置条件 |
 |------|------|----------|
-| **Phase 3E** | HTTPS 域名实装 + 微信合法域名 | 用户提供域名 |
-| **Phase 3F** | 微信小程序真机预览 | Phase 3E 完成 |
+| **Phase CLI-Debug-A** | **MMX CLI 主链路体检与稳定化** | ✅ PASS |
+| **Phase CLI-Debug-B** | **MMX CLI systemd auto-restart** | 📋 规划 |
+| **Phase API-Debug-E** | **async polling `task_id` confirmation** | 📋 规划 |
+| **Phase Product-Polish-E** | **未定义打磨项** | 📋 规划 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |

@@ -291,3 +291,58 @@ Key findings from static code review:
 4. **Error trace_id** — `HTTP_ERROR`/`NETWORK_ERROR` don't include `trace_id`
 
 **Next: Phase API-Debug-B** — One controlled real API attempt with user confirmation. Pre-condition: `REAL_API_DAILY_ATTEMPT_LIMIT=1`, user provides BYOK key, single attempt only.
+
+---
+
+## Phase CLI-Debug-A Update (2026-06-09)
+
+**Status**: COMPLETE ✅
+
+### CLI Backend Runtime Diagnosis (2026-06-09)
+
+**Findings:**
+
+| Check | Result |
+|-------|--------|
+| Server health (local `http://127.0.0.1:8787`) | ✅ `backend: cli`, `realGenerationEnabled: true`, `mockGenerationEnabled: false`, `dailyQuotaEnabled: true`, `remainingDailyGenerations: 1` |
+| Server health (public `https://music.conanxin.com`) | ✅ `backend: cli`, `remainingDailyGenerations: 1` — matches local |
+| mmx binary | ✅ `/home/ubuntu/.npm-global/bin/mmx` |
+| mmx version | ✅ `mmx 1.0.16` |
+| mmx auth | ✅ Server-side proxy-free spawn; `REAL_GENERATION_ENABLED=true` → safe-mode diagnostic guarded |
+| mmx quota | ✅ 1 generation remaining (daily quota) |
+| Server process | ✅ `tsx server/index.ts`, PID 2956263, listening on `localhost:8787` |
+| cloudflared service | ✅ `active (running)`, `enabled`, 37.7 MB memory |
+| Job history | ✅ Latest job `job_1781001867192_9c67246a` → `succeeded`, `backend: cli`, `generationSource: mmx-cli` |
+| Track storage | ✅ `storage/tracks/` — 299 audio files |
+
+**CLI Backend Entry Point:**
+```
+User Web → /api/generate → executeCliJob() → generateWithMmxCli()
+→ spawn('mmx', ['music', 'generate', ...])  ← uses spawn (not exec), no shell
+→ stdout/stderr captured, proxy env vars cleared
+→ output: audio file written to storage/tracks/{job.id}.mp3
+→ createTrackRecord() + appendTrack() → /api/tracks
+```
+
+**CLI Backend Risk Assessment:**
+
+| Risk | Severity | Status |
+|------|----------|--------|
+| `dailyQuotaEnabled=true` + `remainingDailyGenerations=1` | 🔴 Watch | Currently 1 remaining; if exhausted, users cannot generate. No auto-reset within day. |
+| Server crash → no auto-restart | 🟡 Medium | No systemd service; `tsx` process dies = site down. Phase CLI-Debug-B recommends systemd. |
+| mmx auth expiry | 🟡 Medium | `~/.mmx/config.json` token expires; no health check monitors this |
+| CLI metadata gap | 🟡 Medium | `durationMs` undefined for CLI tracks; relies on HTMLAudioElement at playback |
+| BYOK + CLI interaction | ✅ Low | BYOK is `byokEnabled: false`; CLI does not use BYOK keys |
+
+**Scripts Added:**
+
+| Script | Purpose | Exit |
+|--------|---------|------|
+| `scripts/cli-backend-diagnostics.sh` | Runtime diagnostic: health, mmx binary, auth, storage | `CLI_BACKEND_DIAGNOSTICS_PASS` |
+| `scripts/cli-backend-readiness-smoke-test.sh` | Static smoke test: code presence, exports, no secrets | `CLI_BACKEND_READINESS_SMOKE_PASS` |
+
+**Recommended Next Steps:**
+
+1. **Phase CLI-Debug-B**: systemd service for auto-restart on crash
+2. **Phase Product-Polish-E**: undefined — next UX/improvement phase
+3. **Phase API-Debug-E**: async polling `task_id` confirmation for API backend

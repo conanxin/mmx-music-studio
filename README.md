@@ -346,6 +346,7 @@ mmx-music-studio/
 | **Phase 5A** | **BYOK API Key 模式（用户自携 Key，无登录）** | ✅ 完成 |
 | **Phase 5B-A** | **BYOK 真实测试预检（不调用真实 API）** | ✅ 完成 |
 | **Phase 5B-C** | **Real API Attempt Guard（调用前计数，超限拦截）** | ✅ 完成 |
+| **Phase CLI-Debug-A** | **MMX CLI 主链路体检与稳定化（diagnostics + smoke test）** | ✅ PASS |
 | Phase 5B-B | BYOK 受控真实 API 测试（需用户确认） | 📋 规划 |
 | Phase 5C | 小程序 BYOK 策略 | 📋 规划 |
 | Phase 6 | 正式 Release v0.4.0-alpha | 📋 规划 |
@@ -397,6 +398,19 @@ MOCK_GENERATION_ENABLED=true
 ```
 
 CLI Adapter 推荐原因：不通过 HTTP 直连 MiniMax，由 mmx CLI 管理认证和请求。
+
+### CLI Backend 运维命令
+
+```bash
+# 运行时诊断（检查 health、mmx、storage，不生成音乐）
+bash scripts/cli-backend-diagnostics.sh
+
+# 静态 smoke test（检查代码完整性，不调 API）
+bash scripts/cli-backend-readiness-smoke-test.sh
+
+# 快速健康检查（轻量）
+curl -s http://127.0.0.1:8787/api/health | python3 -m json.tool
+```
 
 ### 访问保护（Preview Access Gate）
 
