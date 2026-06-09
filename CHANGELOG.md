@@ -4,6 +4,30 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] — v0.4.2-alpha (draft)
+
+### Highlights
+
+- **API Adapter real BYOK generation succeeded** — one controlled real MiniMax API call completed via Web UI → BYOK → API Adapter path on 2026-06-09; `job_1780992991977_c9eaaa0c` → `track_1780993112817_yg4g4m` "轻柔钢琴测试音乐"; response kind `direct_audio`; audio endpoint `200 OK` (4.76 MB); key never in logs/disk
+- **Studio BYOK submit diagnostics** — submit disabled reason diagnostic card shows exact condition blocking generation ("请先输入 BYOK Key" / "✅ 可点击" / "真实 API 测试次数已用完" / "本地每日生成保护次数已用完")
+- **dailyQuotaEnabled guard fix** — Studio guards for daily quota now correctly check `dailyQuotaEnabled === true` before applying `remainingDailyGenerations <= 0`; was causing false "本地每日生成保护次数已用完" block when `dailyQuotaEnabled=false`
+- **API Adapter status updated** — now documented as "experimental, one real success" rather than "unvalidated"; CLI backend remains recommended default
+
+### Safety
+
+- No automatic generation during release prep
+- No additional MiniMax quota consumed
+- No API key/token printed in logs or committed
+- BYOK key entered only via Web UI Settings (never in chat)
+
+### Known Limitations
+
+- API Adapter still marked experimental — one controlled success does not claim production multi-user readiness
+- Async polling path (for `task_id` responses) is defensive only; polling endpoint not confirmed from MiniMax
+- `hex_audio` path has fixture/contract test but no real call yet
+
+---
+
 ## [0.4.1-alpha] — 2026-06-09
 
 ### Highlights

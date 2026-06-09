@@ -115,7 +115,9 @@ When `AUDIT_LOG_ENABLED=true`, `auditGenerationRequested` records:
 ## Limitations
 
 - API Adapter remains **experimental** — real generation requires `REAL_GENERATION_ENABLED=true`
-- Real BYOK generation test is **deferred to Phase 5B** (requires user confirmation)
+- One controlled real BYOK API call succeeded on 2026-06-09 (Phase API-Debug-C): `job_1780992991977_c9eaaa0c` → `track_1780993112817_yg4g4m`; response kind `direct_audio`; audio endpoint 200 OK; key never in logs/disk
+- Async polling path is defensive (parser exists; polling endpoint not confirmed from MiniMax)
+- CLI backend (`backend=cli`) remains the recommended production path
 - No multi-user account system yet — key ownership is per-session
 - MiniMax Token Plan key format may vary; validation is conservative to avoid false negatives
 

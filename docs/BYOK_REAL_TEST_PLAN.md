@@ -349,3 +349,37 @@ Phase API-Debug-B1 完成了官方 contract 对齐：
 3. 增加人工确认对话框（"确认发送 1 次真实 API 调用？"）
 4. 单次操作，不 retry
 5. 低峰时段（UTC 02:00-06:00）
+
+## Phase API-Debug-C 结果记录
+
+**状态**: ✅ COMPLETE (2026-06-09)
+
+单次受控真实 API 调用成功完成：
+
+| 项目 | 值 |
+|------|---|
+| Job ID | `job_1780992991977_c9eaaa0c` |
+| Status | `succeeded` |
+| Track ID | `track_1780993112817_yg4g4m` |
+| Title | 轻柔钢琴测试音乐 |
+| Response kind | `direct_audio`（binary → `storage/tracks/` → `/api/tracks/{id}/audio`） |
+| Audio endpoint | `200 OK`, `audio/mpeg`, 4.76 MB |
+| Download endpoint | `200 OK`, `audio/mpeg`, 4.76 MB |
+| BYOK key source | Web UI Settings（从未在聊天中出现） |
+| Key storage | In-memory Map（`server/byok-secrets.ts`），job 完成后删除 |
+| Key in logs | 未出现 |
+| Key on disk | 未写入 |
+
+**实际调用路径**：Web UI (Studio) → Settings → BYOK Key → `x-minimax-api-key` header → `/api/generate` → `callMiniMaxApi()` → MiniMax `/v1/music_generation` → binary audio → `storage/tracks/` → job `succeeded` → track in Studio
+
+**结论**：
+- API Adapter `direct_audio` 路径已验证真实成功一次
+- `hex_audio` 路径有 fixture/contract test，但未经真实调用
+- `async_task` 路径为 defensive parser，polling endpoint 未从 MiniMax 确认
+- CLI backend 仍为推荐默认路径
+- 不声称生产多用户就绪
+
+**后续真实 API 工作方向**：
+- Phase API-Debug-D：稳定化文档、UI 状态（当前阶段）
+- Phase API-Debug-E：async polling 确认（若 MiniMax 返回 `task_id`）
+- Phase Release v0.4.2-alpha：正式发布文档更新

@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.1--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.2--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.2-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -134,12 +134,15 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **CI smoke pipeline** | ✅ Phase 5G | GitHub Actions CI，静态 +独立 mock server |
 | **WeApp build in CI** | ✅ Phase WeApp-CI-RootCause-D | deterministic `scripts/weapp-build.mjs` wrapper; blocking gate if wrapper passes; diagnostic issue on failure; `scripts/ci-secret-scan.py` replaces inline grep |
 | **API Adapter official contract alignment** | ✅ Phase API-Debug-B1 | official fixtures in `test-fixtures/minimax-api/`; parser aligned with `data.audio`/`extra_info`/`base_resp`; `api-adapter-official-contract-smoke-test.sh` 29/29 PASS; CLI backend recommended, API Adapter preflight complete |
+| **API Adapter real BYOK generation** | ✅ Phase API-Debug-C | one controlled real call succeeded — `job_1780992991977_c9eaaa0c` → `track_1780993112817_yg4g4m` "轻柔钢琴测试音乐"; response kind `direct_audio`; audio endpoint 200 OK, 4.76 MB; key never in logs/disk; still experimental, CLI recommended default |
 | Real generation in CI | ❌ Disabled | CI 使用 mock / limit=0 guard |
 | Secrets required for CI | ❌ None | 无需真实 key/token |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.2-alpha (draft)**：Phase API-Debug-C complete — API Adapter first real BYOK generation succeeded (`direct_audio` response, `job_1780992991977_c9eaaa0c`, `track_1780993112817_yg4g4m`); Studio BYOK submit diagnostics; daily quota guard respects `dailyQuotaEnabled` flag; API Adapter status updated to "experimental, one real success". CLI backend remains recommended default.
 
 **v0.4.1-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.4.1-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha) | Web CLI 主链路稳定版，Studio 播放器修复
 
