@@ -221,6 +221,7 @@ export default function Studio() {
     realApiDailyAttemptLimit?: number;
     remainingRealApiAttempts?: number;
     // Phase 5D-A: Daily quota display
+    dailyQuotaEnabled?: boolean;
     dailyGenerationUsed?: number;
     remainingDailyGenerations?: number;
   } | null>(null);
@@ -321,6 +322,7 @@ export default function Studio() {
         realApiAttemptLimitEnabled: h.realApiAttemptLimitEnabled,
         realApiDailyAttemptLimit: h.realApiDailyAttemptLimit,
         remainingRealApiAttempts: h.remainingRealApiAttempts,
+        dailyQuotaEnabled: h.dailyQuotaEnabled,
         dailyGenerationUsed: h.dailyGenerationUsed,
         remainingDailyGenerations: h.remainingDailyGenerations,
       });
@@ -471,7 +473,9 @@ export default function Studio() {
     }
 
     // Phase 5B-D-A: Block if daily generation quota exhausted (CLI bypasses this)
+    // Only applies when dailyQuotaEnabled === true (respects server-side flag)
     if (
+      healthInfo?.dailyQuotaEnabled === true &&
       healthInfo?.backend !== 'cli' &&
       healthInfo?.remainingDailyGenerations !== undefined &&
       healthInfo.remainingDailyGenerations <= 0
@@ -832,7 +836,7 @@ export default function Studio() {
                   <>🔄 正在生成中，请勿重复提交</>
                 ) : (healthInfo.backend === 'api' && healthInfo.realApiAttemptLimitEnabled && (healthInfo.remainingRealApiAttempts ?? 1) <= 0) ? (
                   <>❌ 真实 API 测试次数已用完</>
-                ) : (healthInfo.remainingDailyGenerations !== undefined && healthInfo.remainingDailyGenerations <= 0) ? (
+                ) : (healthInfo.dailyQuotaEnabled === true && healthInfo.remainingDailyGenerations !== undefined && healthInfo.remainingDailyGenerations <= 0) ? (
                   <>❌ 本地每日生成保护次数已用完</>
                 ) : (
                   <>✅ 可点击（下一步将消耗 1 次真实 API attempt）</>
@@ -856,8 +860,9 @@ export default function Studio() {
               (healthInfo?.backend === 'api' &&
                 healthInfo?.realApiAttemptLimitEnabled &&
                 (healthInfo?.remainingRealApiAttempts ?? 1) <= 0) ||
-              // Daily generation quota exhausted — only applies to mock and API backends
-              (healthInfo?.backend !== 'cli' &&
+              // Daily generation quota exhausted — only applies when dailyQuotaEnabled === true
+              (healthInfo?.dailyQuotaEnabled === true &&
+                healthInfo?.backend !== 'cli' &&
                 healthInfo?.remainingDailyGenerations !== undefined &&
                 healthInfo.remainingDailyGenerations <= 0)
             }
