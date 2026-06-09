@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.3--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.3-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.4--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.4-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -148,6 +148,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.4-alpha**：Studio generation flow polish — 4-step phase messages, prompt guidance, success/error cards with recovery actions, mobile state card polish. No generation logic changes. CLI backend remains recommended default. [Release Notes](docs/release/RELEASE_NOTES_v0.4.4-alpha.md)
 
 **v0.4.3-alpha**：Public UX polish release — Studio prompt example chips; productized runtime mode labels; API warnings gated to API backend; Library full-text search; browser-local favorites; track detail drawer with copy; mobile bottom-sheet detail view; Cloudflare Tunnel public URL verified; README table rendering fixed. CLI backend remains recommended default.
 

@@ -4,7 +4,20 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [v0.4.3-alpha] — 2026-06-09
+## [v0.4.4-alpha] — 2026-06-09
+
+### Highlights
+
+- **Studio generation flow polish** — 4-step phase messages (creating task → calling backend → waiting audio → saving to library)
+- **Prompt guidance** — empty-field hint: "描述场景、情绪、乐器或用途，生成效果会更稳定。"
+- **Example chips replace (not append)** — prevents prompt pollution from repeated clicks
+- **Success card** — green card with play / download / go-to-library / continue-creating actions; triggers on job completion
+- **Error classification card** — 6-type classifier (BYOK missing / quota exceeded / API error / async required / network / unknown); per-type title + hint + recovery actions
+- **Mobile state card polish** — all state cards properly styled at 390px, no overflow
+
+### Notes
+
+CLI backend remains recommended default. BYOK API Adapter remains experimental. No new generation calls performed for this release.
 
 ### Highlights
 
