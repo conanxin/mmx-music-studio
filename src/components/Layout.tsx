@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import styles from './Layout.module.css'
 
 const navItems = [
+  { path: '/', label: '首页' },
   { path: '/studio', label: '创作' },
   { path: '/library', label: '作品' },
   { path: '/jobs', label: '任务' },

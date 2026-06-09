@@ -123,6 +123,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Studio player handoff | ✅ PASS | Job track handoff fixed |
 | Studio cold-start hydration | ✅ PASS | Loads latest playable track |
 | Studio generation flow polish | ✅ PASS | Phase messages, success/error cards, prompt guidance |
+| Public landing / onboarding | ✅ PASS | Hero, quick-start, status card, mobile polish |
 | Audio duration display | ✅ PASS | Reads HTMLAudioElement metadata |
 | Download endpoint | ✅ PASS | MP3 download supported |
 
@@ -148,6 +149,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.5-alpha**：Public landing and onboarding polish — redesigned Hero with MMX Music Studio branding and status badge; 3-step quick-start guide; status card showing public URL, recommended backend, version, and BYOK state; capability cards (Studio / Library / BYOK / Cloudflare); mobile-responsive at 639px and 389px; Layout nav adds 首页 entry; footer adds Release Notes link. CLI backend remains recommended default.
 
 **v0.4.4-alpha**：Studio generation flow polish — 4-step phase messages, prompt guidance, success/error cards with recovery actions, mobile state card polish. No generation logic changes. CLI backend remains recommended default. [Release Notes](docs/release/RELEASE_NOTES_v0.4.4-alpha.md)
 
