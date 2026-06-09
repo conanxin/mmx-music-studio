@@ -4,6 +4,23 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.5-alpha] — 2026-06-09
+
+### Highlights
+
+- **Public landing and onboarding polish** — redesigned homepage for first-time visitors arriving at the live public URL
+- **New homepage hero** — "MMX Music Studio" title with live-status badge ("公网已启用 · 推荐 MMX CLI 模式") and green indicator dot
+- **Quick Start 3-step onboarding** — visual guide: write description → click generate → play/download/favorite
+- **Status cards** — live card showing public URL, recommended backend, current version, and BYOK API status
+- **Capability cards** — four cards for Studio / Library / BYOK / Cloudflare Tunnel with icons and descriptions
+- **Navigation polish** — "首页" nav item added; logo links back to homepage; active state highlighting
+- **Footer polish** — Release Notes link to GitHub CHANGELOG
+- **Mobile homepage responsive** — dual breakpoints at 639px and 389px; capability cards 2-column at 639px, single-column at 389px; CTA buttons full-width at 389px
+
+### Notes
+
+CLI backend remains the recommended default path. No real generation or quota consumption in this release. BYOK API Adapter remains verified once (v0.4.2-alpha) and experimental.
+
 ## [v0.4.4-alpha] — 2026-06-09
 
 ### Highlights
