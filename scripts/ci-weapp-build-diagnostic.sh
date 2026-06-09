@@ -19,8 +19,9 @@ mkdir -p "$DIAG_DIR"
 
 LOG="$DIAG_DIR/weapp-build.log"
 SUMMARY="$DIAG_DIR/weapp-build-summary.md"
+RESULT_ENV="$DIAG_DIR/weapp-build-result.env"
 
-# ── Basic redaction (tokens/keys/PINs) ───────────────────────────────────────
+# ── Basic redaction (tokens/keys/PINs) ────────────────────────────────────────
 redact() {
   sed -E \
     -e 's/(sk-[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+/\1***REDACTED***/g' \
@@ -83,6 +84,18 @@ BUILD_EXIT=${PIPESTATUS[0]}
   echo "=== build exit ==="
   echo "exit_code=$BUILD_EXIT"
 } >> "$LOG" 2>&1
+
+# ── Generate machine-readable result.env ─────────────────────────────────────
+if [ "$BUILD_EXIT" -eq 0 ]; then
+  WEAPP_BUILD_STATUS="success"
+else
+  WEAPP_BUILD_STATUS="failure"
+fi
+
+cat > "$RESULT_ENV" <<EOF
+WEAPP_BUILD_EXIT_CODE=$BUILD_EXIT
+WEAPP_BUILD_STATUS=$WEAPP_BUILD_STATUS
+EOF
 
 # ── Generate sanitized markdown summary ──────────────────────────────────────
 {

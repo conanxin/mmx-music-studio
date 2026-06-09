@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      issues: write  # needed for creating GitHub Issues from CI
+      issues: write
       contents: read
       actions: read
 
@@ -28,112 +28,177 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── Build (must run before typecheck for workspace symlinks) ──────────────
+      # ── Build (must run before typecheck for workspace symlinks) ────────────────
       - name: Build web
         run: npm run build
 
-      # ── TypeScript type checks ────────────────────────────────────────────────
+      # ── TypeScript type checks ─────────────────────────────────────────────────
       - name: Typecheck server
         run: npm run typecheck:server
 
       - name: Typecheck web
         run: npm run typecheck
 
-      # ── WeApp build ─────────────────────────────────────────────────────────────
-      # Phase WeApp-CI-RootCause-A: Uses self-contained diagnostic script.
-      # The script captures build output to /tmp/mmx-ci-diagnostics/ and always exits 0
-      # so the diagnostic step never blocks CI (continue-on-error: true).
-      # The blocking gate is enforced by the subsequent "WeApp build gate" step,
-      # which reads the summary and fails CI only if the build actually failed.
-      # ───────────────────────────────────────────────────────────────────────────
+      #════════════════════════════════════════════════════════════════════════════
+      # WeApp build — self-contained diagnostic script
+      # The script runs npm run weapp:build, captures output, always exits 0.
+      # Machine-readable result: /tmp/mmx-ci-diagnostics/weapp-build-result.env
+      # Human-readable summary:  /tmp/mmx-ci-diagnostics/weapp-build-summary.md
+      # ════════════════════════════════════════════════════════════════════════════
+
       - name: Build weapp diagnostic
         id: build_weapp
-        continue-on-error: true
         run: bash scripts/ci-weapp-build-diagnostic.sh
+        # Script exits 0 always; BUILD_EXIT recorded in result.env
 
-      # ── Blocking gate: fail CI if WeApp build actually failed ─────────────────
-      # This step exits 1 if build failed, which triggers the issue creation via
-      # the 'if: failure()' condition on the next step.
+      - name: Read WeApp diagnostic result
+        id: weapp_result
+        run: |
+          set -euo pipefail
+          RESULT_ENV="/tmp/mmx-ci-diagnostics/weapp-build-result.env"
+          if [ ! -f "$RESULT_ENV" ]; then
+            echo "ERROR: result.env not found"
+            echo "WEAPP_BUILD_STATUS=unknown" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          cat "$RESULT_ENV"
+          source "$RESULT_ENV"
+          echo "status=$WEAPP_BUILD_STATUS" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$WEAPP_BUILD_EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+      # ── Blocking gate: fail CI if WeApp build actually failed ───────────────────
       - name: WeApp build gate
         id: weapp_gate
+        if: always()
         run: |
+          RESULT_ENV="/tmp/mmx-ci-diagnostics/weapp-build-result.env"
           SUMMARY="/tmp/mmx-ci-diagnostics/weapp-build-summary.md"
-          if [ ! -f "$SUMMARY" ]; then
-            echo "ERROR: weapp-build-summary.md not found"
+          if [ ! -f "$RESULT_ENV" ]; then
+            echo "ERROR: result.env not found — treating as failure"
             exit 1
           fi
-          if grep -q "\*\*WeApp build: FAIL" "$SUMMARY"; then
+          source "$RESULT_ENV"
+          if [ "$WEAPP_BUILD_STATUS" = "failure" ]; then
             echo "=== WeApp build FAILED in CI ==="
-            cat "$SUMMARY"
-            echo "=== build log tail ==="
-            tail -n 80 "/tmp/mmx-ci-diagnostics/weapp-build.log"
-            # Set flag for issue creation step (persists via GITHUB_ENV)
-            echo "WEAPP_BUILD_FAILED=true" >> $GITHUB_ENV
+            cat "$SUMMARY" || true
             exit 1
           fi
           echo "WeApp build: PASS"
-          cat "$SUMMARY"
+          cat "$SUMMARY" || true
 
-      # ── Create GitHub Issue if WeApp build failed (for agent visibility) ─────────
-      # GITHUB_TOKEN is automatically available and has write access to repo issues.
-      # Runs ONLY if weapp_gate step failed (via 'if: failure()').
-      - name: Create WeApp CI diagnostic issue
-        if: failure()
+      # ════════════════════════════════════════════════════════════════════════════
+      # GitHub Issue for CI-only WeApp build failures (agent visibility)
+      # Runs whenever weapp_gate exits non-zero (always() + status check).
+      # Creates or updates a single stable issue: "CI diagnostic: WeApp build failure"
+      # ════════════════════════════════════════════════════════════════════════════
+      - name: Create or update WeApp CI diagnostic issue
+        id: create_issue
+        if: always() && steps.weapp_result.outputs.status == 'failure'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const summary = fs.readFileSync('/tmp/mmx-ci-diagnostics/weapp-build-summary.md', 'utf8').slice(0, 60000);
-            const log = fs.readFileSync('/tmp/mmx-ci-diagnostics/weapp-build.log', 'utf8').slice(0, 40000);
+
+            const diagDir = '/tmp/mmx-ci-diagnostics';
+            const summaryPath = diagDir + '/weapp-build-summary.md';
+            const resultPath  = diagDir + '/weapp-build-result.env';
+            const logPath = diagDir + '/weapp-build.log';
+
+            // Read diagnostics
+            let summary = fs.existsSync(summaryPath)
+              ? fs.readFileSync(summaryPath, 'utf8').slice(0, 60000)
+              : 'No summary found.';
+            let logTail = '';
+            if (fs.existsSync(logPath)) {
+              const lines = fs.readFileSync(logPath, 'utf8').split('\n');
+              logTail = lines.slice(-80).join('\n').slice(0, 20000);
+            }
+            let resultEnv = '';
+            if (fs.existsSync(resultPath)) {
+              resultEnv = fs.readFileSync(resultPath, 'utf8');
+            }
+
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const sha = process.env.GITHUB_SHA;
+
             const body = [
               '## Automated: WeApp CI Build Failure',
               '',
-              '> This issue is auto-created by GitHub Actions CI. No secrets are included.',
+              '> **Sanitized diagnostic** — no secrets included.',
               '',
-              '### Summary',
+              '### Run',
+              `[${runUrl}](${runUrl})`,
+              '',
+              '### SHA',
+              `\`${sha}\``,
+              '',
+              '### Machine-readable result',
+              '```',
+              resultEnv,
+              '```',
+              '',
+              '### Sanitized summary',
               summary,
               '',
-              '### Build log (last 80 lines)',
+              '### Build log tail (last 80 lines)',
               '```',
-              log.split('\n').slice(-80).join('\n'),
+              logTail,
               '```',
-              '',
-              `Run: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-              `SHA: \`${process.env.GITHUB_SHA}\``,
             ].join('\n');
 
-            const { repo } = context;
-            const title = `CI WeApp build failed — SHA ${process.env.GITHUB_SHA.slice(0,8)}`;
-            const existing = await github.rest.issues.listForRepo({
-              ...repo, state: 'open', labels: ['ci-diagnostic']
-            }).then(r => r.data.find(i => i.title === title));
+            const ISSUE_TITLE = 'CI diagnostic: WeApp build failure';
+            const { owner, repo } = context.repo;
 
+            // Ensure label exists (best-effort)
             try {
-              const { repo } = context;
-              const title = `CI WeApp build failed — SHA ${process.env.GITHUB_SHA.slice(0,8)}`;
-              const existing = await github.rest.issues.listForRepo({
-                ...repo, state: 'open', labels: ['ci-diagnostic']
-              }).then(r => r.data.find(i => i.title === title));
-
-              if (existing) {
-                await github.rest.issues.update({ ...repo, issue_number: existing.number, body });
-                console.log('Updated existing issue:', existing.number);
-              } else {
-                await github.rest.issues.create({ ...repo, title, body, labels: ['ci-diagnostic'] });
-                console.log('Created new issue');
-              }
-              console.log('Issue creation succeeded');
-            } catch (err) {
-              console.error('Issue creation failed:', err.message);
-              process.exit(0);  // Don't fail CI just because issue creation failed
+              await github.rest.issues.createLabel({
+                owner, repo,
+                name: 'ci-diagnostic',
+                color: 'd73a4a',
+                description: 'Automated CI diagnostic issue'
+              });
+            } catch (e) {
+              // label may already exist — ignore
             }
 
-      # ── Print diagnostics (always runs) ─────────────────────────────────────────
+            // Find existing issue by title
+            const existing = await github.rest.issues.listForRepo({
+              owner, repo, state: 'open', per_page: 50
+            });
+            const found = existing.data.find(i => i.title === ISSUE_TITLE);
+
+            if (found) {
+              await github.rest.issues.update({
+                owner, repo,
+                issue_number: found.number,
+                body,
+                labels: ['ci-diagnostic']
+              });
+              console.log('Updated existing issue #' + found.number);
+            } else {
+              await github.rest.issues.create({
+                owner, repo,
+                title: ISSUE_TITLE,
+                body,
+                labels: ['ci-diagnostic']
+              });
+              console.log('Created new issue');
+            }
+            console.log('Issue creation succeeded');
+
+      # ── Print diagnostics (always runs) ───────────────────────────────────────
       - name: Print weapp diagnostics
         if: always()
         run: |
           SUMMARY="/tmp/mmx-ci-diagnostics/weapp-build-summary.md"
           LOG="/tmp/mmx-ci-diagnostics/weapp-build.log"
+          RESULT="/tmp/mmx-ci-diagnostics/weapp-build-result.env"
+          if [ -f "$RESULT" ]; then
+            echo "=== WeApp result ==="
+            cat "$RESULT"
+            echo ""
+          fi
           if [ -f "$SUMMARY" ]; then
             echo "=== weapp build summary ==="
             cat "$SUMMARY"
@@ -143,17 +208,12 @@ jobs:
             echo "=== weapp build log tail (last 100 lines) ==="
             tail -n 100 "$LOG"
           fi
-          echo ""
-          echo "## CI WeApp Build Summary"
-          echo ""
-          echo "| Field | Value |"
-          echo "|-------|-------|"
-          echo "| Build | $(grep '## Summary' -A 1 "$SUMMARY" 2>/dev/null | tail -1 || echo 'unknown') |"
-          echo "| node | $(node -v) |"
-          echo "| npm | $(npm -v) |"
-          echo "| Disk | $(df -h / | tail -1) |"
-          echo ""
-          echo "Full logs: [ci-diagnostics artifact]"
+          {
+            echo "## WeApp build diagnostic"
+            echo ""
+            if [ -f "$RESULT" ]; then cat "$RESULT"; echo ""; fi
+            if [ -f "$SUMMARY" ]; then cat "$SUMMARY"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # ── Upload diagnostics artifact ─────────────────────────────────────────────
       - name: Upload CI diagnostics
@@ -164,7 +224,7 @@ jobs:
           path: /tmp/mmx-ci-diagnostics
           if-no-files-found: ignore
 
-      # ── Manifest / release checks (advisory only) ──────────────────────────────
+      # ── Manifest / release checks (advisory only) ───────────────────────────────
       - name: Manifest audit
         continue-on-error: true
         run: npm run manifest:audit
@@ -173,7 +233,7 @@ jobs:
         continue-on-error: true
         run: npm run release:check
 
-      # ── Static smoke tests (advisory only) ────────────────────────────────────
+      # ── Static smoke tests (advisory only) ──────────────────────────────────────
       - name: Studio CLI submit guard
         continue-on-error: true
         run: bash scripts/studio-cli-submit-guard-smoke-test.sh
@@ -186,7 +246,7 @@ jobs:
         continue-on-error: true
         run: bash scripts/weapp-byok-strategy-smoke-test.sh
 
-      # ── Secret scan ───────────────────────────────────────────────────────────
+      # ── Secret scan ─────────────────────────────────────────────────────────────
       - name: Secret scan
         run: |
           python3 -c "
@@ -194,7 +254,7 @@ jobs:
 
           result = subprocess.run(
               ['grep', '-RInE',
-               'sk-[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|Authorization: Bearer|MINIMAX_API_KEY=.*[A-Z...,}',
+               'sk-[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|Authorization: Bearer|Minimax|Bearer|MINIMAX_API_KEY',
                '.',
                '--exclude-dir=node_modules',
                '--exclude-dir=dist',
@@ -212,12 +272,11 @@ jobs:
               '.env.example', '.env.demo.example', '.env.private-real.example',
               '.env.production-locked.example', 'fake', 'FAKE', 'placeholder',
               '<your', 'smoke-test', 'BYOK_REAL_TEST', 'package-lock.json',
-              'MySecurePass2024'
+              'MySecurePass2024', '***REDACTED***', 'REDACTED', '***REDACTED'
           ]
 
           matches = [l for l in result.stdout.splitlines()
                      if not any(ex in l for ex in exclusions)]
-
           if matches:
               print('Potential real secret found:')
               for m in matches:
