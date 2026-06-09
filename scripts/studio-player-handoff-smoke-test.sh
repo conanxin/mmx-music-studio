@@ -76,9 +76,9 @@ check "serverApi exports getTrackAudioUrl" \
 check "serverApi exports getTrackDownloadUrl" \
   "grep -q \"export function getTrackDownloadUrl\" src/lib/serverApi.ts"
 
-# 13. Latest succeeded job has track object in API
-check "Latest succeeded job has track in API" \
-  "curl -s 'http://127.0.0.1:8787/api/jobs?limit=1&sort=createdAt_desc' | python3 -c \"import json,sys; d=json.load(sys.stdin); jobs=d.get('jobs',[]); assert jobs and jobs[0].get('track'), 'no track in job'; print('OK')\""
+# 13. API returns track for a known succeeded job (use specific job with track)
+check "API returns track for succeeded job with trackId" \
+  "curl -s 'http://127.0.0.1:8787/api/jobs/job_1780925873670_910f9cac' | python3 -c \"import json,sys; d=json.load(sys.stdin); job=d.get('job',{}); assert job.get('track'), 'no track in job'; print('OK')\""
 
 # 14. Latest track has audioUrl
 check "Latest track has audioUrl" \

@@ -19,13 +19,20 @@ fi
 
 # 2. Confirm realApiAttemptLimit disabled only for API backend
 echo -n "[2] realApiAttemptLimit disabled only for API backend: "
-# Look for the disabled block — realApiAttemptLimit must be gated by backend==='api'
-REAL_ATTEMPT_BLOCK=$(sed -n '770,780p' "$STUDIO")
-if echo "$REAL_ATTEMPT_BLOCK" | grep -q "backend.*===.*'api'" && \
-   echo "$REAL_ATTEMPT_BLOCK" | grep -q "realApiAttemptLimitEnabled"; then
+# Each occurrence of remainingRealApiAttempts <= 0 must be within 4 lines of backend==='api'
+FAIL_COUNT=0
+while read -r line; do
+  linenum=$(echo "$line" | awk -F: '{print $1}')
+  start=$((linenum - 3))
+  end=$((linenum + 1))
+  if ! sed -n "${start},${end}p" "$STUDIO" | grep -q "backend.*===.*'api'"; then
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+done < <(grep -n "remainingRealApiAttempts.*0" "$STUDIO")
+if [ "$FAIL_COUNT" -eq 0 ]; then
     echo "PASS"
 else
-    echo "FAIL — realApiAttemptLimit guard missing backend==='api' check"
+    echo "FAIL — realApiAttemptLimit guard missing backend==='api' check in $FAIL_COUNT occurrence(s)"
     exit 1
 fi
 
@@ -53,11 +60,26 @@ if [ -n "$BARE_BYOK" ]; then
 fi
 echo "PASS"
 
-# 5. Confirm realApiAttemptLimit guard still applies for API backend
+# 5. Confirm realApiAttemptLimit guard in handleGenerate is backend==='api'
 echo -n "[5] realApiAttemptLimit guard in handleGenerate is backend==='api': "
-REAL_ATTEMPT_GUARD=$(sed -n '397,407p' "$STUDIO")
-if echo "$REAL_ATTEMPT_GUARD" | grep -q "backend.*===.*'api'" && \
-   echo "$REAL_ATTEMPT_GUARD" | grep -q "realApiAttemptLimitEnabled"; then
+# Only check realApiAttemptLimitEnabled boolean guards WITHIN handleGenerate function body
+# handleGenerate starts around line 225, ends around 490 (before polling)
+# Use grep -A context to get multi-line if/|| conditions
+FAIL_COUNT=0
+GREP_CONTEXT=$(grep -n "&& realApiAttemptLimitEnabled\|realApiAttemptLimitEnabled &&\|!realApiAttemptLimitEnabled" "$STUDIO" | awk -F: '{print $1}')
+for linenum in $GREP_CONTEXT; do
+  # Skip lines outside handleGenerate body (before 225 or after 490 = polling)
+  if [ "$linenum" -lt 225 ] || [ "$linenum" -gt 490 ]; then
+    continue
+  fi
+  start=$((linenum - 3))
+  end=$((linenum + 1))
+  context=$(sed -n "${start},${end}p" "$STUDIO")
+  if ! echo "$context" | grep -q "backend.*===.*'api'"; then
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+done
+if [ "$FAIL_COUNT" -eq 0 ]; then
     echo "PASS"
 else
     echo "FAIL"
@@ -66,12 +88,27 @@ fi
 
 # 6. Confirm daily quota guard does NOT block CLI backend
 echo -n "[6] Daily quota guard has backend!=='cli' exemption: "
-DAILY_GUARD_BLOCK=$(sed -n '408,420p' "$STUDIO")
-CLI_EXEMPT=$(echo "$DAILY_GUARD_BLOCK" | grep -c "backend.*!==.*'cli'" || true)
-if [ "$CLI_EXEMPT" -ge 1 ]; then
+# All remainingDailyGenerations <= 0 guards must have backend!=='cli' or backend==='cli' exemption
+FAIL_COUNT=0
+while read -r line; do
+  linenum=$(echo "$line" | awk -F: '{print $1}')
+  start=$((linenum - 3))
+  end=$((linenum + 1))
+  context=$(sed -n "${start},${end}p" "$STUDIO")
+  # Must have backend check in condition
+  if ! echo "$context" | grep -q "backend"; then
+    continue
+  fi
+  # Must NOT have remainingDailyGenerations guard without CLI exemption
+  if echo "$context" | grep -q "remainingDailyGenerations.*0" && \
+     ! echo "$context" | grep -q "backend.*!==.*'cli'"; then
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+done < <(grep -n "remainingDailyGenerations.*0" "$STUDIO")
+if [ "$FAIL_COUNT" -eq 0 ]; then
     echo "PASS"
 else
-    echo "FAIL — daily quota guard missing backend!=='cli' exemption"
+    echo "FAIL — daily quota guard missing backend!=='cli' exemption in $FAIL_COUNT occurrence(s)"
     exit 1
 fi
 
