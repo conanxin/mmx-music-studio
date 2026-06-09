@@ -142,7 +142,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | HTTPS | ✅ PASS | Caddy + Let's Encrypt |
 | Mainland custom domain | ⚠️ ICP required | Tencent Cloud blocks unrecorded custom domain |
 | SSH Tunnel | ✅ Works | Current dev access |
-| Cloudflare Tunnel | 🚧 Planned | Phase Deploy-CF-A |
+| Cloudflare Tunnel | ✅ PASS | `music.conanxin.com` → `127.0.0.1:8787`, no SSH Tunnel needed |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
@@ -235,6 +235,8 @@ MINIMAX_BACKEND=mock           # 后端模式
 
 **Live preview**: https://music.conanxin.com
 
+> **Cloudflare Tunnel** — public traffic routes through Cloudflare Tunnel to `http://127.0.0.1:8787`. No SSH Tunnel needed for normal access. App remains bound to `127.0.0.1:8787`. SSH Tunnel remains a fallback/debug path.
+
 > ⚠️ **当前为真实生成模式（MMX CLI）** — 此预览后端使用 `MINIMAX_BACKEND=cli` + `REAL_GENERATION_ENABLED=true`，会真实调用 MiniMax mmx CLI 并消耗 Token Plan 额度。
 >
 > 如需安全模拟模式，请使用 Docker 部署：
@@ -245,8 +247,6 @@ MINIMAX_BACKEND=mock           # 后端模式
 > ```bash
 > REAL_GENERATION_ENABLED=false MOCK_GENERATION_ENABLED=true MINIMAX_BACKEND=mock npm run start
 > ```
-
-> ⚠️ Requires cloud security group to open TCP 8787 inbound. If the address is not reachable, open TCP 8787 in your cloud provider's security group settings (Tencent Cloud / Alibaba Cloud / etc.).
 
 ### Public Preview API Base
 

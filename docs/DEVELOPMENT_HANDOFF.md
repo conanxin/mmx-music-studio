@@ -1,6 +1,6 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.2.0-alpha · 2026-06-07
+> 文档版本：v0.3.0-alpha · 2026-06-09
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
@@ -19,7 +19,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | Web UI | ✅ 完成 | 移动端优先，桌面双栏，暖黑/米白/绿色 |
-| Web 公网预览 | ✅ 可用 | `http://118.195.129.137:8787`（mock 模式） |
+| Web 公网预览 | ✅ 可用 | Cloudflare Tunnel `https://music.conanxin.com`（CLI backend，无需 SSH Tunnel） |
 | Mock 生成 | ✅ 完成 | server mock，不消耗额度 |
 | MMX CLI 生成 | ✅ 已验证 | `MINIMAX_BACKEND=cli`，需 auth login，Web+CLI 主链路 |
 | API adapter | ⚠️ 实验性 | `MINIMAX_BACKEND=api`，需真实 key |
@@ -83,7 +83,7 @@ PORT=8787 \
 npm run start
 ```
 
-访问：`http://localhost:8787` 或 `http://118.195.129.137:8787`
+访问：`http://localhost:8787` 或 Cloudflare Tunnel `https://music.conanxin.com`（无需 SSH Tunnel）
 
 ---
 

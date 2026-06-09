@@ -61,7 +61,15 @@ sudo systemctl status cloudflared --no-pager
 
 Or use the helper script (see below).
 
-## Verification
+## Verified
+
+The tunnel for `music.conanxin.com` is live and serving public traffic.
+
+```bash
+# Public health check
+curl -s https://music.conanxin.com/api/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('backend:', d.get('backend'), '| realGenerationEnabled:', d.get('realGenerationEnabled'))"
+# Expected output: backend: cli | realGenerationEnabled: True
+```
 
 ```bash
 # Check the app is running locally
