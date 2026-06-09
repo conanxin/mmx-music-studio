@@ -4,6 +4,21 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.6-alpha] — 2026-06-09
+
+### Highlights
+
+- **Stable public deployment release** — app is now publicly reachable through Cloudflare Tunnel and runs as a systemd service, no longer depending on an active SSH session or manually started Node process
+- **Cloudflare Tunnel public access verified** — `https://music.conanxin.com` live and routing to `127.0.0.1:8787`
+- **Node server installed as systemd service** — `mmx-music-studio.service`, `enabled` at boot, `Restart=always`, 50/day generation limit
+- **CLI backend diagnostics added** — `cli-backend-diagnostics.sh` (13 runtime checks) and `cli-backend-readiness-smoke-test.sh` (26 static checks)
+- **systemd helpers added** — unit file template, install script, smoke test script
+- **README / handoff / deployment docs updated** — all documentation reflects systemd-managed deployment
+
+### Notes
+
+CLI backend remains the recommended default path. No new generation or quota consumption in this release. Cloudflare Access remains optional and not yet enabled.
+
 ## [v0.4.5-alpha] — 2026-06-09
 
 ### Highlights

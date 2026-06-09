@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.5--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.5-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.6--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.6-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -143,14 +143,17 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 |------|--------|-------|
 | HTTPS | ✅ PASS | Caddy + Let's Encrypt |
 | Mainland custom domain | ⚠️ ICP required | Tencent Cloud blocks unrecorded custom domain |
-| SSH Tunnel | ✅ Works | Current dev access |
-| Cloudflare Tunnel | ✅ PASS | `music.conanxin.com` → `127.0.0.1:8787`, no SSH Tunnel needed |
+| SSH Tunnel | ✅ Fallback | Debug / fallback access only; primary is public URL |
+| Cloudflare Tunnel | ✅ PASS | `music.conanxin.com` → `127.0.0.1:8787`, public access |
+| systemd service | ✅ PASS | `mmx-music-studio.service` active/enabled, `Restart=always` |
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
 
-**v0.4.5-alpha**：Public landing and onboarding polish — redesigned Hero with MMX Music Studio branding and status badge; 3-step quick-start guide; status card showing public URL, recommended backend, version, and BYOK state; capability cards (Studio / Library / BYOK / Cloudflare); mobile-responsive at 639px and 389px; Layout nav adds 首页 entry; footer adds Release Notes link. CLI backend remains recommended default.
+**v0.4.6-alpha**：Stable public deployment release — Cloudflare Tunnel public access verified (`https://music.conanxin.com`); Node server installed as `mmx-music-studio.service` (enabled at boot, `Restart=always`, 50/day limit); CLI backend diagnostics (`cli-backend-diagnostics.sh` 13 checks, `cli-backend-readiness-smoke-test.sh` 26 checks); systemd helpers (unit file, install script, smoke test); README/handoff/deployment docs updated to reflect systemd-managed deployment.
+
+**v0.4.5-alpha**：Public landing and onboarding polish
 
 **v0.4.4-alpha**：Studio generation flow polish — 4-step phase messages, prompt guidance, success/error cards with recovery actions, mobile state card polish. No generation logic changes. CLI backend remains recommended default. [Release Notes](docs/release/RELEASE_NOTES_v0.4.4-alpha.md)
 
