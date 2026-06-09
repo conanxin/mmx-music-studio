@@ -58,8 +58,8 @@ echo ""
 echo "[4] Real API warning banner shows contextual message"
 check "Warning shows '请先在设置中输入 BYOK Key' when key missing" \
   "grep -q '请先在设置中输入 BYOK Key' '$STUDIO_TSX'"
-check "Warning falls back to '真实 API 测试会消耗额度' when key present" \
-  "grep -q '真实 API 测试会消耗额度，请只点击一次' '$STUDIO_TSX'"
+check "Warning falls back to '✅ 可点击' when key present (submit path diagnostic)" \
+  "grep -q '✅ 可点击' '$STUDIO_TSX'"
 
 # 5. Verify Settings.tsx shows BYOK key input guidance
 echo ""
@@ -75,8 +75,8 @@ echo ""
 echo "[6] Error display renders near generate button"
 check "genError displayed in errorBox" \
   "grep -q 'className={styles.errorBox}>{genError}' '$STUDIO_TSX'"
-check "errorBox renders before generate button" \
-  "grep -B5 'className={styles.generateBtn}' '$STUDIO_TSX' | grep -q 'errorBox'"
+check "errorBox appears in source before generateBtn" \
+  "[ \$(grep -n 'errorBox' '\$STUDIO_TSX' | head -1 | cut -d: -f1) -lt \$(grep -n 'generateBtn' '\$STUDIO_TSX' | head -1 | cut -d: -f1) ]"
 
 # 7. Verify server health supports BYOK with correct limits
 echo ""

@@ -822,6 +822,25 @@ export default function Studio() {
             <div className={styles.errorBox}>{genError}</div>
           )}
 
+          {/* Phase API-Debug-C: Submit disabled reason diagnostic */}
+          {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
+            <div className={styles.realApiWarning}>
+              提交状态：{
+                healthInfo.byokEnabled && !settings.apiKey ? (
+                  <>❌ 请先在设置中输入 BYOK Key</>
+                ) : isGenerating || (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) ? (
+                  <>🔄 正在生成中，请勿重复提交</>
+                ) : (healthInfo.backend === 'api' && healthInfo.realApiAttemptLimitEnabled && (healthInfo.remainingRealApiAttempts ?? 1) <= 0) ? (
+                  <>❌ 真实 API 测试次数已用完</>
+                ) : (healthInfo.remainingDailyGenerations !== undefined && healthInfo.remainingDailyGenerations <= 0) ? (
+                  <>❌ 本地每日生成保护次数已用完</>
+                ) : (
+                  <>✅ 可点击（下一步将消耗 1 次真实 API attempt）</>
+                )
+              }
+            </div>
+          )}
+
           {/* Generate button — Phase 5B-D-A: full submit guard */}
           <button
             className={styles.generateBtn}
@@ -860,17 +879,6 @@ export default function Studio() {
               </>
             ) : getButtonLabel()}
           </button>
-
-          {/* Phase 5B-D-A: Real API warning banner */}
-          {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
-            <div className={styles.realApiWarning}>
-              {healthInfo?.byokEnabled && !settings.apiKey ? (
-                <>⚠️ 请先在设置中输入 BYOK Key，再点击生成</>
-              ) : (
-                <>⚠️ 真实 API 测试会消耗额度，请只点击一次</>
-              )}
-            </div>
-          )}
 
           {/* Progress UI: job polling */}
           {isGenerating && currentJob && (
