@@ -57,6 +57,10 @@ echo "== real-api-attempt-guard-smoke-test.sh =="
 bash scripts/real-api-attempt-guard-smoke-test.sh
 
 echo ""
+echo "== ci-secret-scan.py =="
+python3 scripts/ci-secret-scan.py
+
+echo ""
 echo "═══════════════════════════════════════════════"
 echo "  LOCAL_FULL_VERIFY_PASS"
 echo "═══════════════════════════════════════════════"

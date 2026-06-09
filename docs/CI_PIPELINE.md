@@ -24,7 +24,7 @@ CI is **safe by default** — it never calls real MiniMax APIs, never generates 
 | Studio CLI submit guard | `bash scripts/studio-cli-submit-guard-smoke-test.sh` | **Advisory only** — CI bash env difference |
 | Audio duration display | `bash scripts/audio-duration-display-smoke-test.sh` | **Advisory only** — CI bash env difference |
 | WeApp BYOK strategy | `bash scripts/weapp-byok-strategy-smoke-test.sh` | **Advisory only** — CI bash env difference |
-| Secret scan | Python `grep` | No real API keys / tokens / PINs committed |
+| Secret scan | `python3 scripts/ci-secret-scan.py` | Blocking. Scans source/config files for hardcoded secrets; ignores harmless variable templates (Bearer ${apiKey}) and documented placeholders |
 
 ---
 
