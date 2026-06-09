@@ -4,6 +4,24 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.9-alpha] — 2026-06-10
+
+### Highlights
+
+- **Global mini player and playback continuity release** — Library and Studio share a unified current-playing-track state at the App level
+- **Global mini player** — fixed bottom bar appears when a track is playing, persists across page navigations
+- **App-level `currentPlayingTrack` state** — `src/App.tsx` holds `useState<GlobalPlayerTrack | null>`, propagated to Layout / Studio / Library via props
+- **Library play → global player** — card and detail drawer play buttons call `onSetPlayingTrack(itemToGlobal(track))` instead of creating independent Audio instances
+- **Studio → global player** — generation success points (mock, polling, mock flow) call `onSetPlayingTrack(displayToGlobal(display))`
+- **Bottom fixed player controls** — play/pause, download, close, "View Library" shortcut
+- **Mobile bottom player polish** — compact layout, icon-only Library shortcut, `padding-bottom: 60px` on `.main`
+
+### Notes
+
+- No generation is triggered for this release — pure UX/stability release
+- Global player state is **client-side only** — browser session, not persisted
+- CLI backend remains the recommended default path; BYOK API Adapter remains experimental
+
 ## [v0.4.8-alpha] — 2026-06-09
 
 ### Highlights
