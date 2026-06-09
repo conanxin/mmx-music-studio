@@ -7,21 +7,57 @@
   max-width: var(--max-width);
   margin: 0 auto;
 }
-
+/* Header */
 .header {
   margin-bottom: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.headerTop {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
 }
 
 .title {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin-bottom: var(--space-1);
+  color: var(--color-text-primary);
 }
 
 .desc {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text-secondary);
+}
+
+/* Source filter tabs */
+.filterTabs {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.filterTab {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-panel);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition);
+  min-height: 40px;
+}
+
+.filterTab.active {
+  background: var(--color-accent);
+  color: #090A0C;
+  border-color: var(--color-accent);
+  font-weight: 600;
 }
 
 /* Grid */

@@ -54,6 +54,23 @@ const UI_MODE_LABELS: Record<string, string> = {
   'cover-file': '参考改编',
 };
 
+const PROMPT_EXAMPLES: string[] = [
+  '深夜编程、爵士、放松',
+  '周一通勤、轻快、电子',
+  '电影感氛围、弦乐',
+  '夏夜海边、Lo-fi',
+  '冥想、自然音',
+  '赛博朋克、科技感',
+];
+
+const EXAMPLE_LABELS: Record<string, string> = {
+  'pure-music': '示例灵感',
+  'auto-song': '歌曲主题',
+  'lyric-song': '风格参考',
+  'cover-url': '风格参考',
+  'cover-file': '风格参考',
+};
+
 function getBackendLabel(backend?: string): string {
   switch (backend) {
     case 'cli': return 'MMX CLI';
@@ -72,11 +89,11 @@ function deriveRuntimeModeLabel(health?: {
 } | null): string {
   if (!health) return '连接中…';
   if (health.previewAccessEnabled) return '访问保护';
-  if (health.byokEnabled && health.backend === 'api') return 'BYOK API';
-  if (health.realGenerationEnabled && health.backend === 'cli') return '真实生成';
-  if (health.realGenerationEnabled && health.backend === 'api') return 'API 实验';
-  if (!health.realGenerationEnabled && health.backend === 'mock' && health.mockGenerationEnabled) return '安全预览';
-  return '自定义';
+  if (health.backend === 'cli' && health.realGenerationEnabled) return 'MMX CLI 模式';
+  if (health.byokEnabled && health.backend === 'api') return 'BYOK API 模式';
+  if (health.backend === 'api' && health.realGenerationEnabled) return 'API 实验模式';
+  if (!health.realGenerationEnabled && health.backend === 'mock' && health.mockGenerationEnabled) return '本地预览';
+  return '自定义模式';
 }
 
 function formatElapsed(seconds: number): string {
@@ -696,6 +713,26 @@ export default function Studio() {
             rows={3}
           />
 
+          {/* Prompt example chips */}
+          <div className={styles.exampleRow}>
+            <span className={styles.exampleLabel}>{EXAMPLE_LABELS[activeMode] || '示例灵感'}</span>
+            <div className={styles.exampleChips}>
+              {PROMPT_EXAMPLES.map(ex => (
+                <button
+                  key={ex}
+                  className={styles.exampleChip}
+                  onClick={() => {
+                    const current = getMainInputValue();
+                    const next = current ? `${current} · ${ex}` : ex;
+                    handleMainInputChange(next);
+                  }}
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* auto-song: language selector */}
           {activeMode === 'auto-song' && (
             <div className={styles.langRow}>
@@ -1007,10 +1044,10 @@ export default function Studio() {
             <span className={styles.runtimeMode}>
               {deriveRuntimeModeLabel(healthInfo)}
             </span>
-            {healthInfo?.realGenerationEnabled && (
+            {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
               <span className={styles.statusWarn}>⚠️ 会消耗额度</span>
             )}
-            {healthInfo?.realApiAttemptLimitEnabled && healthInfo?.remainingRealApiAttempts !== undefined && (
+            {healthInfo?.backend === 'api' && healthInfo?.realApiAttemptLimitEnabled && healthInfo?.remainingRealApiAttempts !== undefined && (
               <span className={styles.statusWarn}>
                 真实测试剩余 {healthInfo.remainingRealApiAttempts} 次
               </span>

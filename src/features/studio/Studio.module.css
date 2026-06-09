@@ -388,6 +388,51 @@
   cursor: not-allowed;
 }
 
+/* Example prompt chips */
+.exampleRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.exampleLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
+.exampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.exampleChip {
+  padding: 4px 12px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition);
+  min-height: 32px;
+  opacity: 0.75;
+}
+
+.exampleChip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  opacity: 1;
+}
+
+.exampleChip:active {
+  opacity: 0.7;
+}
+
 /* Mobile player (inside formCol, hidden on desktop) */
 .mobilePlayer {
   display: none;
@@ -661,6 +706,12 @@
 
   .playerCard {
     padding: var(--space-4);
+  }
+
+  .exampleChip {
+    padding: 3px 10px;
+    font-size: 11px;
+    min-height: 28px;
   }
 }
 

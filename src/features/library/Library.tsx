@@ -42,12 +42,22 @@ function mockTaskToItem(t: typeof MOCK_TASKS[0]): TrackItem {
   };
 }
 
+type FilterSource = 'all' | 'mmx-cli' | 'minimax-api' | 'mock';
+
 export default function Library() {
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filterSource, setFilterSource] = useState<FilterSource>('all');
+
+  const SOURCE_FILTERS: { key: FilterSource; label: string }[] = [
+    { key: 'all', label: '全部' },
+    { key: 'mmx-cli', label: 'MMX CLI' },
+    { key: 'minimax-api', label: 'MiniMax API' },
+    { key: 'mock', label: '示例' },
+  ];
 
   const loadTracks = async () => {
     setLoading(true);
@@ -96,6 +106,15 @@ export default function Library() {
     }
   };
 
+  const filteredTracks = filterSource === 'all'
+    ? tracks
+    : tracks.filter(t => {
+        if (filterSource === 'mock') return t.isMock;
+        if (filterSource === 'mmx-cli') return t.generationSource === 'mmx-cli';
+        if (filterSource === 'minimax-api') return t.generationSource === 'minimax';
+        return true;
+      });
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -116,8 +135,27 @@ export default function Library() {
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1 className={styles.title}>作品库</h1>
-          <p className={styles.desc}>{tracks.length} 首作品</p>
+          <div className={styles.headerTop}>
+            <h1 className={styles.title}>作品库</h1>
+            <p className={styles.desc}>
+              {filteredTracks.length === tracks.length
+                ? `${tracks.length} 首作品`
+                : `${filteredTracks.length} / ${tracks.length} 首`}
+            </p>
+          </div>
+
+          {/* Source filter tabs */}
+          <div className={styles.filterTabs}>
+            {SOURCE_FILTERS.map(f => (
+              <button
+                key={f.key}
+                className={`${styles.filterTab} ${filterSource === f.key ? styles.active : ''}`}
+                onClick={() => setFilterSource(f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {showHint && (
@@ -129,7 +167,7 @@ export default function Library() {
         )}
 
         <div className={styles.grid}>
-          {tracks.map(track => (
+          {filteredTracks.map(track => (
             <div key={track.id} className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.cardInfo}>
@@ -221,15 +259,15 @@ export default function Library() {
           ))}
         </div>
 
-        {tracks.length === 0 && (
+        {filteredTracks.length === 0 && !loading && (
           <div className={styles.empty}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M9 18V5l12-2v13"/>
               <circle cx="6" cy="18" r="3"/>
               <circle cx="18" cy="16" r="3"/>
             </svg>
-            <h3>还没有作品</h3>
-            <p>去创作台生成你的第一首音乐吧</p>
+            <h3>还没有这个来源的作品</h3>
+            <p>换个筛选条件，或去创作台生成新的音乐</p>
             <Link to="/studio" className={styles.emptyBtn}>开始创作</Link>
           </div>
         )}
