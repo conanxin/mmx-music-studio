@@ -24,41 +24,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── Environment diagnostics ─────────────────────────────────────────────────
-      - name: CI environment diagnostics
-        run: |
-          echo "=== system ==="
-          uname -a
-          pwd
-          df -h / /home2>/dev/null || df -h
-          free -h 2>/dev/null || echo "free unavailable"
-
-          echo "=== node/npm ==="
-          node -v
-          npm -v
-
-          echo "=== repository structure ==="
-          git status --short
-          ls -la
-          ls -la apps/ 2>/dev/null || echo "apps/ not found"
-          ls -la apps/weapp/ 2>/dev/null || echo "apps/weapp/ not found"
-
-          echo "=== package versions (typescript, taro) ==="
-          npm ls typescript --depth=0 2>&1 | head -5
-          npm ls @tarojs/cli --depth=2 2>&1 | head -10
-          npm ls @tarojs/webpack5-runner --depth=2 2>&1 | head -10
-          npm ls @tarojs/mini-runner --depth=2 2>&1 | head -10
-          npm ls @tarojs/taro-webpack5-runner --depth=2 2>&1 | head -10
-          npm ls @tarojs/mini --depth=2 2>&1 | head -10
-
-          echo "=== weapp package.json scripts ==="
-          cat apps/weapp/package.json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('scripts',{}), indent=2))" 2>/dev/null || echo "cannot read apps/weapp/package.json"
-
-          echo "=== weapp config files ==="
-          find apps/weapp -maxdepth 2 -name "*.config.*" -o -name "tsconfig*.json" 2>/dev/null | sort | head -20
-
-          echo "DIAGNOSTICS_COLLECTED=1" >> $GITHUB_ENV
-
       # ── Build (must run before typecheck for workspace symlinks) ──────────────
       - name: Build web
         run: npm run build
@@ -70,72 +35,61 @@ jobs:
       - name: Typecheck web
         run: npm run typecheck
 
-      # ── WeApp build — DIAGNOSTIC ONLY ─────────────────────────────────────────
-      # This step fails in GitHub Actions but passes locally (npm ci + weapp:build).
-      # Logs may not be accessible without GitHub authentication.
-      # Until the CI-only root cause is diagnosed, this step does NOT block CI.
-      # Local release verification (scripts/local-full-verify.sh) still enforces it.
+      # ── WeApp build ─────────────────────────────────────────────────────────────
+      # Phase WeApp-CI-RootCause-A: Uses self-contained diagnostic script.
+      # The script captures build output to /tmp/mmx-ci-diagnostics/ and always exits 0
+      # so the diagnostic step never blocks CI (continue-on-error: true).
+      # The blocking gate is enforced by the subsequent "WeApp build gate" step,
+      # which reads the summary and fails CI only if the build actually failed.
       # ───────────────────────────────────────────────────────────────────────────
       - name: Build weapp diagnostic
         id: build_weapp
         continue-on-error: true
-        shell: bash
+        run: bash scripts/ci-weapp-build-diagnostic.sh
+
+      # ── Blocking gate: fail CI if WeApp build actually failed ─────────────────
+      - name: WeApp build gate
         run: |
-          set -o pipefail
-          mkdir -p /tmp/mmx-ci-diagnostics
+          SUMMARY="/tmp/mmx-ci-diagnostics/weapp-build-summary.md"
+          if [ ! -f "$SUMMARY" ]; then
+            echo "ERROR: weapp-build-summary.md not found — diagnostic script may have failed"
+            exit 1
+          fi
+          if grep -q "\*\*WeApp build: FAIL" "$SUMMARY"; then
+            echo "ERROR: WeApp build failed in CI. Review weapp-build-summary.md for details."
+            echo "Diagnostic summary:"
+            cat "$SUMMARY"
+            exit 1
+          fi
+          echo "WeApp build: PASS"
+          cat "$SUMMARY"
 
-          echo "=== CI environment ===" | tee /tmp/mmx-ci-diagnostics/weapp-build.log
-          uname -a | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          node -v | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          npm -v | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-
-          echo "=== package versions ===" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          npm ls typescript --depth=0 2>&1 | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log | head -5
-          npm ls @tarojs/cli --depth=2 2>&1 | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log | head -10
-          npm ls @tarojs/webpack5-runner --depth=2 2>&1 | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log | head -10
-          npm ls @tarojs/mini-runner --depth=2 2>&1 | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log | head -10
-
-          echo "=== apps/weapp files (first 240) ===" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          find apps/weapp -maxdepth 3 -type f 2>/dev/null | sort | sed -n '1,240p' | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log || echo "find returned non-zero" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-
-          echo "=== npm run weapp:build output ===" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          npm run weapp:build 2>&1 | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          BUILD_EXIT=${PIPESTATUS[0]}
-          echo "build exit code: $BUILD_EXIT" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
-          exit $BUILD_EXIT
-
-      # ── Print diagnostics (always runs — even if weapp build step fails) ──────
-      - name: Print weapp build diagnostics
+      # ── Print diagnostics (always runs) ─────────────────────────────────────────
+      - name: Print weapp diagnostics
         if: always()
-        shell: bash
         run: |
-          echo "=== weapp build log (head 160) ==="
-          sed -n '1,160p' /tmp/mmx-ci-diagnostics/weapp-build.log 2>/dev/null || echo "log not available"
-
-          echo ""
-          echo "=== weapp build log (tail 220) ==="
-          tail -n 220 /tmp/mmx-ci-diagnostics/weapp-build.log 2>/dev/null || echo "log not available"
-
-          echo ""
-          echo "=== error keywords grep ==="
-          grep -RInE "error|failed|cannot find|module not found|ENOENT|EACCES|ENOMEM|heap out|OutOfMemory|Taro|TypeScript|tsc|vite|ESBUILD|plugin" /tmp/mmx-ci-diagnostics 2>/dev/null | tail -80 || echo "no matches"
-
-          echo ""
-          echo "## WeApp build diagnostic"
-          echo ""
-          if grep -q "exit code: 0\|Compiled successfully" /tmp/mmx-ci-diagnostics/weapp-build.log 2>/dev/null; then
-            echo "**WeApp build: PASS**"
-          else
-            echo "**WeApp build: FAIL** (diagnostic-only — does not block CI)"
+          SUMMARY="/tmp/mmx-ci-diagnostics/weapp-build-summary.md"
+          LOG="/tmp/mmx-ci-diagnostics/weapp-build.log"
+          if [ -f "$SUMMARY" ]; then
+            echo "=== weapp build summary ==="
+            cat "$SUMMARY"
+          fi
+          if [ -f "$LOG" ]; then
             echo ""
-            echo "This CI run treats WeApp build as diagnostic-only because it fails in GitHub Actions"
-            echo "while \`npm ci && npm run weapp:build\` passes on the release server."
-            echo "The full log is uploaded as the \`ci-diagnostics\` artifact."
-            echo ""
-            echo "Release rule: local \`scripts/local-full-verify.sh\` still requires \`npm run weapp:build\`."
+            echo "=== weapp build log tail (last 100 lines) ==="
+            tail -n 100 "$LOG"
           fi
           echo ""
-          echo "Next phase: Phase WeApp-CI-RootCause should restore WeApp build as a blocking CI gate."
+          echo "## CI WeApp Build Summary"
+          echo ""
+          echo "| Field | Value |"
+          echo "|-------|-------|"
+          echo "| Build | $(grep '## Summary' -A 1 "$SUMMARY" 2>/dev/null | tail -1 || echo 'unknown') |"
+          echo "| node | $(node -v) |"
+          echo "| npm | $(npm -v) |"
+          echo "| Disk | $(df -h / | tail -1) |"
+          echo ""
+          echo "Full logs: [ci-diagnostics artifact]"
 
       # ── Upload diagnostics artifact ─────────────────────────────────────────────
       - name: Upload CI diagnostics
@@ -146,9 +100,7 @@ jobs:
           path: /tmp/mmx-ci-diagnostics
           if-no-files-found: ignore
 
-      # ── Manifest / release checks ──────────────────────────────────────────────
-      # Manifest audit is advisory only — storage/ data quality is managed locally.
-      # It does NOT block CI, but is still run for visibility.
+      # ── Manifest / release checks (advisory only) ──────────────────────────────
       - name: Manifest audit
         continue-on-error: true
         run: npm run manifest:audit
@@ -157,10 +109,7 @@ jobs:
         continue-on-error: true
         run: npm run release:check
 
-      # ── Static smoke tests (no server, no network, no secrets) ────────────────
-      # These are static code checks; they pass locally. CI-environment differences
-      # (bash version, shell semantics) may cause occasional false failures.
-      # They are advisory — a failure does NOT block CI.
+      # ── Static smoke tests (advisory only) ────────────────────────────────────
       - name: Studio CLI submit guard
         continue-on-error: true
         run: bash scripts/studio-cli-submit-guard-smoke-test.sh
@@ -173,7 +122,7 @@ jobs:
         continue-on-error: true
         run: bash scripts/weapp-byok-strategy-smoke-test.sh
 
-      # ── Secret scan ──────────────────────────────────────────────────────────────
+      # ── Secret scan ───────────────────────────────────────────────────────────
       - name: Secret scan
         run: |
           python3 -c "

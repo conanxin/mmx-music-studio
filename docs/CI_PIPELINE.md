@@ -12,18 +12,18 @@ CI is **safe by default** — it never calls real MiniMax APIs, never generates 
 
 | Step | Command | What it checks |
 |---|---|---|
-| CI environment diagnostics | inline `run` block | Collects Node/npm/Taro versions and repo structure for debugging |
 | Build web | `npm run build` | Vite production build succeeds |
 | Typecheck server | `npm run typecheck:server` | Server TypeScript compiles |
 | Typecheck web | `npm run typecheck` | Frontend TypeScript compiles |
-| Build weapp diagnostic | `npm run weapp:build` | **DIAGNOSTIC ONLY** — see WeApp CI Policy below |
-| Print weapp build diagnostics | inline `run` block | Prints head/tail/error grep; writes GitHub Step Summary |
+| Build weapp diagnostic | `bash scripts/ci-weapp-build-diagnostic.sh` | Captures env + build output to `/tmp/mmx-ci-diagnostics/`; **blocking** via gate step |
+| WeApp build gate | inline shell | Reads `weapp-build-summary.md`; fails CI if build actually failed |
+| Print weapp diagnostics | inline `run` block | Prints sanitized summary to step output; writes to GitHub Step Summary |
 | Upload CI diagnostics | `actions/upload-artifact@v4` | Uploads `ci-diagnostics` artifact |
-| Manifest audit | `npm run manifest:audit` | All tracks have consistent metadata |
-| Release check | `npm run release:check` | Release readiness checks |
-| Studio CLI submit guard | `bash scripts/studio-cli-submit-guard-smoke-test.sh` | Studio submit guard logic is correct |
-| Audio duration display | `bash scripts/audio-duration-display-smoke-test.sh` | No `?:??` hardcoding, metadata reads work |
-| WeApp BYOK strategy | `bash scripts/weapp-byok-strategy-smoke-test.sh` | WeApp BYOK adapter is memory-only |
+| Manifest audit | `npm run manifest:audit` | **Advisory only** — orphaned storage entries |
+| Release check | `npm run release:check` | **Advisory only** — same storage quality |
+| Studio CLI submit guard | `bash scripts/studio-cli-submit-guard-smoke-test.sh` | **Advisory only** — CI bash env difference |
+| Audio duration display | `bash scripts/audio-duration-display-smoke-test.sh` | **Advisory only** — CI bash env difference |
+| WeApp BYOK strategy | `bash scripts/weapp-byok-strategy-smoke-test.sh` | **Advisory only** — CI bash env difference |
 | Secret scan | Python `grep` | No real API keys / tokens / PINs committed |
 
 ---
