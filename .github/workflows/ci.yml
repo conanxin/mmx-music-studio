@@ -10,6 +10,10 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      issues: write  # needed for creating GitHub Issues from CI
+      contents: read
+      actions: read
 
     steps:
       - name: Checkout
@@ -104,12 +108,24 @@ jobs:
               ...repo, state: 'open', labels: ['ci-diagnostic']
             }).then(r => r.data.find(i => i.title === title));
 
-            if (existing) {
-              await github.rest.issues.update({ ...repo, issue_number: existing.number, body });
-              console.log('Updated existing issue:', existing.number);
-            } else {
-              await github.rest.issues.create({ ...repo, title, body, labels: ['ci-diagnostic'] });
-              console.log('Created new issue');
+            try {
+              const { repo } = context;
+              const title = `CI WeApp build failed — SHA ${process.env.GITHUB_SHA.slice(0,8)}`;
+              const existing = await github.rest.issues.listForRepo({
+                ...repo, state: 'open', labels: ['ci-diagnostic']
+              }).then(r => r.data.find(i => i.title === title));
+
+              if (existing) {
+                await github.rest.issues.update({ ...repo, issue_number: existing.number, body });
+                console.log('Updated existing issue:', existing.number);
+              } else {
+                await github.rest.issues.create({ ...repo, title, body, labels: ['ci-diagnostic'] });
+                console.log('Created new issue');
+              }
+              console.log('Issue creation succeeded');
+            } catch (err) {
+              console.error('Issue creation failed:', err.message);
+              process.exit(0);  // Don't fail CI just because issue creation failed
             }
 
       # ── Print diagnostics (always runs) ─────────────────────────────────────────
