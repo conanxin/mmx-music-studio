@@ -101,7 +101,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ---
 
-**Version:** `v0.4.1-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha)
+**Version:** `v0.4.2-alpha` · [Release Notes](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.2-alpha)
 
 ## Current Status
 
@@ -142,7 +142,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ## Release
 
-**v0.4.2-alpha (draft)**：Phase API-Debug-C complete — API Adapter first real BYOK generation succeeded (`direct_audio` response, `job_1780992991977_c9eaaa0c`, `track_1780993112817_yg4g4m`); Studio BYOK submit diagnostics; daily quota guard respects `dailyQuotaEnabled` flag; API Adapter status updated to "experimental, one real success". CLI backend remains recommended default.
+**v0.4.2-alpha**：BYOK API Adapter real-call verified — one controlled real generation succeeded (`direct_audio` response, `job_1780992991977_c9eaaa0c`, `track_1780993112817_yg4g4m`); Studio BYOK submit diagnostics fixed; daily quota guard respects `dailyQuotaEnabled`; API Adapter marked "experimental, one real success". CLI backend remains recommended default.
 
 **v0.4.1-alpha**：[Release Notes](docs/release/RELEASE_NOTES_v0.4.1-alpha.md) | [GitHub Release](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.1-alpha) | Web CLI 主链路稳定版，Studio 播放器修复
 
