@@ -24,31 +24,102 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── Build (must run before typecheck for workspace symlinks) ──────────
+      # ── Environment diagnostics ─────────────────────────────────────────────────
+      - name: CI environment diagnostics
+        run: |
+          echo "=== system ==="
+          uname -a
+          pwd
+          df -h / /home2>/dev/null || df -h
+          free -h 2>/dev/null || echo "free unavailable"
+
+          echo "=== node/npm ==="
+          node -v
+          npm -v
+
+          echo "=== repository structure ==="
+          git status --short
+          ls -la
+          ls -la apps/ 2>/dev/null || echo "apps/ not found"
+          ls -la apps/weapp/ 2>/dev/null || echo "apps/weapp/ not found"
+
+          echo "=== package versions (typescript, taro) ==="
+          npm ls typescript --depth=0 2>&1 | head -5
+          npm ls @tarojs/cli --depth=2 2>&1 | head -10
+          npm ls @tarojs/webpack5-runner --depth=2 2>&1 | head -10
+          npm ls @tarojs/mini-runner --depth=2 2>&1 | head -10
+          npm ls @tarojs/taro-webpack5-runner --depth=2 2>&1 | head -10
+          npm ls @tarojs/mini --depth=2 2>&1 | head -10
+
+          echo "=== weapp package.json scripts ==="
+          cat apps/weapp/package.json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d.get('scripts',{}), indent=2))" 2>/dev/null || echo "cannot read apps/weapp/package.json"
+
+          echo "=== weapp config files ==="
+          find apps/weapp -maxdepth 2 -name "*.config.*" -o -name "tsconfig*.json" 2>/dev/null | sort | head -20
+
+          echo "DIAGNOSTICS_COLLECTED=1" >> $GITHUB_ENV
+
+      # ── Build (must run before typecheck for workspace symlinks) ──────────────
       - name: Build web
         run: npm run build
 
-      # ── TypeScript type checks ─────────────────────────────────────────────
+      # ── TypeScript type checks ────────────────────────────────────────────────
       - name: Typecheck server
         run: npm run typecheck:server
 
       - name: Typecheck web
         run: npm run typecheck
 
-      # ── WeApp build (catches type errors as a side-effect) ─────────────────
+      # ── WeApp build (catches type errors as a side-effect) ──────────────────
       # Note: weapp:typecheck has CI-specific type-resolution issues unrelated
       # to code quality. weapp:build provides equivalent coverage.
       - name: Build weapp
-        run: npm run weapp:build
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/mmx-ci-diagnostics
 
-      # ── Manifest / release checks ──────────────────────────────────────────
+          echo "=== weapp package files (first 200) ===" | tee /tmp/mmx-ci-diagnostics/weapp-build.log
+          find apps/weapp -maxdepth 3 -type f 2>/dev/null | sort | sed -n '1,200p' | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log || echo "find returned non-zero" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
+
+          echo "=== npm run weapp:build output ===" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
+          npm run weapp:build 2>&1 | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
+          BUILD_EXIT=$?
+          echo "build exit code: $BUILD_EXIT" | tee -a /tmp/mmx-ci-diagnostics/weapp-build.log
+          exit $BUILD_EXIT
+
+      # ── Print diagnostics on failure ────────────────────────────────────────
+      - name: Print weapp build diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== weapp build log (head160) ==="
+          sed -n '1,160p' /tmp/mmx-ci-diagnostics/weapp-build.log 2>/dev/null || echo "log not available"
+
+          echo ""
+          echo "=== weapp build log (tail 220) ==="
+          tail -n 220 /tmp/mmx-ci-diagnostics/weapp-build.log 2>/dev/null || echo "log not available"
+
+          echo ""
+          echo "=== error keywords grep ==="
+          grep -RInE "error|failed|cannot find|module not found|ENOENT|EACCES|ENOMEM|heap out|OutOfMemory|Taro|TypeScript|tsc|vite|ESBUILD|plugin" /tmp/mmx-ci-diagnostics 2>/dev/null | tail -80 || echo "no matches"
+
+      # ── Upload diagnostics artifact ─────────────────────────────────────────
+      - name: Upload CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics
+          path: /tmp/mmx-ci-diagnostics
+          if-no-files-found: ignore
+
+      # ── Manifest / release checks ─────────────────────────────────────────────
       - name: Manifest audit
         run: npm run manifest:audit
 
       - name: Release check
         run: npm run release:check
 
-      # ── Static smoke tests (no server, no network, no secrets) ──────────────
+      # ── Static smoke tests (no server, no network, no secrets) ────────────────
       - name: Studio CLI submit guard
         run: bash scripts/studio-cli-submit-guard-smoke-test.sh
 
@@ -58,7 +129,7 @@ jobs:
       - name: WeApp BYOK strategy
         run: bash scripts/weapp-byok-strategy-smoke-test.sh
 
-      # ── Secret scan ─────────────────────────────────────────────────────────
+      # ── Secret scan ───────────────────────────────────────────────────────────
       - name: Secret scan
         run: |
           python3 -c "
@@ -66,7 +137,7 @@ jobs:
 
           result = subprocess.run(
               ['grep', '-RInE',
-               'sk-[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|Authorization: Bearer|MINIMAX_API_KEY=.*[A-Za-z0-9_-]{10,}|PREVIEW_ACCESS_PIN=.*[0-9A-Za-z_-]{6,}|GENERATION_ACCESS_PIN=.*[0-9A-Za-z_-]{6,}',
+               'sk-[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{20,}|Authorization: Bearer|MINIMAX_API_KEY=.*[A-Z...,}',
                '.',
                '--exclude-dir=node_modules',
                '--exclude-dir=dist',
