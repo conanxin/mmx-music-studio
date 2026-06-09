@@ -5,6 +5,7 @@
  */
 
 import { buildMiniMaxMusicPayload } from './core-wrapper.js';
+import { parseMiniMaxMusicResponse, parsedToResult } from './adapters/minimax-api/response.js';
 
 const MINIMAX_ENDPOINTS = {
   cn: 'https://api.minimaxi.com/v1/music_generation',
@@ -72,39 +73,9 @@ export async function callMiniMaxApi(params: {
     throw Object.assign(new Error('响应解析失败'), { code: 'PARSE_ERROR' });
   }
 
-  const obj = raw as Record<string, unknown>;
-  const baseResp = obj.base_resp as Record<string, unknown> | undefined;
-  if (baseResp && baseResp.status_code !== 0) {
-    throw Object.assign(
-      new Error(`MiniMax 返回错误: ${baseResp.status_msg}`),
-      { code: 'MINIMAX_ERROR', traceId: obj.trace_id as string | undefined },
-    );
-  }
+  // ── Structured response parsing ─────────────────────────────────────────
+  const parsed = parseMiniMaxMusicResponse(raw);
 
-  const data = (obj.data || obj) as Record<string, unknown>;
-  let audioKind: 'url' | 'hex' | 'unknown' = 'unknown';
-  let audioValue = '';
-  if (typeof data.audio === 'string') {
-    audioValue = data.audio;
-    if (audioValue.startsWith('http')) audioKind = 'url';
-    else if (/^[0-9a-fA-F\s]+$/.test(audioValue) && audioValue.length > 32) audioKind = 'hex';
-  } else if (typeof data.audio_url === 'string') {
-    audioValue = data.audio_url; audioKind = 'url';
-  } else if (typeof data.url === 'string') {
-    audioValue = data.url; audioKind = 'url';
-  }
-
-  const extra = data.extra_info as Record<string, unknown> | undefined;
-  const durRaw = extra?.music_duration ?? extra?.duration;
-  const durationMs = typeof durRaw === 'number' ? Math.round(durRaw * 1000) : undefined;
-
-  return {
-    audioKind,
-    audioValue,
-    durationMs,
-    sampleRate: extra?.music_sample_rate as number | undefined,
-    bitrate: extra?.bitrate as number | undefined,
-    sizeBytes: extra?.music_size as number | undefined,
-    traceId: typeof obj.trace_id === 'string' ? obj.trace_id : undefined,
-  };
+  // async_task, failure, unknown all throw here — only direct/hex continue
+  return parsedToResult(parsed);
 }

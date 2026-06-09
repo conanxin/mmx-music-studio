@@ -293,6 +293,21 @@ print('realApiAttemptsUsed:', d.get('realApiAttemptsUsed'))
 
 ---
 
+## Phase API-Debug-B0 前置条件更新
+
+**状态**: ✅ 已完成 (2026-06-09)
+
+Phase API-Debug-B0 完成了 async task response 结构化识别：
+- 新增 `server/adapters/minimax-api/response.ts` — 5 种 response kind
+- async task 不再报"音频格式无法处理"，改为 `MINIMAX_API_ASYNC_POLLING_REQUIRED`
+- 不猜 polling endpoint
+- `api-adapter-async-contract-smoke-test.sh`: 20/20 PASS
+
+**真实调用前必须确认**:
+1. 官方 MiniMax task status polling endpoint（当前未知）
+2. 或用户提供 API 文档
+3. polling endpoint 确认后才可进入 Phase API-Debug-B1
+
 ## v0.4.0-alpha 版本边界
 
 本文档描述的测试方案已冻结于 v0.4.0-alpha。

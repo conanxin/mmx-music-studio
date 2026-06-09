@@ -254,6 +254,59 @@ These are reasonably diagnostic. However, if MiniMax returns a structured error 
 
 ---
 
+**Phase**: API-Debug-B0
+**Date**: 2026-06-09
+**Status**: COMPLETE — Async task response structure, no real API calls
+
+---
+
+## Phase API-Debug-B0: Async Task Response Handling
+
+### Problem
+The original `call-minimax.ts` response parser treated async task responses as unknown audio format, throwing the unhelpful error "MiniMax 返回的音频格式无法处理". This prevented any real MiniMax API call from succeeding if MiniMax ever returns an async task structure.
+
+### Solution: Structured Response Parser
+
+New file: `server/adapters/minimax-api/response.ts`
+
+Provides `parseMiniMaxMusicResponse()` with 5 response kinds:
+
+| Kind | Meaning | Action |
+|------|---------|--------|
+| `direct_audio` | Audio URL in response | Continue to download |
+| `hex_audio` | Audio as hex string | Convert and continue |
+| `async_task` | task_id returned, polling needed | Throw `MINIMAX_API_ASYNC_POLLING_REQUIRED` |
+| `failure` | API error with status_code | Throw with sanitized message |
+| `unknown` | Unexpected structure | Throw `PARSE_ERROR` with knownKeys |
+
+Async task detection (any of these triggers `async_task`):
+- `task_id` or `taskId` at top level or inside `data.*`
+- `data.task_id` or `data.taskId`
+- `status` = `processing` | `pending` | `queued` | `running` with any task ID field
+
+Error code for async polling gap: `MINIMAX_API_ASYNC_POLLING_REQUIRED`
+Error message: `"MiniMax API returned an async task response, but task polling is not configured yet."`
+
+`jobs.ts` catch block handles this error — user sees: `"MiniMax API 错误：MiniMax API returned an async task response, but task polling is not configured yet."`
+
+### Key Properties
+- Never logs full raw response
+- Never logs API key / Authorization header
+- No hardcoded polling endpoint guessing
+- `parsedToResult()` converts `direct_audio` / `hex_audio` to `MiniMaxResult` for backward compatibility with existing `executeApiJob`
+- `response.ts` is ~280 lines, fully self-contained
+
+### Next Step: Phase API-Debug-B1
+Before a real API call can succeed, we need to confirm the official MiniMax task status polling endpoint (or user provides API docs). No real calls until polling endpoint is confirmed.
+
+### Validation
+```
+api-adapter-async-contract-smoke-test.sh: 20/20 PASS
+api-adapter-contract-smoke-test.sh: 21/21 PASS
+```
+
+---
+
 ## Validation Status
 
 | Check | Result |

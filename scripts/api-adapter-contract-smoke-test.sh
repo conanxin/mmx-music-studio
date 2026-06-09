@@ -78,22 +78,25 @@ fi
 
 # ── 8. Response parser covers url + hex + error ──────────────────────────────────
 RESPONSE_PARSER="$PROJ/server/call-minimax.ts"
-HAS_URL=$(grep -c "audioKind.*url\|audio_url\|data.audio" "$RESPONSE_PARSER" 2>/dev/null || echo "0")
-HAS_HEX=$(grep -c "audioKind.*hex\|^[0-9a-fA-F]" "$RESPONSE_PARSER" 2>/dev/null || echo "0")
-HAS_ERR=$(grep -c "base_resp.*status_code\|status_msg\|MINIMAX_ERROR" "$RESPONSE_PARSER" 2>/dev/null || echo "0")
+RESPONSE_PARSER2="$PROJ/server/adapters/minimax-api/response.ts"
+# Grep both files — logic may be in either
+# Use individual greps and arithmetic sum to avoid subshell pipefail issues
+HAS_URL=$(( $(grep -c "audioKind" "$RESPONSE_PARSER" 2>/dev/null || true) + $(grep -c "kind.*direct\|direct_audio\|data.audio" "$RESPONSE_PARSER2" 2>/dev/null || true) ))
+HAS_HEX=$(( $(grep -c "audioKind.*hex\|hex_audio\|'hex'" "$RESPONSE_PARSER2" 2>/dev/null || true) ))
+HAS_ERR=$(( $(grep -c "status_code\|status_msg\|MINIMAX_ERROR\|kind.*failure\|'failure'" "$RESPONSE_PARSER2" 2>/dev/null || true) ))
 if [[ "$HAS_URL" -ge 2 ]] && [[ "$HAS_HEX" -ge 1 ]] && [[ "$HAS_ERR" -ge 2 ]]; then
   report "11: Response parser covers direct audio URL + hex + error — PASS" "$GREEN"
 else
-  report "11: Response parser may miss url/hex/error handling — FAIL" "$RED"
+  report "11: Response parser may miss url/hex/error handling (url=$HAS_URL hex=$HAS_HEX err=$HAS_ERR) — FAIL" "$RED"
 fi
 
 # ── 9. Async polling / task_id support check ────────────────────────────────────
 # Current call-minimax.ts does NOT have async polling — it expects immediate response
-ASYNC_POLL=$(grep -c "task_id\|job_id.*poll\|async.*wait\|pollInterval\|setInterval\|long_polling" "$RESPONSE_PARSER" 2>/dev/null || echo "0")
+ASYNC_POLL=$( (grep -c "pollInterval\|setInterval\|long_polling\|pollingLoop\|setTimeout.*poll\|await.*poll" "$RESPONSE_PARSER" "$RESPONSE_PARSER2" 2>/dev/null || true) | LC_ALL=C awk '{s+=$1}END{print s+0}')
 if [[ "$ASYNC_POLL" -eq 0 ]]; then
   report "12: No async polling/task_id support found — EXPECTED (current impl is sync) — PASS" "$GREEN"
 else
-  report "12: Async polling code found — PASS" "$GREEN"
+  report "12: Unexpected async polling patterns found — FAIL" "$RED"
 fi
 
 # ── 10. BYOK key TTL + expiry check ────────────────────────────────────────────

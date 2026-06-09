@@ -723,9 +723,11 @@ async function executeApiJob(
     const clean = apiResult.audioValue.replace(/\s+/g, '');
     audioBuffer = Buffer.from(clean, 'hex');
   } else {
+    // With structured parser, 'unknown' audioKind can only happen if
+    // call-minimax.ts received an unexpected shape and threw PARSE_ERROR.
     updateJob(job.id, {
       status: 'failed',
-      error: { type: 'minimax_api', message: 'MiniMax 返回的音频格式无法处理' },
+      error: { type: 'minimax_api', message: 'MiniMax 返回的音频格式无法解析' },
       finishedAt: new Date().toISOString(),
       progressMessage: '生成失败',
     });

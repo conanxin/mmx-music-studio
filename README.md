@@ -133,7 +133,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | **Real API attempt guard** | ✅ Phase 5B-C/5E | 计数器在 check 前递增 |
 | **CI smoke pipeline** | ✅ Phase 5G | GitHub Actions CI，静态 +独立 mock server |
 | **WeApp build in CI** | ✅ Phase WeApp-CI-RootCause-D | deterministic `scripts/weapp-build.mjs` wrapper; blocking gate if wrapper passes; diagnostic issue on failure; `scripts/ci-secret-scan.py` replaces inline grep |
-| **API Adapter diagnostic baseline** | ✅ Phase API-Debug-A | static contract smoke test 21/21 PASS; `docs/API_ADAPTER_DEBUG_REPORT.md`; no async polling gap identified |
+| **API Adapter async task preflight** | ✅ Phase API-Debug-B0 | `server/adapters/minimax-api/response.ts`; 5 response kinds; async_task throws `MINIMAX_API_ASYNC_POLLING_REQUIRED`; no polling endpoint guessing; `api-adapter-async-contract-smoke-test.sh` 20/20 PASS |
 | Real generation in CI | ❌ Disabled | CI 使用 mock / limit=0 guard |
 | Secrets required for CI | ❌ None | 无需真实 key/token |
 

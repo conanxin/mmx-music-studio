@@ -143,4 +143,4 @@ When `AUDIT_LOG_ENABLED=true`, `auditGenerationRequested` records:
 
 **本版本不包含：** 成功的真实 MiniMax API 音频生成。下次真实测试建议 `REAL_API_DAILY_ATTEMPT_LIMIT=1` + 前端防抖 + 人工确认窗口。
 
-**Phase API-Debug-A (2026-06-09)**: API Adapter 静态诊断完成。新增 `docs/API_ADAPTER_DEBUG_REPORT.md`。关键发现：response parser 只支持直接 audio URL/hex，无 async polling 支持（如 MiniMax 返回 task_id 则当前代码会失败）。BYOK 安全模型、guard 层、track mapping 均已验证通过。Phase API-Debug-B 待用户确认后进行单次受控真实 API 调用。
+**Phase API-Debug-B0 (2026-06-09)**: Async task response 结构化识别完成。新增 `server/adapters/minimax-api/response.ts` — 提供 5 种 response kind（direct_audio/hex_audio/async_task/failure/unknown）。async task 不再报"音频格式无法处理"，改为 `MINIMAX_API_ASYNC_POLLING_REQUIRED`。不猜 polling endpoint。`api-adapter-async-contract-smoke-test.sh` 20/20 PASS，`api-adapter-contract-smoke-test.sh` 21/21 PASS。下一阶段需要确认官方 polling endpoint 才可进行真实 API 调用。

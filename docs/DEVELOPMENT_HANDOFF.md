@@ -359,6 +359,25 @@ See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md)
 - Phase 5E: realApiAttemptsUsed counter fix ✅
 |- Phase 5B-D: 真实 MiniMax API 生成 ⏳ PENDING
 
+## Phase API-Debug-B0: Async Task Response Preflight
+
+**Frozen in v0.4.1-alpha.** Async task response handling for API Adapter.
+
+**关键里程碑：**
+- Phase API-Debug-A: Static diagnosis of API Adapter ✅
+- Phase API-Debug-B0: Async task response parser + mock contract tests ✅
+  - 新增 `server/adapters/minimax-api/response.ts` — 5 response kinds
+  - async task → `MINIMAX_API_ASYNC_POLLING_REQUIRED` (不再"音频格式无法处理")
+  - 不猜 polling endpoint
+  - `api-adapter-async-contract-smoke-test.sh` 20/20 PASS
+  - `api-adapter-contract-smoke-test.sh` 21/21 PASS
+- Phase API-Debug-B1: 确认官方 polling endpoint ⏳ PENDING
+- Phase API-Debug-C: 用户确认后单次真实 API 调用 ⏳ PENDING
+
+**推荐主链路：** Web + MMX CLI backend（`backend=cli`）。API Adapter 为研究方向，不宣称真实生成已稳定。
+
+**查看详情：** [docs/API_ADAPTER_DEBUG_REPORT.md](docs/API_ADAPTER_DEBUG_REPORT.md) | [docs/BYOK_REAL_TEST_PLAN.md](docs/BYOK_REAL_TEST_PLAN.md)
+
 ## GitHub Actions CI
 
 CI 自动验证链路稳定性和 BYOK 安全修复，防止后续改动破坏已完成的主链路。
