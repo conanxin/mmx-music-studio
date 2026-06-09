@@ -767,4 +767,22 @@
   .drawerBody {
     padding: 16px 20px 32px;
   }
+
+  /* Drawer actions: wrap to multiple rows on mobile */
+  .detailActions {
+    gap: 6px;
+  }
+
+  .actionBtn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    font-size: 12px;
+    padding: 8px 6px;
+  }
+}
+
+@media (max-width: 389px) {
+  .actionBtn {
+    flex: 1 1 100%;
+  }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import styles from './Library.module.css';
 import { MOCK_TASKS, formatDuration, formatRelativeTime, MODE_LABELS } from '../../mock/data';
 import { listTracks, deleteTrack } from '../../lib/serverApi';
@@ -101,6 +101,7 @@ function useCopyToast() {
 }
 
 export default function Library() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
@@ -138,6 +139,18 @@ export default function Library() {
     loadTracks();
   }, []);
 
+  // Auto-open detail drawer when ?track=<id> is in the URL
+  useEffect(() => {
+    const trackId = searchParams.get('track');
+    if (!trackId) return;
+    if (tracks.length === 0) return;
+    const found = tracks.find(t => t.id === trackId);
+    if (found) {
+      setDetailTrack(found);
+      setSearchParams({}, { replace: true });
+    }
+  }, [tracks, searchParams, setSearchParams]);
+
   const toggleFavorite = (id: string) => {
     setFavorites(prev => {
       const next = new Set(prev);
@@ -154,6 +167,25 @@ export default function Library() {
   const handleCopyPrompt = (prompt?: string) => {
     if (!prompt) { showCopy('无提示词'); return; }
     navigator.clipboard.writeText(prompt).then(() => showCopy('已复制提示词')).catch(() => showCopy('复制失败'));
+  };
+
+  const handleCopyShareLink = (track: TrackItem) => {
+    const shareUrl = `${window.location.origin}/library?track=${encodeURIComponent(track.id)}`;
+    navigator.clipboard.writeText(shareUrl).then(() => showCopy('分享链接已复制')).catch(() => showCopy('复制失败'));
+  };
+
+  const handleExportTrackInfo = (track: TrackItem) => {
+    const source = track.isMock ? '示例' : (track.generationSource === 'mmx-cli' ? 'MMX CLI' : track.generationSource === 'minimax' ? 'MiniMax API' : track.generationSource || '—');
+    const createdAt = track.createdAt ? new Date(track.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—';
+    const downloadLine = track.downloadUrl ? `- 下载：${track.downloadUrl}` : '';
+    const promptLine = track.prompt ? `\n\n## Prompt\n\n${track.prompt}` : '\n\n## Prompt\n\n未记录 prompt';
+    const md = `# ${track.title || '无标题'}
+\n- 来源：${source}
+- 时长：${track.durationText || '—'}
+- 创建时间：${createdAt}
+- Track ID：${track.id}${downloadLine}${promptLine}
+`;
+    navigator.clipboard.writeText(md).then(() => showCopy('作品信息已复制')).catch(() => showCopy('复制失败'));
   };
 
   const handlePlay = (track: TrackItem) => {
@@ -496,6 +528,18 @@ export default function Library() {
                     复制提示词
                   </button>
                 )}
+                <button className={`${styles.actionBtn} ${styles.secondary}`} onClick={() => handleCopyShareLink(detailTrack)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                  </svg>
+                  分享
+                </button>
+                <button className={`${styles.actionBtn} ${styles.secondary}`} onClick={() => handleExportTrackInfo(detailTrack)}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  导出
+                </button>
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.6--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.6-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.7--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.7-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -150,6 +150,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.7-alpha**：Phase Product Polish-E — Track share and export polish
 
 **v0.4.6-alpha**：Stable public deployment release — Cloudflare Tunnel public access verified (`https://music.conanxin.com`); Node server installed as `mmx-music-studio.service` (enabled at boot, `Restart=always`, 50/day limit); CLI backend diagnostics (`cli-backend-diagnostics.sh` 13 checks, `cli-backend-readiness-smoke-test.sh` 26 checks); systemd helpers (unit file, install script, smoke test); README/handoff/deployment docs updated to reflect systemd-managed deployment.
 
