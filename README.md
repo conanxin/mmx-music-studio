@@ -122,6 +122,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 |------|--------|-------|
 | Studio player handoff | ✅ PASS | Job track handoff fixed |
 | Studio cold-start hydration | ✅ PASS | Loads latest playable track |
+| Studio generation flow polish | ✅ PASS | Phase messages, success/error cards, prompt guidance |
 | Audio duration display | ✅ PASS | Reads HTMLAudioElement metadata |
 | Download endpoint | ✅ PASS | MP3 download supported |
 

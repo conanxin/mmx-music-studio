@@ -71,6 +71,50 @@ const EXAMPLE_LABELS: Record<string, string> = {
   'cover-file': '风格参考',
 };
 
+// Phase Product Polish-C: Multi-step generation phase messages
+function getGenerationPhaseMessage(status: string, elapsedSec: number): string {
+  if (status === 'queued') return '正在创建任务…';
+  if (status === 'running') {
+    if (elapsedSec < 5) return '正在调用生成后端…';
+    if (elapsedSec < 15) return '正在等待音频结果…';
+    return '音频生成中，请稍候…';
+  }
+  if (status === 'succeeded') return '正在保存到作品库…';
+  if (status === 'failed') return '生成遇到问题…';
+  if (status === 'cancelled') return '任务已取消';
+  return status;
+}
+
+// Phase Product Polish-C: Error classification
+type ErrorType = 'byok_missing' | 'quota_exhausted' | 'rate_limit' | 'generation_access' | 'network' | 'unknown';
+
+const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
+  byok_missing: {
+    title: '请先在设置中输入 BYOK Key',
+    hint: 'BYOK 模式需要你提供自己的 MiniMax Token Plan Key，去设置页面填写后再试。',
+  },
+  quota_exhausted: {
+    title: '今日生成次数已用完',
+    hint: '本地保护次数已耗尽，请明天再试。MMX CLI 模式不受此限制。',
+  },
+  rate_limit: {
+    title: '请求过于频繁',
+    hint: '生成请求被限流，请稍后（30秒到1分钟）再试。',
+  },
+  generation_access: {
+    title: '生成未解锁',
+    hint: '当前服务器不允许生成，请联系管理员或在设置中输入访问码。',
+  },
+  network: {
+    title: '网络连接失败',
+    hint: '无法连接到服务器，请检查网络或稍后重试。',
+  },
+  unknown: {
+    title: '生成失败',
+    hint: '遇到未知错误，请稍后重试。如果问题持续，请检查服务器日志。',
+  },
+};
+
 function getBackendLabel(backend?: string): string {
   switch (backend) {
     case 'cli': return 'MMX CLI';
@@ -101,6 +145,21 @@ function formatElapsed(seconds: number): string {
   const s = seconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
+
+function classifyError(err: { type?: string; message?: string } | null | undefined): ErrorType {
+  if (!err) return 'unknown';
+  const t = err.type ?? '';
+  const m = (err.message ?? '').toLowerCase();
+  if (t === 'missing_api_key' || m.includes('api key') || m.includes('byok')) return 'byok_missing';
+  if (t === 'daily_quota_exceeded' || t === 'real_api_attempt_limit_exceeded' || m.includes('次数已用完') || m.includes('额度已用完')) return 'quota_exhausted';
+  if (t === 'rate_limit_exceeded' || m.includes('rate limit') || m.includes('限流') || m.includes('频繁')) return 'rate_limit';
+  if (t === 'generation_access_required' || t === 'generation_access') return 'generation_access';
+  if (t === 'network_error' || m.includes('timeout') || m.includes('网络') || m.includes('fetch') || m.includes('econnrefused') || m.includes('enotfound')) return 'network';
+  return 'unknown';
+}
+
+// Prompt input tip for empty state
+const PROMPT_TIP = '描述场景、情绪、乐器、用途，生成效果会更稳定。如：深夜编程、爵士、放松';
 
 type UIMode = 'pure-music' | 'auto-song' | 'lyric-song' | 'cover-url' | 'cover-file';
 
@@ -211,6 +270,7 @@ export default function Studio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [generationSource, setGenerationSource] = useState<'mock' | 'minimax' | 'mmx-cli' | null>(null);
+  const [generationSuccess, setGenerationSuccess] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<DisplayTrack | null>(null);
   const [recentTracks, setRecentTracks] = useState<DisplayTrack[]>([]);
 
@@ -265,13 +325,7 @@ export default function Studio() {
     }
   }
 
-  function jobElapsedMessage(elapsed: number): string {
-    if (elapsed >= 120) return '生成时间较长，请继续等待或取消…';
-    if (elapsed >= 60)  return 'MiniMax 正在生成音乐，通常需要 30–90 秒…';
-    if (elapsed >= 30)  return '仍在生成中，请不要重复点击…';
-    if (elapsed >= 10)  return '正在调用 MMX CLI，请稍候…';
-    return currentJob?.progressMessage ?? '已加入生成队列…';
-  }
+  // Phase Product Polish-C: Removed jobElapsedMessage (replaced by getGenerationPhaseMessage)
 
   function startJobPolling(job: GenerateJob) {
     stopJobTimer();
@@ -301,6 +355,7 @@ export default function Studio() {
           setCurrentTrack(display);
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
           setGenerationSource(fresh.track.generationSource as 'mock' | 'minimax' | 'mmx-cli' ?? null);
+          setGenerationSuccess(true);
         }
         setIsGenerating(false);
         setCurrentJob(null);
@@ -311,6 +366,7 @@ export default function Studio() {
         stopJobTimer();
         const msg = fresh.error?.message ?? '生成失败，请稍后重试';
         setGenError(msg);
+        setGenerationSuccess(false);
         setIsGenerating(false);
         setCurrentJob(null);
         return;
@@ -319,6 +375,7 @@ export default function Studio() {
       if (fresh.status === 'cancelled') {
         stopJobTimer();
         setGenError('已取消生成');
+        setGenerationSuccess(false);
         setIsGenerating(false);
         setCurrentJob(null);
         return;
@@ -577,6 +634,7 @@ export default function Studio() {
         setCurrentTrack(display);
         setRecentTracks(prev => [display, ...prev].slice(0, 3));
         setGenerationSource(job.track.generationSource as 'mock' | 'minimax' | 'mmx-cli' ?? null);
+        setGenerationSuccess(true);
         return;
       }
 
@@ -602,6 +660,8 @@ export default function Studio() {
           };
           setCurrentTrack(display);
           setRecentTracks(prev => [display, ...prev].slice(0, 3));
+          setGenerationSuccess(true);
+          setIsGenerating(false);
         } else {
           setTimeout(tick, 500);
         }
@@ -722,9 +782,7 @@ export default function Studio() {
                   key={ex}
                   className={styles.exampleChip}
                   onClick={() => {
-                    const current = getMainInputValue();
-                    const next = current ? `${current} · ${ex}` : ex;
-                    handleMainInputChange(next);
+                    handleMainInputChange(ex);
                   }}
                 >
                   {ex}
@@ -732,6 +790,11 @@ export default function Studio() {
               ))}
             </div>
           </div>
+
+          {/* Phase Product Polish-C: Prompt tip */}
+          {!getMainInputValue() && (
+            <p className={styles.promptTip}>{PROMPT_TIP}</p>
+          )}
 
           {/* auto-song: language selector */}
           {activeMode === 'auto-song' && (
@@ -929,8 +992,8 @@ export default function Studio() {
                 {currentJob.status === 'queued' ? '排队中' :
                  currentJob.status === 'running' ? '生成中' : currentJob.status}
               </div>
-              <div className={styles.progressMessage}>
-                {jobElapsedMessage(jobElapsed)}
+              <div className={styles.progressPhase}>
+                {getGenerationPhaseMessage(currentJob.status, jobElapsed)}
               </div>
               {jobElapsed > 0 && (
                 <div className={styles.progressElapsed}>
@@ -951,6 +1014,51 @@ export default function Studio() {
 
           {/* Mode hint */}
           <p className={styles.modeHint}>{getModeHint()}</p>
+
+          {/* Phase Product Polish-C: Generation success card */}
+          {generationSuccess && currentTrack && !isGenerating && (
+            <div className={styles.successCard}>
+              <div className={styles.successHeader}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                <span>生成成功，已保存到作品库</span>
+              </div>
+              <div className={styles.successActions}>
+                <Link to="/library" className={styles.successBtn}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  查看作品库
+                </Link>
+                <button className={`${styles.successBtn} ${styles.secondary}`} onClick={() => setGenerationSuccess(false)}>
+                  继续创作
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Phase Product Polish-C: Error card with classified hints */}
+          {genError && !isGenerating && (() => {
+            const errType = classifyError({ message: genError });
+            const errInfo = ERROR_TYPE_LABELS[errType];
+            return (
+              <div className={styles.errorCard}>
+                <div className={styles.errorHeader}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  <span>{errInfo.title}</span>
+                </div>
+                <p className={styles.errorHint}>{errInfo.hint}</p>
+                {!genError.includes('用完') && !genError.includes('BYOK') && !genError.includes('访问码') && (
+                  <p className={styles.errorDetail}>错误信息：{genError}</p>
+                )}
+                <div className={styles.errorActions}>
+                  <button className={`${styles.errorBtn} ${styles.secondary}`} onClick={() => setGenError(null)}>
+                    知道了
+                  </button>
+                  <Link to="/library" className={`${styles.errorBtn} ${styles.secondary}`}>
+                    查看作品库
+                  </Link>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Mobile: player below form */}
           <div className={styles.mobilePlayer}>
