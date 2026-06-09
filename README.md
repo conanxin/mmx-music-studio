@@ -126,6 +126,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Public landing / onboarding | ✅ PASS | Hero, quick-start, status card, mobile polish |
 | Audio duration display | ✅ PASS | Reads HTMLAudioElement metadata |
 | Download endpoint | ✅ PASS | MP3 download supported |
+| Library sharing / export | ✅ PASS | Share link, Markdown export, URL deep-link |
 
 ### CI and Safety
 

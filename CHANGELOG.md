@@ -4,11 +4,27 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.7-alpha] — 2026-06-09
+
+### Highlights
+
+- **Track sharing and export polish release** — Library detail drawer gains share link and Markdown export actions
+- **Copy share link** — button copies `https://music.conanxin.com/library?track=<trackId>` to clipboard with toast confirmation
+- **Deep-link track drawer** — `/library?track=<trackId>` URL param auto-opens the corresponding detail drawer on page load
+- **Copy Markdown track info** — "导出" button copies track title, source, duration, created time, Track ID, download URL, and prompt as Markdown
+- **Copy Track ID and prompt** — existing copy buttons retained in detail drawer
+- **Mobile drawer action layout** — 639px: 2-column grid; 389px: single-column stack; bottom-sheet on all mobile sizes
+- **Safe title-based download filename** — server-side `Content-Disposition` uses track title with safe characters only
+
+### Notes
+
+No new generation or quota consumption in this release. CLI backend remains the recommended default path. Favorites remain browser-local.
+
 ## [v0.4.6-alpha] — 2026-06-09
 
 ### Highlights
 
-- **Stable public deployment release** — app is now publicly reachable through Cloudflare Tunnel and runs as a systemd service, no longer depending on an active SSH session or manually started Node process
+- **Stable public deployment release** — app is now publicly reachable through Cloudflare Tunnel and runs as a systemd service
 - **Cloudflare Tunnel public access verified** — `https://music.conanxin.com` live and routing to `127.0.0.1:8787`
 - **Node server installed as systemd service** — `mmx-music-studio.service`, `enabled` at boot, `Restart=always`, 50/day generation limit
 - **CLI backend diagnostics added** — `cli-backend-diagnostics.sh` (13 runtime checks) and `cli-backend-readiness-smoke-test.sh` (26 static checks)
