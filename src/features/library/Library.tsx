@@ -463,6 +463,69 @@ function AnnotationEditor({
     showCopy('已清除全部筛选');
   };
 
+  // Phase Product Polish-P: per-filter clear handlers
+  const handleClearSearchOnly = () => {
+    setSearchQuery('');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('q');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const handleClearSourceOnly = () => {
+    setFilterSource('all');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('source');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const handleClearCollectionOnly = () => {
+    setSmartCollection('all');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('collection');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const handleClearTagOnly = () => {
+    setTagFilter(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('tag');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  // Phase Product Polish-P: search match hints (max 3 per card)
+  const computeMatchHints = (
+    track: { id: string; title?: string; mode?: string; prompt?: string; lyrics?: string; generationSource?: string },
+    query: string,
+  ): string[] => {
+    if (!query) return [];
+    const q = query.toLowerCase();
+    const hints: string[] = [];
+    const title = (track.title || '').toLowerCase();
+    const prompt = (track.prompt || '').toLowerCase();
+    const lyrics = (track.lyrics || '').toLowerCase();
+    const mode = (track.mode || '').toLowerCase();
+    const sourceLabel = (track.generationSource || '').toLowerCase();
+    if (title.includes(q)) hints.push('标题');
+    if (prompt.includes(q)) hints.push('Prompt');
+    if (lyrics.includes(q)) hints.push('歌词');
+    if (mode.includes(q)) hints.push('模式');
+    if (sourceLabel.includes(q)) hints.push('来源');
+    const trackTags = (annotations[track.id] && annotations[track.id].tags) || [];
+    if (trackTags.some((t: string) => t.toLowerCase().includes(q))) hints.push('标签');
+    const note = (annotations[track.id] && annotations[track.id].note) || '';
+    if (note.toLowerCase().includes(q)) hints.push('备注');
+    return hints.slice(0, 3);
+  };
+
+
   // Phase Product Polish-L: trigger browser download from a string blob
   const triggerDownload = (filename: string, mime: string, content: string) => {
     try {
@@ -990,21 +1053,54 @@ const handlePlay = (track: TrackItem) => {
             </div>
           )}
 
-          {/* Phase Product Polish-O: Current view summary + clear-all-filters */}
+          {/* Phase Product Polish-P: current view summary with removable filter chips */}
           <div className={styles.viewSummary}>
             <div className={styles.viewSummaryLabel}>当前视图</div>
             <div className={styles.viewSummaryContent}>
               <span className={styles.viewSummaryTag}>{collectionLabel}</span>
               {filterSource !== 'all' && (
-                <span className={styles.viewSummaryHint}>
+                <span className={styles.activeFilterChip} role="status">
                   来源：{filterSource === 'mmx-cli' ? 'MMX CLI' : filterSource === 'minimax-api' ? 'MiniMax API' : filterSource === 'mock' ? '示例' : filterSource === 'favorites' ? '收藏' : '全部'}
+                  <button
+                    className={styles.activeFilterChipRemove}
+                    onClick={handleClearSourceOnly}
+                    aria-label="清除来源筛选"
+                    title="清除来源筛选"
+                  >×</button>
+                </span>
+              )}
+              {smartCollection !== 'all' && (
+                <span className={styles.activeFilterChip} role="status">
+                  集合：{smartCollection === 'tagged' ? '有标签' : smartCollection === 'with-note' ? '有备注' : smartCollection}
+                  <button
+                    className={styles.activeFilterChipRemove}
+                    onClick={handleClearCollectionOnly}
+                    aria-label="清除集合筛选"
+                    title="清除集合筛选"
+                  >×</button>
                 </span>
               )}
               {tagFilter && (
-                <span className={styles.viewSummaryHint}>标签：{tagFilter}</span>
+                <span className={styles.activeFilterChip} role="status">
+                  标签：{tagFilter}
+                  <button
+                    className={styles.activeFilterChipRemove}
+                    onClick={handleClearTagOnly}
+                    aria-label="清除标签筛选"
+                    title="清除标签筛选"
+                  >×</button>
+                </span>
               )}
               {searchQuery && (
-                <span className={styles.viewSummaryHint}>搜索：{searchQuery}</span>
+                <span className={styles.activeFilterChip} role="status">
+                  搜索：{searchQuery}
+                  <button
+                    className={styles.activeFilterChipRemove}
+                    onClick={handleClearSearchOnly}
+                    aria-label="清除搜索"
+                    title="清除搜索"
+                  >×</button>
+                </span>
               )}
               <span className={styles.viewSummaryCount}>
                 {filteredTracks.length === tracks.length
@@ -1017,6 +1113,7 @@ const handlePlay = (track: TrackItem) => {
                 className={styles.viewSummaryClear}
                 onClick={handleClearAllFilters}
                 aria-label="清除全部筛选"
+                title="清除全部筛选"
               >
                 清除全部筛选
               </button>
@@ -1032,6 +1129,8 @@ const handlePlay = (track: TrackItem) => {
                 if (batchMode) clearSelection();
               }}
               aria-pressed={batchMode}
+              aria-label={batchMode ? '退出批量管理' : '进入批量管理'}
+              title={batchMode ? '退出批量管理' : '进入批量管理'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
@@ -1041,6 +1140,11 @@ const handlePlay = (track: TrackItem) => {
 
             {batchMode && (
               <>
+                <div className={styles.batchScopeHint} role="status">
+                  {selectedTrackIds.size > 0
+                    ? `批量操作将作用于已选择的 ${selectedTrackIds.size} 首作品`
+                    : '请选择作品后再执行批量操作'}
+                </div>
                 <div className={styles.batchGroup} aria-label="选择">
                   <span className={styles.batchGroupLabel}>选择</span>
                   <span className={styles.batchSelected}>已选择 {selectedTrackIds.size} 首</span>
@@ -1049,11 +1153,15 @@ const handlePlay = (track: TrackItem) => {
                       className={styles.batchSelectAll}
                       onClick={selectAllFiltered}
                       disabled={filteredTracks.length === 0}
+                      aria-label="全选当前列表"
+                      title={filteredTracks.length === 0 ? '当前列表为空' : '全选当前筛选下的所有作品'}
                     >全选当前列表</button>
                     <button
                       className={styles.batchClear}
                       onClick={clearSelection}
                       disabled={selectedTrackIds.size === 0}
+                      aria-label="清除选择"
+                      title={selectedTrackIds.size === 0 ? '当前未选择任何作品' : '清除全部已选择'}
                     >清除选择</button>
                   </div>
                 </div>
@@ -1202,7 +1310,7 @@ const handlePlay = (track: TrackItem) => {
           </button>
           {historyPanelOpen && (
             <div className={styles.historyPanelBody}>
-              <div className={styles.historyFilterRow}>
+              <div className={styles.historyFilterRow} role="group" aria-label="时间线筛选">
                 {([
                   ['all', '全部'],
                   ['tag', '标签变更'],
@@ -1214,6 +1322,8 @@ const handlePlay = (track: TrackItem) => {
                     className={`${styles.historyFilterChip} ${historyFilter === key ? styles.historyFilterChipActive : ''}`}
                     onClick={() => setHistoryFilter(key)}
                     aria-pressed={historyFilter === key}
+                    aria-label={`筛选 ${label}`}
+                    title={`筛选 ${label}`}
                   >
                     {label}
                   </button>
@@ -1290,6 +1400,8 @@ const handlePlay = (track: TrackItem) => {
                     checked={isSelected}
                     onChange={() => toggleTrackSelected(track.id)}
                     aria-label={`选择 ${track.title}`}
+                    aria-pressed={isSelected}
+                    title={`选择作品 ${track.title || track.id}`}
                   />
                 </label>
               )}
@@ -1304,6 +1416,16 @@ const handlePlay = (track: TrackItem) => {
                       {sourceLabel(track.generationSource, track.isMock)}
                     </span>
                   </div>
+                  {/* Phase Product Polish-P: search match hints (max 3 sources) */}
+                  {searchQuery && (() => {
+                    const hints = computeMatchHints(track, searchQuery);
+                    if (hints.length === 0) return null;
+                    return (
+                      <div className={styles.matchHint} title={`搜索匹配：${hints.join('、')}`}>
+                        匹配：{hints.join('、')}
+                      </div>
+                    );
+                  })()}
                   {/* Phase Product Polish-K: Annotation tags on card */}
                   {(() => {
                     const ann = annotations[track.id];

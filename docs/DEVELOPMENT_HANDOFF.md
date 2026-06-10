@@ -18,7 +18,7 @@
 - Mobile polish 639 / 390 breakpoints
 - No server schema migration, no generation logic changes, browser-local only
 
-**v0.4.22-alpha** — Phase Release v0.4.22-alpha: Annotation timeline and batch notes release.
+**v0.4.23-alpha** — Phase Release v0.4.22-alpha: Annotation timeline and batch notes release.
 
 **Phase Product Polish-O completed** — Library UX polish round 2:
 - Current view summary + clear all filters
@@ -28,6 +28,16 @@
 - Timeline readability polish (border consistency, today/yesterday hint)
 - Mobile polish 639 / 390 breakpoints
 - No server schema migration, no generation logic changes, browser-local only
+
+**Phase Product Polish-P pending closeout** — Library interaction polish round 3:
+- Active filter chips (来源 / 集合 / 标签 / 搜索) with per-chip × remove buttons
+- Per-filter clear handlers (search/source/collection/tag) — single filter clear without affecting others
+- Search match hints on each card (matching 标题 / Prompt / 歌词 / 模式 / 来源 / 标签 / 备注, max 3 + N more)
+- Batch operation scope hint (批量操作将作用于已选择的 N 首作品 / 请选择作品后再执行批量操作)
+- Timeline action filters a11y polish (role=group, aria-label, per-chip title)
+- Accessibility polish across batch toggle, checkbox, filter chips, drawer buttons
+- Mobile polish: activeFilterChip wrap, match hint ellipsis, batchScopeHint role=status
+- No server schema migration, no generation, browser-local only
 
 - Annotation timeline (per-track): default 5 entries + 查看全部 / 收起 (expand to full local history, 300 cap).
 - 7 action badges: 添加标签 / 删除标签 / 批量添加标签 / 批量删除标签 / 更新备注 / 合并导入 / 覆盖导入.

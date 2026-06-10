@@ -773,6 +773,134 @@
   border-color: var(--color-text-secondary);
 }
 
+/* Phase Product Polish-P: active filter chips (per-filter clear) */
+.activeFilterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  background: rgba(120, 130, 200, 0.18);
+  border: 1px solid rgba(120, 130, 200, 0.35);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-primary, #e4e4f4);
+  white-space: nowrap;
+}
+.activeFilterChipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background 120ms ease;
+}
+.activeFilterChipRemove:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+.activeFilterChipRemove:focus-visible {
+  outline: 2px solid var(--accent, #8aa9ff);
+  outline-offset: 1px;
+}
+
+/* Phase Product Polish-P: search match hints */
+.matchHint {
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: rgba(138, 169, 255, 0.12);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #a8aac6);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Phase Product Polish-P: batch scope hint */
+.batchScopeHint {
+  width: 100%;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: rgba(255, 200, 100, 0.08);
+  border-left: 3px solid rgba(255, 200, 100, 0.45);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--text-secondary, #d4d4e6);
+}
+@media (max-width: 639px) {
+  .batchScopeHint {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
+
+/* Phase Product Polish-P: history filter empty state */
+.historyFilterEmpty {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #a8aac6);
+  text-align: center;
+}
+
+/* Phase Product Polish-P: disabled button polish */
+.batchSelectAll:disabled,
+.batchClear:disabled,
+.batchTagAddBtn:disabled,
+.batchNoteBtn:disabled,
+.batchExportBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.batchSelectAll:disabled:hover,
+.batchClear:disabled:hover {
+  background: inherit;
+  border-color: inherit;
+}
+
+/* Phase Product Polish-P: focus-visible global */
+button:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent, #8aa9ff);
+  outline-offset: 2px;
+}
+
+/* Phase Product Polish-P: mobile 390 polish for active chips + history filters */
+@media (max-width: 390px) {
+  .activeFilterChip {
+    font-size: 11px;
+    padding: 2px 6px 2px 8px;
+  }
+  .activeFilterChipRemove {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+  }
+  .matchHint {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  .historyFilterRow {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+  .historyFilterChip {
+    flex-shrink: 0;
+  }
+}
+
 /* Detail drawer */
 
 /* Phase Product Polish-O: drawer section heading */

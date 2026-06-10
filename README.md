@@ -136,6 +136,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Async API polling | ✅ Design | `pollingEndpointConfigured: false`, `MINIMAX_API_ASYNC_POLLING_REQUIRED`, Studio error card, 3 async fixtures |
 
 **Product Polish releases:**
+- **Phase Product Polish-P** — Library interaction polish and final UX consistency: active filter chips (来源 / 集合 / 标签 / 搜索) with per-chip × remove buttons, per-filter clear handlers (single filter clear without affecting others), search match hints on each track card (matching 标题 / Prompt / 歌词 / 模式 / 来源 / 标签 / 备注, max 3), batch operation scope hints (批量操作将作用于已选择的 N 首作品 / 请选择作品后再执行批量操作), timeline action filters a11y polish (role=group, aria-label, per-chip title), accessibility polish across batch toggle / track checkbox / filter chips / drawer buttons, mobile polish (activeFilterChip wrap, match hint ellipsis, batchScopeHint role=status), no `/api/generate` calls, no server upload, no schema migration
 - **Phase Product Polish-N** — Annotation timeline, batch note editing, and Library polish: per-track 标注时间线 (collapse: 5, expand: 300 via 查看全部 / 收起), action badges (添加标签 / 删除标签 / 批量添加标签 / 批量删除标签 / 更新备注 / 合并导入 / 覆盖导入), Library-wide 标注历史总览 折叠面板 (最近 20 条 + filter chips: 全部 / 标签变更 / 备注变更 / 导入), batch note editor in batch toolbar (覆盖备注 / 追加到备注, 500-char cap, records `note_updated` history with all selected trackIds), mobile CSS (historyFilterRow horizontal scroll, batch note full-width), no `/api/generate` calls, no server upload, no schema migration, smoke test 51/51 PASS
 - **Phase Product-Polish-M** — Collection links and annotation history: `mmx-studio:annotation-history:v1` (cap 300, 7 action types), batch remove tag (case-insensitive), collection URL state `?q=&source=&collection=&tag=` via `history.replaceState`, share link button copies current filter URL, drawer `最近标注历史` last 5 actions per track, `LibraryLocalBackupV1.annotationHistory` field with backward compat for v1.0 backups, collection Markdown/JSON export include `collectionUrl` + `filters`, mobile CSS, smoke test
 - **Phase Deploy-CF-C** — Cloudflare Access for Ops and Status (✅ **verified 2026-06-10**): protects `/ops`, `/ops/*`, `/api/status`, `/api/debug/*` at the Cloudflare edge; keeps `/`, `/library`, `/studio`, `/api/health` public; `/api/generate` remains owned by the server-side Launch Guard; Access is configured in the Cloudflare Dashboard (Zero Trust → Access), not in app code; `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the operator policy, rollback and verification table; `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_PENDING` before Dashboard config and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` after — current state PASS, `/ops` and `/api/status` return `302` to Cloudflare Access login
@@ -201,6 +202,13 @@ These guardrails are for public alpha protection. They are not a replacement for
 - Drawer hierarchy polish: PASS
 - Timeline readability polish: PASS
 - Mobile Library polish: PASS
+- Active filter chips: PASS
+- Per-filter clear buttons: PASS
+- Search match hints: PASS
+- Batch operation scope hints: PASS
+- Timeline action filters: PASS
+- Accessibility polish: PASS
+- Interaction polish mobile: PASS
 - Cloudflare Access for Ops: PASS
 - Public URL: https://music.conanxin.com
 - Recommended backend: CLI
@@ -213,6 +221,7 @@ These guardrails are for public alpha protection. They are not a replacement for
 | Annotation timeline: PASS | ✅ (Library drawer per-track 5-default / expand-to-300 timeline with 7 action badges) |
 | Library-wide history: PASS | ✅ (`LibraryHistoryPanel`, 20 latest events, 4 filter chips, collapsible, no 清空 button) |
 | Batch note editing: PASS | ✅ (overwrite + append modes, 500-char cap, `note_updated` history) |
+| Product Polish-P smoke: PASS | ✅ |
 | Product Polish-N smoke: PASS | ✅ (55/55) |
 | Release workflow fix: PASS | ✅ (commit `9662754`, `--verify-tag` removed; manual fallback documented) |
 | Cloudflare Access for Ops: PASS | ✅ (HTTP 302 → Access login) |

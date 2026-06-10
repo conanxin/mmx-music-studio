@@ -8,6 +8,17 @@
   - Library current view summary improved
   - Library empty states improved
   - Export / backup local-only clarification improved
+  - **Library interaction polish round 3 (Phase Product Polish-P)**:
+    - Active filter chips with per-chip remove buttons (来源 / 集合 / 标签 / 搜索)
+    - Per-filter clear handlers (search / source / collection / tag) — single filter clear without affecting others
+    - Search match hints on each track card (matching 标题 / Prompt / 歌词 / 模式 / 来源 / 标签 / 备注, max 3)
+    - Batch operation scope hints (批量操作将作用于已选择的 N 首作品 / 请选择作品后再执行批量操作)
+    - Timeline action filters a11y polish (role=group, aria-label, per-chip title)
+    - Accessibility polish across batch toggle, track checkbox, filter chips, drawer buttons
+    - Mobile polish: activeFilterChip wrap, match hint ellipsis, batchScopeHint role=status
+    - **Filter chips are browser-local UI state only** (not persisted, not uploaded)
+    - **Search match hints do not expose prompt/note full text** — only categorical labels
+    - No upload to server, no server schema migration
   - No server upload
   - No server schema migration
   - `/ops` and `/api/status` remain protected by Cloudflare Access
