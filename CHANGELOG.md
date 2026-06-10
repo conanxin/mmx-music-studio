@@ -4,6 +4,27 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.15-alpha] — 2026-06-10
+
+### Highlights
+
+- **Public runtime diagnostics release** — Phase Ops-Monitor-A
+- Added `GET /api/status` — public-safe runtime status endpoint
+- Added `server/runtime-status.ts` — aggregates backend + launchGuard + jobQueue + storage
+- Added job queue aggregate: pending, running, succeeded, failed
+- Added storage aggregate: track count, audio file count, approximate audio bytes
+- Added `docs/OPS_MONITORING.md` — ops monitoring guide
+- Added `scripts/ops-monitor-a-smoke-test.sh` (27 assertions)
+- Updated Home Trust copy with runtime status note
+- Updated public release readiness docs
+
+### Notes
+
+- No generation is performed for this release
+- `/api/status` avoids raw IP, sourceHash, prompt, token, raw logs, and absolute paths
+- This is observability for public alpha operations, not a full admin dashboard
+- CLI backend remains the recommended default path
+
 ## [v0.4.14-alpha] — 2026-06-10
 
 ### Highlights

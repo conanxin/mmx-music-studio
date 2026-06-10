@@ -155,8 +155,8 @@ if [[ -f "$DOCS_DIR/PUBLIC_RELEASE_READINESS.md" ]]; then
     fail "Public URL NOT in readiness doc"
   fi
 
-  if grep -q "v0.4.14-alpha" "$DOCS_DIR/PUBLIC_RELEASE_READINESS.md"; then
-    pass "Version v0.4.14-alpha in readiness doc"
+  if grep -q "v0.4.15-alpha" "$DOCS_DIR/PUBLIC_RELEASE_READINESS.md"; then
+    pass "Version v0.4.15-alpha in readiness doc"
   else
     fail "Version NOT in readiness doc"
   fi
