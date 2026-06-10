@@ -38,6 +38,7 @@ export type AuditEventType =
   | 'generation_blocked_by_access'
   | 'generation_blocked_by_rate_limit'
   | 'generation_blocked_by_daily_quota'
+  | 'generation_blocked_by_launch_guard'
   | 'job_created'
   | 'job_cancelled'
   | 'job_deleted'
@@ -223,11 +224,12 @@ export function auditUnlockLocked(type: 'preview' | 'generation', route: string,
   incrementStat('unlockLocked');
 }
 
-export function auditGenerationBlocked(reason: 'access' | 'rate_limit' | 'daily_quota', route: string, clientHash: string, userAgentHash: string): void {
+export function auditGenerationBlocked(reason: 'access' | 'rate_limit' | 'daily_quota' | 'launch_guard', route: string, clientHash: string, userAgentHash: string): void {
   const typeMap: Record<string, AuditEventType> = {
     access: 'generation_blocked_by_access',
     rate_limit: 'generation_blocked_by_rate_limit',
     daily_quota: 'generation_blocked_by_daily_quota',
+    launch_guard: 'generation_blocked_by_launch_guard',
   };
   appendAuditEvent({ type: typeMap[reason], clientHash, userAgentHash, route, status: 403, message: `generation blocked by ${reason}` });
   incrementStat('generationBlocked');

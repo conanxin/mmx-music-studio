@@ -364,6 +364,10 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Release v0.4.12-alpha** | **API Adapter async polling readiness release** | ✅ PASS |
 | **Phase Product Polish-J** | **Public Launch Readiness: Home Launch/Trust/Feedback UX blocks, v0.4.12-alpha badge, Settings backend/BYOK explanation, PUBLIC_RELEASE_READINESS.md, data notes, feedback links** | ✅ PASS |
 | **Phase Release v0.4.13-alpha** | **Public launch readiness and trust UX release** | ✅ PASS |
+| **Phase Launch Guard-A** | **Public generation guardrails: global pause, per-source daily limit, per-source cooldown, source hash (no raw IP), /api/health guard fields, Studio 3-error UX, Home Trust section, .env.example, systemd smoke, smoke test** | ✅ PASS |
+| **Phase Release v0.4.14-alpha** | **Release prep** | 📋 规划 |
+| Phase Ops-Monitor-A | Server monitoring and health observation | 📋 规划 |
+| Phase Storage-A | Storage management and cleanup | 📋 规划 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |
@@ -385,6 +389,78 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 ## Phase 4F: Audit Logging and PIN Brute-Force Protection
 
 See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md) for details.
+
+---
+
+## Phase Launch Guard-A: Public Generation Guardrails
+
+**Status:** ✅ Completed (v0.4.13-alpha post-merge)
+
+### Core Files
+
+- `server/launch-guard.ts` — guard logic, config builder, state persistence
+- `server/index.ts` — guard integration before job creation, `/api/health` guard fields
+- `server/types.ts` — `ServerConfig.launchGuard: LaunchGuardConfig`
+- `server/audit.ts` — `generation_blocked_by_launch_guard` audit event type
+
+### Protections
+
+| Protection | Config | Default |
+|------------|--------|---------|
+| Global pause | `PUBLIC_GENERATION_ENABLED=false` | `true` |
+| Per-source daily limit | `PER_SOURCE_DAILY_GENERATION_LIMIT` | `5` |
+| Per-source cooldown | `GENERATION_COOLDOWN_SECONDS` | `30` |
+
+### Guard Flow
+
+```
+checkLaunchGuard(req, config)
+  → enabled? no → allow
+  → publicGenerationEnabled? no → block (public_generation_paused)
+  → daily count >= limit? yes → block (per_source_daily_limit_exceeded)
+  → cooldown elapsed? no → block (generation_cooldown_active)
+  → all pass → record count+timestamp → allow
+```
+
+### Error Codes
+
+- `public_generation_paused` — global generation pause active
+- `per_source_daily_limit_exceeded` — source hit daily cap
+- `generation_cooldown_active` — source must wait before next generation
+
+### Security Properties
+
+- Source identification uses `getClientKey()` from `rate-limit.ts` (SHA256, never raw IP)
+- Guard state stored in `storage/guard/public-generation-guard.json` (gitignored)
+- Atomic write: `.tmp` + `rename` — no partial state on crash
+- Daily auto-reset at midnight (date-keyed state)
+- No raw IPs in guard state, no API keys, no tokens
+
+### /api/health Fields
+
+```json
+{
+  "launchGuardEnabled": true,
+  "publicGenerationEnabled": true,
+  "perSourceDailyLimit": 5,
+  "generationCooldownSeconds": 30
+}
+```
+
+### Debug Reset
+
+`GET /api/debug/reset-guard` — only when `DEBUG_RESET_ENDPOINTS=true` (smoke test only, never production).
+
+### What Launch Guard Is NOT
+
+- Not an account system
+- Not billing / quota billing
+- Not full abuse prevention
+- Does NOT affect Library or playback — only `/api/generate`
+
+### Next Phase
+
+Phase Release v0.4.14-alpha — tag, GitHub Release, smoke test CI gate.
 
 ---
 

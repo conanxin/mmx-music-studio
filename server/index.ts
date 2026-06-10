@@ -79,6 +79,14 @@ import {
 import { mockMiniMaxGenerate } from './mock-minimax.js';
 import { appendAuditEvent, auditUnlockSuccess, auditUnlockFailed, auditUnlockLocked, auditGenerationBlocked, auditGenerationRequested, auditJobEvent, auditTrackAccess, getAuditStats, listAuditEvents, type AuditEventType } from './audit.js';
 import { checkAuthGuard, recordFailedAttempt, recordSuccessfulUnlock, getAuthGuardStats } from './auth-guard.js';
+import {
+  buildLaunchGuardConfig,
+  checkLaunchGuard,
+  getSourceGuardStatus,
+  resetGuardState,
+  isGuardBlocked,
+  type LaunchGuardConfig,
+} from './launch-guard.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
 import { setJobApiKey, getKeyLengthBucket } from './byok-secrets.js';
 
@@ -165,6 +173,7 @@ function loadConfig(): ServerConfig {
     generationAccess: buildGenerationAccessConfig(),
     rateLimit: buildRateLimitConfig(),
     dailyQuota: buildDailyQuotaConfig(),
+    launchGuard: buildLaunchGuardConfig(),
     realApiAttempt: buildRealApiAttemptConfig(),
   };
 }
@@ -637,6 +646,11 @@ async function handleHealth(
     realApiDailyAttemptLimit: config.realApiAttempt.dailyLimit,
     realApiAttemptsUsed: attemptStats.attempts,
     remainingRealApiAttempts: attemptStats.remaining,
+    // Phase Launch Guard-A: Public generation guardrails
+    launchGuardEnabled: config.launchGuard.enabled,
+    publicGenerationEnabled: config.launchGuard.publicGenerationEnabled,
+    perSourceDailyLimit: config.launchGuard.perSourceDailyLimit,
+    generationCooldownSeconds: config.launchGuard.cooldownSeconds,
     // Existing fields
     demoMode: config.demoMode,
     realGenerationEnabled: config.realGenerationEnabled,
@@ -760,6 +774,23 @@ async function handleGenerate(
         429,
         `今日已生成 ${dq.used} 首，请明天再试`,
       );
+      return;
+    }
+  }
+
+  // ── Phase Launch Guard-A: Public generation guardrails ────────────────────
+  // 5. Global pause + per-source daily limit + per-source cooldown
+  if (config.launchGuard.enabled) {
+    const guard = checkLaunchGuard(req, config.launchGuard);
+    if (isGuardBlocked(guard)) {
+      auditGenerationBlocked('launch_guard', req.url ?? '/api/generate', getClientHashShort(req), getUserAgent(req));
+      if (guard.code === 'public_generation_paused') {
+        sendError(res, guard.code, guard.message, 503);
+      } else if (guard.code === 'per_source_daily_limit_exceeded') {
+        sendError(res, guard.code, guard.message, 429, `每天最多生成 ${guard.limit} 首`);
+      } else if (guard.code === 'generation_cooldown_active') {
+        sendError(res, guard.code, guard.message, 429, `请等待 ${guard.retryAfterSeconds} 秒`);
+      }
       return;
     }
   }
@@ -1418,6 +1449,13 @@ async function routeHandler(
       return;
     }
     resetDailyQuota();
+    res.writeHead(204).end();
+  } else if (url === '/api/debug/reset-guard') {
+    if (!debugResetEndpointsEnabled) {
+      res.writeHead(404).end();
+      return;
+    }
+    resetGuardState();
     res.writeHead(204).end();
   } else if (url === '/api/key/check') {
     await handleKeyCheck(req, res, config);

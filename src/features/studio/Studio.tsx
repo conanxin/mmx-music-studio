@@ -163,6 +163,9 @@ type ErrorType =
   | 'generation_access'
   | 'network'
   | 'async_polling_required'
+  | 'public_generation_paused'
+  | 'per_source_daily_limit_exceeded'
+  | 'generation_cooldown_active'
   | 'unknown';
 
 const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
@@ -189,6 +192,18 @@ const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
   async_polling_required: {
     title: '需要任务轮询',
     hint: 'API 返回了异步任务，当前版本尚未配置轮询端点。请保留该错误信息，后续接入官方 status endpoint 后可正常使用。',
+  },
+  public_generation_paused: {
+    title: '公开生成已暂停',
+    hint: '公开 Alpha 当前暂停了生成，作品库和播放器仍可使用。请稍后再试。',
+  },
+  per_source_daily_limit_exceeded: {
+    title: '今日生成次数已达上限',
+    hint: '当前访问来源今日生成次数已达上限，明天重置后可继续生成。',
+  },
+  generation_cooldown_active: {
+    title: '请求过于频繁',
+    hint: '生成冷却中，请稍后再试。',
   },
   unknown: {
     title: '生成失败',
@@ -237,6 +252,10 @@ function classifyError(err: { type?: string; code?: string; message?: string } |
   if (t === 'generation_access_required' || t === 'generation_access') return 'generation_access';
   if (t === 'network_error' || m.includes('timeout') || m.includes('网络') || m.includes('fetch') || m.includes('econnrefused') || m.includes('enotfound')) return 'network';
   if (t === 'MINIMAX_API_ASYNC_POLLING_REQUIRED' || m.includes('async task') || m.includes('task_id') && m.includes('polling') || m.includes('任务轮询') || m.includes('polling is not configured')) return 'async_polling_required';
+  // Phase Launch Guard-A error types
+  if (t === 'public_generation_paused') return 'public_generation_paused';
+  if (t === 'per_source_daily_limit_exceeded') return 'per_source_daily_limit_exceeded';
+  if (t === 'generation_cooldown_active') return 'generation_cooldown_active';
   return 'unknown';
 }
 
@@ -430,6 +449,11 @@ export default function Studio({
     dailyQuotaEnabled?: boolean;
     dailyGenerationUsed?: number;
     remainingDailyGenerations?: number;
+    // Phase Launch Guard-A: Public generation guardrails
+    launchGuardEnabled?: boolean;
+    publicGenerationEnabled?: boolean;
+    perSourceDailyLimit?: number;
+    generationCooldownSeconds?: number;
   } | null>(null);
 
   // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
@@ -1223,7 +1247,9 @@ export default function Studio({
               (healthInfo?.dailyQuotaEnabled === true &&
                 healthInfo?.backend !== 'cli' &&
                 healthInfo?.remainingDailyGenerations !== undefined &&
-                healthInfo.remainingDailyGenerations <= 0)
+                healthInfo.remainingDailyGenerations <= 0) ||
+              // Phase Launch Guard-A: public generation paused
+              (healthInfo?.launchGuardEnabled === true && healthInfo?.publicGenerationEnabled === false)
             }
           >
             {currentJob && (currentJob.status === 'queued' || currentJob.status === 'running') ? (

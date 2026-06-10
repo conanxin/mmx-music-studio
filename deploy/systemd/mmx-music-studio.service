@@ -26,6 +26,11 @@ Environment=RATE_LIMIT_MAX_REQUESTS=3
 Environment=DAILY_QUOTA_ENABLED=true
 Environment=DAILY_GENERATION_LIMIT=50
 Environment=PREVIEW_ACCESS_ENABLED=false
+# Phase Launch Guard-A: Public generation guardrails
+Environment=PUBLIC_GENERATION_GUARD_ENABLED=true
+Environment=PUBLIC_GENERATION_ENABLED=true
+Environment=PER_SOURCE_DAILY_GENERATION_LIMIT=5
+Environment=GENERATION_COOLDOWN_SECONDS=30
 
 # PATH — includes mmx CLI binary
 Environment=PATH=/home/ubuntu/.npm-global/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin

@@ -86,6 +86,11 @@ export interface HealthInfo {
   realApiDailyAttemptLimit?: number;
   realApiAttemptsUsed?: number;
   remainingRealApiAttempts?: number;
+  // Phase Launch Guard-A: Public generation guardrails
+  launchGuardEnabled?: boolean;
+  publicGenerationEnabled?: boolean;
+  perSourceDailyLimit?: number;
+  generationCooldownSeconds?: number;
 }
 
 export interface CheckKeyResult {

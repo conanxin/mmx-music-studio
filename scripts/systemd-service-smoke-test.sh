@@ -133,6 +133,31 @@ else
     fail "RATE_LIMIT_ENABLED=true not found"
 fi
 
+# 11. Launch Guard-A configured (Phase Launch Guard-A)
+if grep -qE "PUBLIC_GENERATION_GUARD_ENABLED=true" "$UNIT" 2>/dev/null; then
+    pass "PUBLIC_GENERATION_GUARD_ENABLED=true"
+else
+    fail "PUBLIC_GENERATION_GUARD_ENABLED=true not found"
+fi
+
+if grep -qE "PUBLIC_GENERATION_ENABLED=true" "$UNIT" 2>/dev/null; then
+    pass "PUBLIC_GENERATION_ENABLED=true"
+else
+    fail "PUBLIC_GENERATION_ENABLED=true not found"
+fi
+
+if grep -qE "PER_SOURCE_DAILY_GENERATION_LIMIT" "$UNIT" 2>/dev/null; then
+    pass "PER_SOURCE_DAILY_GENERATION_LIMIT configured"
+else
+    fail "PER_SOURCE_DAILY_GENERATION_LIMIT not found"
+fi
+
+if grep -qE "GENERATION_COOLDOWN_SECONDS" "$UNIT" 2>/dev/null; then
+    pass "GENERATION_COOLDOWN_SECONDS configured"
+else
+    fail "GENERATION_COOLDOWN_SECONDS not found"
+fi
+
 echo ""
 echo "Result: $PASS passed, $FAIL failed"
 if [ "$FAIL" -eq 0 ]; then

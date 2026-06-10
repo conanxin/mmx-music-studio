@@ -150,6 +150,20 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Secret scan | ✅ PASS | `scripts/ci-secret-scan.py` |
 | BYOK key storage | ✅ Memory only | No disk persistence |
 | API Adapter real BYOK call | ✅ One succeeded | `direct_audio` response kind |
+| Public Generation Guardrails | ✅ PASS | Phase Launch Guard-A — global pause, per-source daily limit, cooldown |
+
+### Public Generation Guardrails
+
+Public alpha deployments use lightweight generation guardrails to protect the server and quota:
+
+- `PUBLIC_GENERATION_GUARD_ENABLED` — enable/disable guard logic
+- `PUBLIC_GENERATION_ENABLED` — global pause for public generation (Library/playback unaffected)
+- `PER_SOURCE_DAILY_GENERATION_LIMIT` — per-source daily generation cap (default: 5)
+- `GENERATION_COOLDOWN_SECONDS` — minimum interval between generations from same source (default: 30s)
+
+Source identification uses SHA256 hashing (via `cf-connecting-ip` / `x-forwarded-for` / `remoteAddress`) — raw IPs are never stored.
+
+These guardrails are for public alpha protection. They are not a replacement for accounts, billing, or full abuse-prevention infrastructure.
 
 ### Deployment
 
@@ -169,10 +183,12 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 **v0.4.12-alpha**：API Adapter async polling readiness + Product Polish-J public launch readiness
 **v0.4.11-alpha**：Phase Product Polish-I — Playback queue persistence and playback modes
 **v0.4.10-alpha**：Phase Product Polish-H — Playback queue and continuous playback
-
 **v0.4.9-alpha**：Phase Product Polish-G — Global mini player and playback continuity
-
 **v0.4.8-alpha**：Phase Product Polish-F — Prompt templates and style presets
+
+**v0.4.14-alpha**：（规划中）Phase Release v0.4.14-alpha / Phase Ops-Monitor-A / Phase Storage-A
+
+**v0.4.6-alpha**：Stable public deployment release — Cloudflare Tunnel public access verified (`https://music.conanxin.com`); Node server installed as `mmx-music-studio.service` (enabled at boot, `Restart=always`, 50/day limit); CLI backend diagnostics (`cli-backend-diagnostics.sh` 13 checks, `cli-backend-readiness-smoke-test.sh` 26 checks); systemd helpers (unit file, install script, smoke test); README/handoff/deployment docs updated to reflect systemd-managed deployment.
 
 **v0.4.6-alpha**：Stable public deployment release — Cloudflare Tunnel public access verified (`https://music.conanxin.com`); Node server installed as `mmx-music-studio.service` (enabled at boot, `Restart=always`, 50/day limit); CLI backend diagnostics (`cli-backend-diagnostics.sh` 13 checks, `cli-backend-readiness-smoke-test.sh` 26 checks); systemd helpers (unit file, install script, smoke test); README/handoff/deployment docs updated to reflect systemd-managed deployment.
 

@@ -215,6 +215,10 @@ export default function Home() {
             <h3>当前限制</h3>
             <p>当前是 alpha 版本；Cloudflare Access 未启用；请不要输入敏感 prompt。</p>
           </div>
+          <div className={styles.trustCard}>
+            <h3>生成保护</h3>
+            <p>公开 Alpha 启用了轻量生成保护：同一访问来源每日有生成次数与冷却限制，用于保护服务器和额度。</p>
+          </div>
         </div>
       </section>
 
