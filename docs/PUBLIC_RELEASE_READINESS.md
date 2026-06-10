@@ -1,12 +1,14 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.17-alpha · 2026-06-10
+> 文档版本：v0.4.18-alpha · 2026-06-10
 
 ## Current Public URL
 
 **https://music.conanxin.com**
 
 ## Current Release
+
+**v0.4.18-alpha** — Tags, notes, and smart collections release (Phase Product-Polish-K: trackAnnotations.ts, Library annotation editor, tag chips, smart collections, tag filter, enhanced search, Markdown export tags/notes, localStorage browser-only)
 
 **v0.4.17-alpha** — Read-only operations panel release (Phase Ops-Monitor-B: `/ops` page, service/Launch Guard/job queue/storage summary cards, copyable diagnostics, manual refresh, 30s auto-refresh, mobile layout, Ops-Monitor-B smoke test)
 
@@ -27,6 +29,7 @@
 - Public runtime diagnostics (Phase Ops-Monitor-A: `/api/status`, job queue/storage aggregates)
 - Storage management and retention planning (Phase Storage-A: inventory, dry-run, backup manifest, no auto-deletion)
 - Read-only operations panel (Phase Ops-Monitor-B: OpsPanel.tsx, `/api/health`+`/api/status` aggregation, launch guard/job queue/storage status cards, copyable diagnostic summary, auto-refresh, nav entry, mobile CSS)
+- Browser-local Library annotations (Phase Product-Polish-K: track tags, notes, smart collections, tag filter, enhanced search, Markdown export with tags/notes, `mmx-studio:track-annotations:v1` localStorage)
 
 ## What Remains Alpha / Experimental
 
@@ -77,6 +80,7 @@ These guardrails are intended for public alpha protection. They are not a replac
 | Prompt templates | Browser localStorage | `mmx-studio:prompt-templates` |
 | Playback queue | Browser localStorage | `mmx-studio:playback-queue:v1` |
 | Playback progress | Browser localStorage | `mmx-studio:playback-progress:v1` |
+| Track annotations | Browser localStorage | `mmx-studio:track-annotations:v1` (tags, note per trackId) — browser-local only, not synced to server |
 | Generated track metadata | Server-side | For Library display and playback |
 | BYOK API keys | Memory only | Not written to disk; 30-min TTL |
 | Guard state | `storage/guard/public-generation-guard.json` | SHA256 source hash, no raw IPs |
@@ -89,7 +93,7 @@ These guardrails are intended for public alpha protection. They are not a replac
 - [x] Typecheck passes
 - [x] Build passes
 - [x] WeApp build passes
-- [x] Product smoke tests pass (A–J)
+- [x] Product smoke tests pass (A–K)
 - [x] API adapter smoke tests pass
 - [x] systemd service smoke passes
 - [x] Launch Guard enabled

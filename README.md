@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.17--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.17-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.18--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.18-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -184,7 +184,7 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 **v0.4.17-alpha**：Phase Ops-Monitor-B — Read-only operations panel release (`/ops` page, service/Launch Guard/job queue/storage summary cards, copyable diagnostics, manual refresh, 30s auto-refresh, mobile layout, Ops-Monitor-B smoke test)
 
-**v0.4.18-alpha**：Phase Product Poli...[truncated]
+**v0.4.18-alpha**：Phase Product-Polish-K — Tags, notes, and smart collections release (trackAnnotations.ts, Library annotation editor, tag chips, smart collections, tag filter, enhanced search, Markdown export tags/notes, localStorage browser-only)
 
 **v0.4.16-alpha**：Phase Storage-A — Storage management and retention dry-run release (`server/storage-maintenance.ts`, inventory/retention-dry-run/backup-manifest scripts, `docs/STORAGE_POLICY.md`, dry-run only, no auto-deletion)
 

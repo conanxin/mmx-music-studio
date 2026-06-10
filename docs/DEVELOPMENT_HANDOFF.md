@@ -1,6 +1,6 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.16-alpha · 2026-06-10
+> 文档版本：v0.4.18-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---

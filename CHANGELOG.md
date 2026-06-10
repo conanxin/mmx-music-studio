@@ -4,6 +4,34 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.18-alpha] — 2026-06-10
+
+### Highlights
+
+- **Tags, notes, and smart collections release**
+- **Browser-local track annotations** — `mmx-studio:track-annotations:v1` localStorage key
+- **Tags for Library tracks** — max 12 tags per track, max 24 chars per tag, normalized duplicate detection
+- **Notes for Library tracks** — max 500 characters
+- **Annotation editor in the Library detail drawer** — tag input, chip delete, note textarea, save with toast
+- **Tag chips and note status on track cards** — up to 3 chips shown per card
+- **Enhanced Library search** — now includes tags and notes
+- **Smart collections** — 有标签, 有备注, 最近生成, CLI 生成, API 生成
+- **Tag filter chips with counts** — up to 12 most-used tags, click to filter
+- **Enhanced Markdown export** — includes Tags and Notes sections
+
+### Notes
+
+- Annotations use browser localStorage. No server schema migration.
+- No generation is performed for this release.
+- Library playback and queues are unaffected by annotation changes.
+- Product-Polish-K smoke test: 37/37 PASS
+
+### Safety
+
+- Tags and notes are browser-local only. No cross-device sync.
+- No raw IP, source hash, prompt, token, raw logs, or absolute runtime paths are exposed.
+- Annotation data is never sent to the server.
+
 ## [v0.4.17-alpha] — 2026-06-10
 
 ### Highlights
