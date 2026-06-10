@@ -4,6 +4,25 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.12-alpha] — 2026-06-10
+
+### Highlights
+
+- **API Adapter async polling readiness release** — prepares codebase for future async MiniMax responses
+- Added `server/adapters/minimax-api/polling.ts` with `normalizeMiniMaxTaskStatus()` and `parseAsyncTaskReference()`
+- Added `pollingEndpointConfigured: false` — explicit design flag
+- Added defensive async task mock fixtures: `processing`, `succeeded`, `failed`
+- Studio error card now shows "需要任务轮询" for `async_polling_required` errors
+- Added async polling design smoke test (25 assertions)
+- Documentation updated: polling endpoint is not confirmed, no polling is called
+
+### Notes
+
+- No generation is performed for this release
+- No real polling endpoint is called
+- CLI backend remains the recommended default path
+- BYOK API Adapter remains real-call verified but experimental
+
 ## [v0.4.11-alpha] — 2026-06-10
 
 ### Highlights

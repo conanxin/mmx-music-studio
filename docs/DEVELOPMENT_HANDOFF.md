@@ -1,6 +1,6 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.11-alpha · 2026-06-10
+> 文档版本：v0.4.12-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
@@ -360,6 +360,8 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Release v0.4.10-alpha** | **Playback queue and continuous playback release** | ✅ PASS |
 | **Phase Product Polish-I** | **Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence/repeat-all/repeat-one/shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label** | ✅ PASS |
 | **Phase Release v0.4.11-alpha** | **Playback queue persistence and playback modes release** | ✅ PASS |
+| **Phase API-Debug-E** | **Async task polling design: polling.ts types, normalizeMiniMaxTaskStatus(), parseAsyncTaskReference(), pollingEndpointConfigured: false, 3 async fixtures (processing/succeeded/failed), Studio async polling error card, async polling design smoke test** | ✅ PASS |
+| **Phase Release v0.4.12-alpha** | **API Adapter async polling readiness release** | ✅ PASS |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |
