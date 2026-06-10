@@ -1,20 +1,24 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.19-alpha · 2026-06-10
+> 文档版本：v0.4.20-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
-**v0.4.19-alpha** — Phase Product-Polish-L: Collections export, library batch actions, and annotation backup.
+**v0.4.20-alpha** — Phase Product-Polish-M: Collection sharing, tag cleanup, and annotation history.
 
-- Library batch mode added (checkbox per track card, select-all / clear selection).
-- Batch add tags added (max 12 tags per track, max 24 chars per tag, normalized duplicate detection).
-- Collection export Markdown / JSON added (filtered + selected + smart-collection labeled).
-- Local backup export / import added (browser `localStorage` JSON, no server upload).
-- Merge / replace import modes.
-- `LibraryLocalBackupV1` data model in `src/lib/libraryBackup.ts`.
+- Annotation history (browser-local): `mmx-studio:annotation-history:v1`, cap 300, includes
+  tag_added / tag_removed / batch_tag_added / batch_tag_removed / note_updated /
+  backup_import_merge / backup_import_replace.
+- Batch remove tag (case-insensitive) added to batch toolbar.
+- Collection URL state: `?q=&source=&collection=&tag=` written via `history.replaceState`.
+- Collection share link button in toolbar: copies a shareable URL of the current filter view.
+- Drawer shows `最近标注历史` (last 5 actions) for the current track.
+- Local backup now includes `annotationHistory`; v1.0 backups without history still importable
+  (replace-mode preserves current history; merge-mode dedupes by id, cap 300).
+- Collection export Markdown / JSON now include `collectionUrl` + `filters` (query / source / smart collection / tag).
 - **No server schema migration.**
 - **No server upload.**
 - **No generation is performed for this release.**
@@ -26,6 +30,7 @@
 - `mmx-studio:prompt-templates`
 - `mmx-studio:playback-queue:v1`
 - `mmx-studio:playback-progress:v1`
+- `mmx-studio:annotation-history:v1` (new in Product Polish-M)
 
 ---
 

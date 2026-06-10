@@ -1,23 +1,27 @@
 /**
- * libraryBackup.ts — Phase Product Polish-L
+ * libraryBackup.ts — Phase Product Polish-L + M
  *
  * Browser-local Library data backup & restore.
- * Backed by localStorage — annotations, favorites, prompt templates,
- * playback queue, playback progress.
+ * Backed by localStorage — annotations, annotation history, favorites,
+ * prompt templates, playback queue, playback progress.
  *
  * Hard rules:
  * - Never includes server audio, server paths, API keys, tokens, headers, logs.
  * - Never uploaded to the server.
- * - Import is validated; merge or replace semantics for annotations.
+ * - Import is validated; merge or replace semantics for annotations + history.
+ * - Backward compatible with v1.0 backups (annotationHistory is optional).
  *
- * Version: 1.0
+ * Version: 1.0 (annotationHistory optional for forward compat)
  */
 
 import {
   loadTrackAnnotations,
   saveTrackAnnotations,
+  loadAnnotationHistory,
+  saveAnnotationHistory,
   normalizeTags,
   type TrackAnnotationsMap,
+  type AnnotationHistoryEntry,
 } from './trackAnnotations';
 
 export const BACKUP_VERSION = '1.0';
@@ -26,6 +30,9 @@ export const PROMPT_TEMPLATES_KEY = 'mmx-studio:prompt-templates';
 export const PLAYBACK_QUEUE_KEY = 'mmx-studio:playback-queue:v1';
 export const PLAYBACK_PROGRESS_KEY = 'mmx-studio:playback-progress:v1';
 export const ANNOTATIONS_KEY = 'mmx-studio:track-annotations:v1';
+export const ANNOTATION_HISTORY_KEY = 'mmx-studio:annotation-history:v1';
+
+export const MAX_HISTORY_IN_BACKUP = 300;
 
 export interface LibraryLocalBackupV1 {
   version: '1.0';
@@ -33,6 +40,7 @@ export interface LibraryLocalBackupV1 {
   app: 'mmx-music-studio';
   data: {
     annotations: TrackAnnotationsMap;
+    annotationHistory?: AnnotationHistoryEntry[];
     favorites?: string[];
     promptTemplates?: unknown[];
     playbackQueue?: unknown;
@@ -40,6 +48,7 @@ export interface LibraryLocalBackupV1 {
   };
   meta: {
     annotationCount: number;
+    annotationHistoryCount: number;
     favoriteCount: number;
     promptTemplateCount: number;
   };
@@ -72,6 +81,7 @@ function readJsonUnknown(key: string): unknown | undefined {
 
 export function buildLibraryBackup(): LibraryLocalBackupV1 {
   const annotations = loadTrackAnnotations();
+  const annotationHistory = loadAnnotationHistory();
   const favorites = readJsonArray(FAVORITES_KEY) as string[] | undefined;
   const promptTemplates = readJsonArray(PROMPT_TEMPLATES_KEY);
 
@@ -87,6 +97,7 @@ export function buildLibraryBackup(): LibraryLocalBackupV1 {
     app: 'mmx-music-studio',
     data: {
       annotations,
+      annotationHistory,
       favorites: favorites as string[] | undefined,
       promptTemplates,
       playbackQueue,
@@ -94,6 +105,7 @@ export function buildLibraryBackup(): LibraryLocalBackupV1 {
     },
     meta: {
       annotationCount: Object.keys(annotations).length,
+      annotationHistoryCount: annotationHistory.length,
       favoriteCount: Array.isArray(favorites) ? favorites.length : 0,
       promptTemplateCount: Array.isArray(promptTemplates) ? promptTemplates.length : 0,
     },
@@ -225,6 +237,34 @@ export function applyLibraryBackup(
     } catch { /* ignore */ }
   }
 
+  // Annotation history — optional in v1.0 backup
+  // Merge: dedupe by id, prepend incoming, cap at 300
+  // Replace: if backup has history, use it; if missing, preserve current
+  const incomingHistory = Array.isArray(payload.data.annotationHistory)
+    ? (payload.data.annotationHistory as AnnotationHistoryEntry[]).slice(0, MAX_HISTORY_IN_BACKUP)
+    : null;
+  if (incomingHistory) {
+    const existingHistory = mode === 'merge' ? loadAnnotationHistory() : [];
+    let mergedHistory: AnnotationHistoryEntry[];
+    if (mode === 'merge') {
+      const seen = new Set<string>();
+      mergedHistory = [];
+      // Incoming first (newer), then existing; dedupe by id
+      for (const e of [...incomingHistory, ...existingHistory]) {
+        if (seen.has(e.id)) continue;
+        seen.add(e.id);
+        mergedHistory.push(e);
+        if (mergedHistory.length >= MAX_HISTORY_IN_BACKUP) break;
+      }
+    } else {
+      mergedHistory = incomingHistory;
+    }
+    saveAnnotationHistory(mergedHistory);
+  } else if (mode === 'replace') {
+    // Old backup without annotationHistory — preserve current history (safety)
+    // No-op: do not wipe history when backup doesn't carry it
+  }
+
   return {
     annotationsMerged: Object.keys(incoming).length,
     favoritesWritten,
@@ -281,9 +321,17 @@ export interface CollectionTrackExport {
   note: string;
 }
 
+export interface CollectionFilters {
+  query?: string;
+  source?: string;
+  smartCollection?: string;
+  tag?: string;
+}
+
 export function buildCollectionMarkdown(
   collectionLabel: string,
-  tracks: CollectionTrackExport[]
+  tracks: CollectionTrackExport[],
+  options?: { collectionUrl?: string; filters?: CollectionFilters }
 ): string {
   const lines: string[] = [];
   lines.push('# MMX Music Studio Collection Export');
@@ -291,6 +339,21 @@ export function buildCollectionMarkdown(
   lines.push(`Exported at: ${new Date().toISOString()}`);
   lines.push(`Track count: ${tracks.length}`);
   lines.push(`Collection: ${collectionLabel}`);
+  if (options?.collectionUrl) {
+    lines.push(`Collection URL: ${sanitizeText(options.collectionUrl)}`);
+  }
+  if (options?.filters) {
+    const f = options.filters;
+    const filterLines: string[] = [];
+    if (f.query) filterLines.push(`- Query: ${sanitizeText(f.query)}`);
+    if (f.source) filterLines.push(`- Source: ${sanitizeText(f.source)}`);
+    if (f.smartCollection) filterLines.push(`- Smart collection: ${sanitizeText(f.smartCollection)}`);
+    if (f.tag) filterLines.push(`- Tag: ${sanitizeText(f.tag)}`);
+    if (filterLines.length > 0) {
+      lines.push('Filters:');
+      lines.push(...filterLines);
+    }
+  }
   lines.push('');
   tracks.forEach((t, idx) => {
     lines.push('---');
@@ -332,13 +395,16 @@ export function buildCollectionMarkdown(
 
 export function buildCollectionJson(
   collectionLabel: string,
-  tracks: CollectionTrackExport[]
+  tracks: CollectionTrackExport[],
+  options?: { collectionUrl?: string; filters?: CollectionFilters }
 ): string {
   const payload = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
     app: 'mmx-music-studio',
     collectionLabel,
+    collectionUrl: options?.collectionUrl || '',
+    filters: options?.filters || {},
     trackCount: tracks.length,
     tracks,
   };

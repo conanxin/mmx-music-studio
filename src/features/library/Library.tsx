@@ -11,6 +11,10 @@ import {
   setTrackAnnotation as setTrackAnnotationHelper,
   normalizeTags,
   getAllAnnotationTags,
+  recordAnnotationHistory,
+  getTrackAnnotationHistory,
+  type TrackAnnotationsMap,
+  type AnnotationHistoryEntry,
 } from '../../lib/trackAnnotations';
 import {
   buildLibraryBackup,
@@ -22,6 +26,7 @@ import {
   makeCollectionFilename,
   FAVORITES_KEY,
   type CollectionTrackExport,
+  type CollectionFilters,
   type LibraryLocalBackupV1,
 } from '../../lib/libraryBackup';
 
@@ -147,21 +152,58 @@ export default function Library({
   const [apiConnected, setApiConnected] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [filterSource, setFilterSource] = useState<FilterSource>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [detailTrack, setDetailTrack] = useState<TrackItem | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => readFavorites());
   // Phase Product Polish-K: Track annotations (localStorage)
   const [annotations, setAnnotations] = useState(() => loadTrackAnnotations());
-  const [smartCollection, setSmartCollection] = useState<SmartCollection>('all');
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
   // Phase Product Polish-L: Batch selection + batch tag input
   const [batchMode, setBatchMode] = useState(false);
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
   const [batchTagInput, setBatchTagInput] = useState('');
+  // Phase Product Polish-M: Batch remove tag input
+  const [batchRemoveTagInput, setBatchRemoveTagInput] = useState('');
   // Phase Product Polish-L: Backup file input ref
   const backupFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast, showCopy } = useCopyToast();
+
+  // Phase Product Polish-M: URL → filter state on first load
+  // Allowed sources: all | mmx-cli | minimax-api | mock | favorites
+  const allowedSources: FilterSource[] = ['all', 'mmx-cli', 'minimax-api', 'mock', 'favorites'];
+  const allowedSmart: SmartCollection[] = ['all', 'tagged', 'with-note', 'recent', 'cli-generated', 'api-generated'];
+  const initialQ = searchParams.get('q') || '';
+  const initialSource = searchParams.get('source') as FilterSource | null;
+  const initialCollection = searchParams.get('collection') as SmartCollection | null;
+  const initialTag = searchParams.get('tag') || null;
+  const [searchQuery, setSearchQuery] = useState(initialQ);
+  const [filterSource, setFilterSource] = useState<FilterSource>(
+    initialSource && allowedSources.includes(initialSource) ? initialSource : 'all'
+  );
+  const [smartCollection, setSmartCollection] = useState<SmartCollection>(
+    initialCollection && allowedSmart.includes(initialCollection) ? initialCollection : 'all'
+  );
+  const [tagFilter, setTagFilter] = useState<string | null>(
+    initialTag ? initialTag.slice(0, 24) : null
+  );
+
+  // Phase Product Polish-M: Reflect filter state in URL via replaceState
+  // No token/key/note/prompt/selectedTrackIds in URL — only safe filter params
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const next = new URLSearchParams();
+    if (searchQuery.trim()) next.set('q', searchQuery.trim().slice(0, 64));
+    if (filterSource !== 'all') next.set('source', filterSource);
+    if (smartCollection !== 'all') next.set('collection', smartCollection);
+    if (tagFilter) next.set('tag', tagFilter);
+    // Preserve ?track=<id> for share links to drawer
+    const trackParam = url.searchParams.get('track');
+    if (trackParam) next.set('track', trackParam);
+    const newQs = next.toString();
+    const target = url.pathname + (newQs ? `?${newQs}` : '') + url.hash;
+    if (target !== url.pathname + url.search + url.hash) {
+      window.history.replaceState(null, '', target);
+    }
+  }, [searchQuery, filterSource, smartCollection, tagFilter]);
 
   const loadTracks = async () => {
     setLoading(true);
@@ -231,8 +273,11 @@ function AnnotationEditor({
   onChange,
 }: {
   trackId: string;
-  annotations: import('../../lib/trackAnnotations').TrackAnnotationsMap;
-  onChange: (updated: import('../../lib/trackAnnotations').TrackAnnotationsMap) => void;
+  annotations: TrackAnnotationsMap;
+  onChange: (
+    updated: TrackAnnotationsMap,
+    meta?: { prev: { tags: string[]; note: string } | null; next: { tags: string[]; note: string } }
+  ) => void;
 }) {
   const ann = annotations[trackId] ?? { trackId, tags: [], note: '', updatedAt: '' };
   const [tags, setTags] = useState<string[]>(ann.tags);
@@ -255,9 +300,10 @@ function AnnotationEditor({
   };
 
   const handleSave = () => {
-    const { setTrackAnnotation } = require('../../lib/trackAnnotations');
-    const updated = setTrackAnnotation(annotations, trackId, tags, note);
-    onChange(updated);
+    // Phase Product Polish-M: capture prev/next to enable history recording
+    const prev = { tags: ann.tags, note: ann.note };
+    const updated = setTrackAnnotationHelper(annotations, trackId, tags, note);
+    onChange(updated, { prev, next: { tags, note } });
   };
 
   return (
@@ -400,12 +446,35 @@ function AnnotationEditor({
     }
   };
 
+  // Phase Product Polish-M: Build current collection URL (no token/key/track selection)
+  const buildCollectionUrl = (): string => {
+    if (typeof window === 'undefined') return '';
+    const url = new URL(window.location.href);
+    const next = new URLSearchParams();
+    if (searchQuery.trim()) next.set('q', searchQuery.trim().slice(0, 64));
+    if (filterSource !== 'all') next.set('source', filterSource);
+    if (smartCollection !== 'all') next.set('collection', smartCollection);
+    if (tagFilter) next.set('tag', tagFilter);
+    // Strip ?track=<id> — share link should open the collection, not a drawer
+    return url.origin + url.pathname + (next.toString() ? `?${next.toString()}` : '');
+  };
+
+  const buildFiltersForExport = (): CollectionFilters => ({
+    query: searchQuery.trim() || undefined,
+    source: filterSource !== 'all' ? filterSource : undefined,
+    smartCollection: smartCollection !== 'all' ? smartCollection : undefined,
+    tag: tagFilter || undefined,
+  });
+
   const handleExportCollectionMarkdown = (tracks: TrackItem[], label: string) => {
     if (tracks.length === 0) {
       showCopy('当前集合为空');
       return;
     }
-    const md = buildCollectionMarkdown(label, tracks.map(trackToExport));
+    const md = buildCollectionMarkdown(label, tracks.map(trackToExport), {
+      collectionUrl: buildCollectionUrl(),
+      filters: buildFiltersForExport(),
+    });
     triggerDownload(makeCollectionFilename('md'), 'text/markdown;charset=utf-8', md);
     showCopy(`已导出 ${tracks.length} 首为 Markdown`);
   };
@@ -415,9 +484,24 @@ function AnnotationEditor({
       showCopy('当前集合为空');
       return;
     }
-    const json = buildCollectionJson(label, tracks.map(trackToExport));
+    const json = buildCollectionJson(label, tracks.map(trackToExport), {
+      collectionUrl: buildCollectionUrl(),
+      filters: buildFiltersForExport(),
+    });
     triggerDownload(makeCollectionFilename('json'), 'application/json;charset=utf-8', json);
     showCopy(`已导出 ${tracks.length} 首为 JSON`);
+  };
+
+  // Phase Product Polish-M: Copy current collection link to clipboard
+  const handleCopyCollectionLink = () => {
+    const link = buildCollectionUrl();
+    if (!link) {
+      showCopy('复制失败');
+      return;
+    }
+    navigator.clipboard.writeText(link)
+      .then(() => showCopy('集合链接已复制'))
+      .catch(() => showCopy('复制失败'));
   };
 
   // Phase Product Polish-L: Batch selection handlers
@@ -457,7 +541,53 @@ function AnnotationEditor({
     setAnnotations(updated);
     saveTrackAnnotations(updated);
     setBatchTagInput('');
+    // Phase Product Polish-M: record history
+    recordAnnotationHistory({
+      action: 'batch_tag_added',
+      trackIds: Array.from(selectedTrackIds),
+      label: `批量添加「${tag}」`,
+      tags: [tag],
+    });
     showCopy(`已为 ${selectedTrackIds.size} 首作品添加标签`);
+  };
+
+  // Phase Product Polish-M: Batch remove tag from selected tracks
+  const handleBatchRemoveTag = () => {
+    if (selectedTrackIds.size === 0) {
+      showCopy('请先选择作品');
+      return;
+    }
+    const tag = batchRemoveTagInput.trim();
+    if (!tag) {
+      showCopy('请输入要删除的标签');
+      return;
+    }
+    const lower = tag.toLowerCase();
+    let updated = annotations;
+    let touchedCount = 0;
+    for (const trackId of selectedTrackIds) {
+      const ann = updated[trackId];
+      if (!ann) continue;
+      const filtered = ann.tags.filter(t => t.toLowerCase() !== lower);
+      if (filtered.length === ann.tags.length) continue; // not present
+      updated = setTrackAnnotationHelper(updated, trackId, filtered, ann.note);
+      touchedCount += 1;
+    }
+    if (touchedCount === 0) {
+      showCopy('所选作品中没有该标签');
+      return;
+    }
+    setAnnotations(updated);
+    saveTrackAnnotations(updated);
+    setBatchRemoveTagInput('');
+    // Phase Product Polish-M: record history
+    recordAnnotationHistory({
+      action: 'batch_tag_removed',
+      trackIds: Array.from(selectedTrackIds),
+      label: `批量删除「${tag}」（${touchedCount}/${selectedTrackIds.size} 首）`,
+      tags: [tag],
+    });
+    showCopy(`已从 ${touchedCount} 首作品移除标签`);
   };
 
   const handleExportSelectedMarkdown = () => {
@@ -522,6 +652,15 @@ function AnnotationEditor({
       const rawFavs = localStorage.getItem(FAVORITES_KEY);
       if (rawFavs) setFavorites(new Set(JSON.parse(rawFavs) as string[]));
     } catch { /* ignore */ }
+    // Phase Product Polish-M: record the import event in history
+    const annCount = Object.keys(payload.data.annotations || {}).length;
+    const histCount = Array.isArray(payload.data.annotationHistory)
+      ? payload.data.annotationHistory.length
+      : 0;
+    recordAnnotationHistory({
+      action: mode === 'merge' ? 'backup_import_merge' : 'backup_import_replace',
+      label: `${mode === 'merge' ? '合并' : '覆盖'}导入本地资料（${annCount} 条标注，${histCount} 条历史）`,
+    });
     showCopy(`本地资料已导入（${result.annotationsMerged} 条标注）`);
   };
 
@@ -815,6 +954,21 @@ const handlePlay = (track: TrackItem) => {
                     disabled={selectedTrackIds.size === 0 || !batchTagInput.trim()}
                   >批量添加标签</button>
                 </div>
+                {/* Phase Product Polish-M: Batch remove tag */}
+                <div className={styles.batchTagRow}>
+                  <input
+                    className={`${styles.batchTagInput} ${styles.batchRemoveTag}`}
+                    placeholder="输入要删除的标签（大小写不敏感）"
+                    value={batchRemoveTagInput}
+                    onChange={e => setBatchRemoveTagInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleBatchRemoveTag(); } }}
+                  />
+                  <button
+                    className={`${styles.batchAddTag} ${styles.batchRemoveTagBtn}`}
+                    onClick={handleBatchRemoveTag}
+                    disabled={selectedTrackIds.size === 0 || !batchRemoveTagInput.trim()}
+                  >批量删除标签</button>
+                </div>
                 <button
                   className={`${styles.collectionExportBtn} ${styles.secondary}`}
                   onClick={handleExportSelectedMarkdown}
@@ -827,6 +981,19 @@ const handlePlay = (track: TrackItem) => {
                 >导出所选 JSON</button>
               </>
             )}
+
+            {/* Phase Product Polish-M: Copy collection link */}
+            <button
+              className={`${styles.collectionExportBtn} ${styles.collectionShareBtn}`}
+              onClick={handleCopyCollectionLink}
+              title="把当前筛选条件变成可分享链接"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+              </svg>
+              复制当前集合链接
+            </button>
 
             <button
               className={styles.collectionExportBtn}
@@ -1054,12 +1221,54 @@ const handlePlay = (track: TrackItem) => {
               <AnnotationEditor
                 trackId={detailTrack.id}
                 annotations={annotations}
-                onChange={(updated) => {
+                onChange={(updated, meta) => {
                   setAnnotations(updated);
                   saveTrackAnnotations(updated);
+                  // Phase Product Polish-M: record history for the diff
+                  if (meta) {
+                    const prevTags = new Set(meta.prev?.tags || []);
+                    const nextTags = new Set(meta.next.tags);
+                    const added: string[] = [];
+                    const removed: string[] = [];
+                    nextTags.forEach(t => { if (!prevTags.has(t)) added.push(t); });
+                    prevTags.forEach(t => { if (!nextTags.has(t)) removed.push(t); });
+                    if (added.length > 0) {
+                      recordAnnotationHistory({
+                        action: 'tag_added',
+                        trackId: detailTrack.id,
+                        label: `添加标签「${added.join('、')}」`,
+                        tags: added,
+                      });
+                    }
+                    if (removed.length > 0) {
+                      recordAnnotationHistory({
+                        action: 'tag_removed',
+                        trackId: detailTrack.id,
+                        label: `删除标签「${removed.join('、')}」`,
+                        tags: removed,
+                      });
+                    }
+                    if (meta.prev?.note !== meta.next.note) {
+                      recordAnnotationHistory({
+                        action: 'note_updated',
+                        trackId: detailTrack.id,
+                        label: '更新备注',
+                        notePreview: meta.next.note.slice(0, 80),
+                      });
+                    }
+                  }
                   showCopy('作品备注已保存');
                 }}
               />
+
+              {/* Phase Product Polish-M: Annotation history for this track */}
+              <div className={styles.historySection}>
+                <div className={styles.historyTitle}>最近标注历史</div>
+                <TrackHistoryList
+                  trackId={detailTrack.id}
+                  getTrackAnnotationHistory={getTrackAnnotationHistory}
+                />
+              </div>
 
               <div className={styles.detailGrid}>
                 <div className={styles.detailRow}>
@@ -1194,4 +1403,54 @@ const handlePlay = (track: TrackItem) => {
       {toast && <div className={styles.toast}>{toast}</div>}
     </div>
   );
+}
+
+// Phase Product Polish-M: Per-track history list (max 5, no prompt, no IP/keys)
+function TrackHistoryList({
+  trackId,
+  getTrackAnnotationHistory,
+}: {
+  trackId: string;
+  getTrackAnnotationHistory: (trackId: string) => AnnotationHistoryEntry[];
+}) {
+  const [entries, setEntries] = useState<AnnotationHistoryEntry[]>(() =>
+    getTrackAnnotationHistory(trackId).slice(0, 5)
+  );
+
+  // Refresh on each render of the drawer
+  useEffect(() => {
+    setEntries(getTrackAnnotationHistory(trackId).slice(0, 5));
+  }, [trackId, getTrackAnnotationHistory]);
+
+  if (entries.length === 0) {
+    return <div className={styles.historyEmpty}>暂无标注历史</div>;
+  }
+
+  return (
+    <ul className={styles.historyList}>
+      {entries.map(e => (
+        <li key={e.id} className={styles.historyItem}>
+          <div className={styles.historyAction}>{e.label}</div>
+          {e.notePreview && (
+            <div className={styles.historyNote}>「{e.notePreview}」</div>
+          )}
+          <div className={styles.historyTime}>{formatHistoryTime(e.createdAt)}</div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function formatHistoryTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = Date.now();
+    const diff = now - d.getTime();
+    if (diff < 60_000) return '刚刚';
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+    return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
 }

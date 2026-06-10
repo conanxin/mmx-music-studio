@@ -1,12 +1,14 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.19-alpha · 2026-06-10
+> 文档版本：v0.4.20-alpha · 2026-06-10
 
 ## Current Public URL
 
 **https://music.conanxin.com**
 
 ## Current Release
+
+**v0.4.20-alpha** — Collection sharing, tag cleanup, and annotation history release (Phase Product-Polish-M: annotation history `mmx-studio:annotation-history:v1` cap 300 entries (7 action types: tag_added, tag_removed, batch_tag_added, batch_tag_removed, note_updated, backup_import_merge, backup_import_replace), batch remove tag (case-insensitive), collection URL state `?q=&source=&collection=&tag=` via `history.replaceState`, share link button, drawer 最近标注历史 list, backup v1.0 now includes annotationHistory with backward compat for older backups, collection Markdown/JSON export now include collectionUrl + filters, mobile CSS, smoke test 67/67)
 
 **v0.4.19-alpha** — Collections export, library batch actions, and annotation backup release (Phase Product-Polish-L: `libraryBackup.ts` with LibraryLocalBackupV1 model, batch mode checkbox + select-all + batch add tag, current/selected collection export Markdown/JSON with smart-collection labels, local backup panel with merge/replace import, mobile adaptation, smoke test)
 
@@ -33,6 +35,7 @@
 - Read-only operations panel (Phase Ops-Monitor-B: OpsPanel.tsx, `/api/health`+`/api/status` aggregation, launch guard/job queue/storage status cards, copyable diagnostic summary, auto-refresh, nav entry, mobile CSS)
 - Browser-local Library annotations (Phase Product-Polish-K: track tags, notes, smart collections, tag filter, enhanced search, Markdown export with tags/notes, `mmx-studio:track-annotations:v1` localStorage)
 - Library batch actions, collections export, local annotation backup (Phase Product-Polish-L: `libraryBackup.ts` with LibraryLocalBackupV1 model, batch mode checkbox + select-all/clear + batch add tag (≤12 tags, ≤24 chars), current/selected collection export Markdown/JSON with smart-collection labels, local backup panel exporting/importing localStorage data with merge or replace — no server upload, no schema migration)
+- Collection sharing, tag cleanup, annotation history (Phase Product-Polish-M: `mmx-studio:annotation-history:v1` cap 300, 7 action types, batch remove tag (case-insensitive), collection URL state `?q=&source=&collection=&tag=` via `history.replaceState`, share link button copies current filter URL, drawer `最近标注历史` last 5 actions per track, `LibraryLocalBackupV1.annotationHistory` field with backward compat for v1.0 backups, collection Markdown/JSON export now include `collectionUrl` + `filters`)
 
 ## What Remains Alpha / Experimental
 
