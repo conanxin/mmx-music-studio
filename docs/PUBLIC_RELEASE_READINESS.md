@@ -1,6 +1,6 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.13-alpha · 2026-06-10
+> 文档版本：v0.4.14-alpha · 2026-06-10
 
 ## Current Public URL
 
@@ -8,7 +8,7 @@
 
 ## Current Release
 
-**v0.4.13-alpha** — Public launch readiness and trust UX release
+**v0.4.14-alpha** — Protected public generation release (Phase Launch Guard-A)
 
 ## What is Ready
 

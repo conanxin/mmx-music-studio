@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.13--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.13-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.14--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.14-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -179,6 +179,7 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 ## Release
 
+**v0.4.14-alpha**：Phase Launch Guard-A — Protected public generation release (global pause, per-source daily limit, generation cooldown, hashed source guard state, `/api/health` guard fields)
 **v0.4.13-alpha**：Phase Product Polish-J — Public launch readiness and trust UX release
 **v0.4.12-alpha**：API Adapter async polling readiness + Product Polish-J public launch readiness
 **v0.4.11-alpha**：Phase Product Polish-I — Playback queue persistence and playback modes

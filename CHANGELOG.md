@@ -4,6 +4,28 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.14-alpha] — 2026-06-10
+
+### Highlights
+
+- **Protected public generation release** — Phase Launch Guard-A
+- Added public generation guardrails: global pause, per-source daily limit, generation cooldown
+- Added `server/launch-guard.ts` — hashed source guard state, atomic writes, daily reset
+- Added `/api/health` guard fields: `launchGuardEnabled`, `publicGenerationEnabled`, `perSourceDailyLimit`, `generationCooldownSeconds`
+- Added Studio guardrail error states: `public_generation_paused`, `per_source_daily_limit_exceeded`, `generation_cooldown_active`
+- Added Home / Trust generation protection copy
+- Added `scripts/launch-guard-a-smoke-test.sh` (31 assertions)
+- Updated systemd service and `scripts/systemd-service-smoke-test.sh` for Launch Guard settings
+- Updated `.env.example` with 4 Launch Guard variables
+- Updated `README.md`, `docs/DEVELOPMENT_HANDOFF.md`, `docs/PUBLIC_RELEASE_READINESS.md`
+
+### Notes
+
+- No generation is performed for this release
+- Guard only protects `/api/generate`; Library and playback remain available
+- Source identification uses SHA256 hashing — raw IP addresses are never stored
+- This is a lightweight public alpha guardrail, not a full account system
+
 ## [v0.4.13-alpha] — 2026-06-10
 
 ### Highlights
