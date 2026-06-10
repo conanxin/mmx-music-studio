@@ -228,7 +228,7 @@ export default function Home() {
         <div className={styles.feedbackCard}>
           <div className={styles.feedbackBadge}>
             <span className={styles.feedbackDot}/>
-            v0.4.12-alpha · Public Alpha
+            v0.4.16-alpha · Public Alpha
           </div>
           <h2 className={styles.feedbackTitle}>反馈与参与</h2>
           <div className={styles.feedbackLinks}>
@@ -258,6 +258,10 @@ export default function Home() {
           <p className={styles.feedbackPublicUrl}>
             公网访问：
             <a href="https://music.conanxin.com" target="_blank" rel="noopener noreferrer">music.conanxin.com</a>
+          </p>
+          <p className={styles.feedbackPublicUrl}>
+            运行状态：
+            <a href="/ops" target="_blank" rel="noopener noreferrer">运维诊断页</a>（只读）
           </p>
         </div>
       </section>

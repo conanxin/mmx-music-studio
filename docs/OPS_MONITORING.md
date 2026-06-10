@@ -106,6 +106,25 @@ RETENTION_DAYS=90 bash scripts/storage-a-retention-dry-run.sh
 bash scripts/storage-a-backup-manifest.sh
 ```
 
+### Ops panel (Phase Ops-Monitor-B)
+
+The public alpha includes a read-only operations panel at `/ops`.
+
+It summarizes:
+- Service status: public URL, backend mode, generation flags
+- Launch Guard state: enabled/disabled, per-source limits, cooldown
+- Job queue aggregates: pending, running, succeeded, failed
+- Storage aggregates: track count, audio count, approximate bytes
+- Release information: current version, GitHub links
+
+The panel does NOT expose:
+- Raw IP addresses, source hashes, prompts, API keys, tokens, raw logs, or absolute runtime paths
+
+The panel does NOT perform:
+- Generation, cleanup, deletion, reset, or restart
+
+Access: navigate to `https://music.conanxin.com/ops` or click "运维" in the navigation bar.
+
 ---
 
 ## Public alpha checklist

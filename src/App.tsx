@@ -7,6 +7,7 @@ import Library from './features/library/Library';
 import Settings from './features/settings/Settings';
 import Docs from './features/docs/Docs';
 import Jobs from './features/jobs/Jobs';
+import Ops from './features/ops/OpsPanel';
 import PreviewAccessGate from './components/PreviewAccessGate';
 import { useState, useCallback, useRef } from 'react';
 import type { GlobalPlayerTrack, PlaybackMode } from './lib/globalPlayerTrack';
@@ -221,6 +222,7 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="docs" element={<Docs />} />
               <Route path="jobs" element={<Jobs />} />
+              <Route path="ops" element={<Ops />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

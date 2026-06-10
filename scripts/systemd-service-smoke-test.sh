@@ -26,8 +26,8 @@ INSTALL="$PROJECT_ROOT/scripts/install-systemd-service.sh"
 PASS=0
 FAIL=0
 
-pass() { echo "  ✅ $*"; ((++PASS)); }
-fail() { echo "  ❌ $*"; ((++FAIL)); }
+pass() { echo "  ✅ $*"; PASS=$((PASS + 1)); }
+fail() { echo "  ❌ $*"; FAIL=$((FAIL + 1)); }
 
 echo "=== systemd Service Smoke Test ==="
 
@@ -156,6 +156,38 @@ if grep -qE "GENERATION_COOLDOWN_SECONDS" "$UNIT" 2>/dev/null; then
     pass "GENERATION_COOLDOWN_SECONDS configured"
 else
     fail "GENERATION_COOLDOWN_SECONDS not found"
+fi
+
+# 12. Ops-Monitor-A: /api/status endpoint exists in server
+STATUS_HANDLER="$PROJECT_ROOT/server/index.ts"
+if grep -q "/api/status" "$STATUS_HANDLER" 2>/dev/null; then
+    pass "/api/status handler exists in server/index.ts"
+else
+    fail "/api/status handler not found in server/index.ts"
+fi
+
+if grep -q "runtimeStatus" "$STATUS_HANDLER" 2>/dev/null; then
+    pass "runtimeStatus aggregate in server/index.ts"
+else
+    fail "runtimeStatus not found in server/index.ts"
+fi
+
+if grep -q "jobQueue" "$STATUS_HANDLER" 2>/dev/null; then
+    pass "jobQueue aggregate in server/index.ts"
+else
+    fail "jobQueue not found in server/index.ts"
+fi
+
+if grep -q "storage" "$STATUS_HANDLER" 2>/dev/null; then
+    pass "storage aggregate in server/index.ts"
+else
+    fail "storage not found in server/index.ts"
+fi
+
+if grep -q "launchGuard" "$STATUS_HANDLER" 2>/dev/null; then
+    pass "launchGuard aggregate in server/index.ts"
+else
+    fail "launchGuard not found in server/index.ts"
 fi
 
 echo ""

@@ -183,6 +183,8 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 **v0.4.16-alpha**：Phase Storage-A — Storage management and retention dry-run release (`server/storage-maintenance.ts`, inventory/retention-dry-run/backup-manifest scripts, `docs/STORAGE_POLICY.md`, dry-run only, no auto-deletion)
 
+**v0.4.16-alpha**：（规划中）Phase Ops-Monitor-B / Phase Release v0.4.17-alpha
+
 **v0.4.15-alpha**：Phase Ops-Monitor-A — Public runtime diagnostics release (`GET /api/status`, job queue/storage aggregates, public-safe runtime status summary, ops monitoring docs)
 
 **v0.4.14-alpha**：Phase Launch Guard-A — Protected public generation release (global pause, per-source daily limit, generation cooldown, hashed source guard state, `/api/health` guard fields)
