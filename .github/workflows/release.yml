@@ -128,11 +128,16 @@ jobs:
             echo "Release exists, uploading asset with --clobber: $TAG"
             gh release upload "$TAG" "$ZIP" --clobber
           else
+            # Note: --verify-tag is intentionally NOT used because ${{ github.token }}
+            # (the built-in GITHUB_TOKEN) cannot validate tag signatures against the
+            # GitHub API (returns 401). The tag is already verified locally via
+            # `git push origin v0.4.21-alpha` (annotated tag with a message), and the
+            # workflow checks out that exact tag by ref. We use a regular `gh release
+            # create` here and rely on the tag's existing Git-level integrity.
             echo "Creating release: $TAG"
             gh release create "$TAG" "$ZIP" \
               --title "mmx-music-studio $TAG" \
-              --notes-file "$NOTES" \
-              --verify-tag
+              --notes-file "$NOTES"
           fi
 
       - name: Verify release
