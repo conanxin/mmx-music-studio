@@ -2,7 +2,7 @@
 
 > Phase: **Deploy-CF-C**
 > Release: **v0.4.20-alpha**
-> Status: **Dashboard configuration pending — documentation in place**
+> Status: **✅ PASS — Dashboard configured and verified (2026-06-10)**
 
 ## Goal
 
@@ -115,3 +115,27 @@ The script is intentionally **idempotent across both states**:
 - ❌ No Cloudflare token is committed or output by this phase
 - ❌ No call to `/api/generate` during this phase
 - ❌ No music generated during this phase
+
+## Verification (2026-06-10)
+
+The Cloudflare Dashboard application `MMX Music Studio Ops` was configured by the operator
+against the recommendations above. The smoke test then went from `PENDING` → `PASS`:
+
+| Check | Method | Expected | Observed |
+| --- | --- | --- | --- |
+| `GET /` (public) | `curl -I` | `HTTP/2 200` | `HTTP/2 200` ✅ |
+| `GET /library` (public) | `curl -I` | `HTTP/2 200` | `HTTP/2 200` ✅ |
+| `GET /api/health` (public) | `curl -I` | `HTTP/2 200` + JSON `ok:true` | `HTTP/2 200` + `application/json` ✅ |
+| `GET /ops` (protected) | `curl -I` | `302` to Cloudflare Access login | `HTTP/2 302`, `Location: https://soft-wood-f891.cloudflareaccess.com/cdn-cgi/access/login/music.conanxin.com?...&redirect_url=%2Fops`, `www-authenticate: Cloudflare-Access` ✅ |
+| `GET /api/status` (protected) | `curl -I` | `302` to Cloudflare Access login | `HTTP/2 302`, `Location: https://soft-wood-f891.cloudflareaccess.com/cdn-cgi/access/login/music.conanxin.com?...&redirect_url=%2Fapi%2Fstatus`, `www-authenticate: Cloudflare-Access` ✅ |
+
+`bash scripts/deploy-cf-c-access-smoke-test.sh` → `DEPLOY_CF_C_ACCESS_SMOKE_PASS` (12/12 PASS, exit 0).
+
+Both protected responses carry the Cloudflare Access signatures:
+
+- `set-cookie: CF_AppSession=...` (Cloudflare session cookie issued for the protected resource)
+- `www-authenticate: Cloudflare-Access resource_metadata="https://music.conanxin.com/.well-known/cloudflare-access-protected-resource/..."` (RFC 8617 resource metadata hint)
+- `cache-control: private, max-age=0, no-store, no-cache, must-revalidate` (no caching of the Access challenge)
+
+Public paths remained completely untouched by Access; their response headers do **not** include
+any of the above Access signatures.

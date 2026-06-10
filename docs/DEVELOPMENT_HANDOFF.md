@@ -23,15 +23,17 @@
 - **No server upload.**
 - **No generation is performed for this release.**
 
-### In-flight phase: Deploy-CF-C (Cloudflare Access for Ops / Status)
+### In-flight phase: Deploy-CF-C (Cloudflare Access for Ops / Status) — ✅ verified 2026-06-10
 
 - `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
   (`MMX Music Studio Ops`, self-hosted, paths `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`).
 - Public paths retained: `/`, `/library`, `/studio`, `/api/health`.
 - `/api/generate` is **not** moved to Access — it stays under server-side Launch Guard.
-- Dashboard configuration of the Access app is pending operator action.
-- `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_PENDING` before
-  Dashboard config and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` after.
+- Dashboard application `MMX Music Studio Ops` has been **enabled** by the operator.
+- `scripts/deploy-cf-c-access-smoke-test.sh` now returns `DEPLOY_CF_C_ACCESS_SMOKE_PASS`
+  (12/12, exit 0). Protected responses carry `Location: https://soft-wood-f891.cloudflareaccess.com/...`,
+  `www-authenticate: Cloudflare-Access`, and `set-cookie: CF_AppSession=...`.
+- Verification table recorded in `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` ("Verification (2026-06-10)").
 - **No code changes** to server routes, storage, audit log, or generation logic.
 
 ### Local backup localStorage keys
@@ -72,7 +74,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 公开生成保护 | ✅ 完成 | Phase Launch Guard-A：全局暂停/每来源日限额/冷却/SHA256源识别 |
 | 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
 | 存储治理 | ✅ 完成 | Phase Storage-A：inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
-| Cloudflare Access for Ops/Status | ⏳ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 配置待用户执行；`/api/generate` 仍由 Launch Guard 守 |
+| Cloudflare Access for Ops/Status | ✅ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 应用 `MMX Music Studio Ops` 已启用，smoke test 12/12 PASS；`/api/generate` 仍由 Launch Guard 守 |
 
 ---
 

@@ -24,6 +24,12 @@ Full configuration reference: [`docs/deploy/CLOUDFLARE_ACCESS_OPS.md`](deploy/CL
 > The Access smoke test (`scripts/deploy-cf-c-access-smoke-test.sh`) returns
 > `DEPLOY_CF_C_ACCESS_PENDING` until the Dashboard application is enabled,
 > and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` afterwards. This is by design.
+>
+> **Current state (2026-06-10):** `DEPLOY_CF_C_ACCESS_SMOKE_PASS` — Dashboard
+> application `MMX Music Studio Ops` enabled, `/ops` and `/api/status` return
+> `302` to the Cloudflare Access login interstitial, public paths unaffected.
+> See [`docs/deploy/CLOUDFLARE_ACCESS_OPS.md`](deploy/CLOUDFLARE_ACCESS_OPS.md)
+> for the verification table.
 
 ## Public endpoints
 
