@@ -1,0 +1,12 @@
+{
+  "data": {
+    "task_id": "fixture-task-id-succeeded",
+    "status": "succeeded",
+    "audio": "https://example.invalid/fixture-succeeded.mp3"
+  },
+  "trace_id": "fixture-trace-id-succeeded",
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "success"
+  }
+}

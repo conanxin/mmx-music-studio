@@ -296,6 +296,23 @@ Error message: `"MiniMax API returned an async task response, but task polling i
 - `parsedToResult()` converts `direct_audio` / `hex_audio` to `MiniMaxResult` for backward compatibility with existing `executeApiJob`
 - `response.ts` is ~280 lines, fully self-contained
 
+### Phase API-Debug-E: Async Polling Design (2026-06-10)
+
+**pollingEndpointConfigured: false** — Official polling endpoint not confirmed from MiniMax documentation. Async task handling retained as defensive compatibility only. No guessing.
+
+- `server/adapters/minimax-api/polling.ts` — polling types + status normalizer (DEFENSIVE, no real calls)
+- `server/adapters/minimax-api/response.ts` — async_task parser throws `MINIMAX_API_ASYNC_POLLING_REQUIRED`
+- Studio `async_polling_required` error card with user-facing hint
+- 3 async fixtures: processing / succeeded / failed
+
+### Key Properties
+- Never logs full raw response
+- Never logs API key / Authorization header
+- No hardcoded polling endpoint guessing
+- `parsedToResult()` converts `direct_audio` / `hex_audio` to `MiniMaxResult` for backward compatibility with existing `executeApiJob`
+- `response.ts` is ~280 lines, fully self-contained
+- `polling.ts` is TYPE-ONLY — no network calls, no real requests
+
 ### Next Step: Phase API-Debug-B1
 Before a real API call can succeed, we need to confirm the official MiniMax task status polling endpoint (or user provides API docs). No real calls until polling endpoint is confirmed.
 
@@ -303,6 +320,7 @@ Before a real API call can succeed, we need to confirm the official MiniMax task
 ```
 api-adapter-async-contract-smoke-test.sh: 20/20 PASS
 api-adapter-contract-smoke-test.sh: 21/21 PASS
+api-adapter-async-polling-design-smoke-test.sh: 24/24 PASS
 ```
 
 ---
@@ -425,7 +443,7 @@ api-adapter-official-contract-smoke-test.sh: 29/29 PASS
 | No apiKey in server logs | ✅ PASS |
 | Payload builder has all mode fields | ✅ PASS |
 | Response parser handles URL + hex | ✅ PASS |
-| Async polling NOT present | ⚠️ EXPECTED — may need to add |
+| Async polling NOT present | ✅ Addressed — defensive polling design (polling.ts, Phase API-Debug-E) |
 | BYOK key TTL + expiry | ✅ PASS |
 | Track mapping uses createTrackRecord | ✅ PASS |
 | Two distinct guard layers | ✅ PASS |

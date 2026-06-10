@@ -133,6 +133,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Playback queue persistence | ✅ PASS | Queue survives page refresh via localStorage (`mmx-studio:playback-queue:v1`), mode saved |
 | Playback modes | ✅ PASS | sequence / repeat-all / repeat-one / shuffle toggle button, mode label in queue panel |
 | Playback progress memory | ✅ PASS | Throttled 5s save to localStorage, progress restored on track reload |
+| Async API polling | ✅ Design | `pollingEndpointConfigured: false`, `MINIMAX_API_ASYNC_POLLING_REQUIRED`, Studio error card, 3 async fixtures |
 
 **Product Polish releases:**
 - **Phase Product Polish-I** — Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence / repeat-all / repeat-one / shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label

@@ -156,7 +156,14 @@ function getGenerationPhaseMessage(status: string, elapsedSec: number): string {
 }
 
 // Phase Product Polish-C: Error classification
-type ErrorType = 'byok_missing' | 'quota_exhausted' | 'rate_limit' | 'generation_access' | 'network' | 'unknown';
+type ErrorType =
+  | 'byok_missing'
+  | 'quota_exhausted'
+  | 'rate_limit'
+  | 'generation_access'
+  | 'network'
+  | 'async_polling_required'
+  | 'unknown';
 
 const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
   byok_missing: {
@@ -178,6 +185,10 @@ const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
   network: {
     title: '网络连接失败',
     hint: '无法连接到服务器，请检查网络或稍后重试。',
+  },
+  async_polling_required: {
+    title: '需要任务轮询',
+    hint: 'API 返回了异步任务，当前版本尚未配置轮询端点。请保留该错误信息，后续接入官方 status endpoint 后可正常使用。',
   },
   unknown: {
     title: '生成失败',
@@ -216,15 +227,16 @@ function formatElapsed(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function classifyError(err: { type?: string; message?: string } | null | undefined): ErrorType {
+function classifyError(err: { type?: string; code?: string; message?: string } | null | undefined): ErrorType {
   if (!err) return 'unknown';
-  const t = err.type ?? '';
+  const t = err.type ?? err.code ?? '';
   const m = (err.message ?? '').toLowerCase();
   if (t === 'missing_api_key' || m.includes('api key') || m.includes('byok')) return 'byok_missing';
   if (t === 'daily_quota_exceeded' || t === 'real_api_attempt_limit_exceeded' || m.includes('次数已用完') || m.includes('额度已用完')) return 'quota_exhausted';
   if (t === 'rate_limit_exceeded' || m.includes('rate limit') || m.includes('限流') || m.includes('频繁')) return 'rate_limit';
   if (t === 'generation_access_required' || t === 'generation_access') return 'generation_access';
   if (t === 'network_error' || m.includes('timeout') || m.includes('网络') || m.includes('fetch') || m.includes('econnrefused') || m.includes('enotfound')) return 'network';
+  if (t === 'MINIMAX_API_ASYNC_POLLING_REQUIRED' || m.includes('async task') || m.includes('task_id') && m.includes('polling') || m.includes('任务轮询') || m.includes('polling is not configured')) return 'async_polling_required';
   return 'unknown';
 }
 

@@ -1,0 +1,11 @@
+{
+  "data": {
+    "task_id": "fixture-task-id-failed",
+    "status": "failed"
+  },
+  "trace_id": "fixture-trace-id-failed",
+  "base_resp": {
+    "status_code": 1001,
+    "status_msg": "fixture async failure"
+  }
+}

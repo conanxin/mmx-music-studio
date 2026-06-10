@@ -413,6 +413,12 @@ See [docs/AUDIT_AND_SECURITY_HARDENING.md](docs/AUDIT_AND_SECURITY_HARDENING.md)
   - Audio endpoint `/api/tracks/{id}/audio` → 200 OK, 4.76 MB
   - Response kind: `direct_audio` (binary → local storage)
   - 详情见 [docs/API_DEBUG_C_REAL_CALL_REPORT.md](docs/API_DEBUG_C_REAL_CALL_REPORT.md)
+- Phase API-Debug-E: Async polling design (2026-06-10) ✅
+  - `server/adapters/minimax-api/polling.ts` — `MiniMaxAsyncTaskStatus` enum, `normalizeMiniMaxTaskStatus()`, `parseAsyncTaskReference()`
+  - `pollingEndpointConfigured: false` — official polling endpoint not confirmed
+  - `MINIMAX_API_ASYNC_POLLING_REQUIRED` error code + Studio `async_polling_required` error card
+  - 3 async fixtures: processing / succeeded / failed
+  - No real polling calls made
 
 **推荐主链路：** Web + MMX CLI backend（`backend=cli`）。API Adapter 已完成一次真实 BYOK 生成验证，但仍为实验性路径。
 

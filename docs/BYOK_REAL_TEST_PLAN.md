@@ -381,5 +381,7 @@ Phase API-Debug-B1 完成了官方 contract 对齐：
 
 **后续真实 API 工作方向**：
 - Phase API-Debug-D：稳定化文档、UI 状态（当前阶段）
-- Phase API-Debug-E：async polling 确认（若 MiniMax 返回 `task_id`）
+- Phase API-Debug-E (2026-06-10)：async polling design 收口。官方 polling endpoint 未确认，保留 defensive compatibility。当前方
+式：async_task parser 抛出 `MINIMAX_API_ASYNC_POLLING_REQUIRED`，Studio 显示"需要任务轮询"错误提示。如
+果 MiniMax 未来返回 `task_id`，App 已有完整的 UX 路径。
 - Phase Release v0.4.2-alpha：正式发布文档更新

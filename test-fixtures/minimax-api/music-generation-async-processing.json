@@ -1,0 +1,11 @@
+{
+  "data": {
+    "task_id": "fixture-task-id-processing",
+    "status": "processing"
+  },
+  "trace_id": "fixture-trace-id-processing",
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "processing"
+  }
+}

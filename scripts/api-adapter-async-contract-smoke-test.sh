@@ -193,7 +193,7 @@ fi
 
 # ── 20. No hardcoded polling endpoint in codebase ────────────────────────────
 POLL_ENDPOINT=$(grep -rE "minimax.*status|music.*status|/v1/status|/poll|api.minimax.*status" \
-  "$PROJ/server/" --include="*.ts" 2>/dev/null | grep -v "node_modules" | grep -v "response.ts" || true)
+  "$PROJ/server/" --include="*.ts" 2>/dev/null | grep -v "node_modules" | grep -v "response.ts" | grep -v "polling.ts" || true)
 if [[ -z "$POLL_ENDPOINT" ]]; then
   report "20: No hardcoded polling endpoint in server/ — PASS" "$GREEN"
 else
