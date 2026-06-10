@@ -4,6 +4,41 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.22-alpha] — 2026-06-11
+
+### Highlights
+
+- **Annotation timeline and batch notes release.**
+- Added **per-track annotation timeline** in the Library drawer (default 5 entries, expand to full local history, 查看全部 / 收起 controls).
+- Added **action badges** for 7 annotation event types (tag_added, tag_removed, batch_tag_added, batch_tag_removed, note_updated, backup_import_merge, backup_import_replace).
+- Added **Library-wide annotation history panel** (`标注历史总览`, collapsible, latest 20 events, explicit read-only notice, no 清空 button).
+- Added **history filters**: 全部 / 标签变更 / 备注变更 / 导入.
+- Added **batch note editing** (overwrite + append modes, 500-char note cap, records `note_updated` history with all selected trackIds).
+- Improved **Library mobile polish** for timeline, batch note controls, and history filters (horizontal scroll for filter chips, full-width textarea at ≤639px).
+- Included **Release workflow reliability fix** after v0.4.21-alpha:
+  - removed `gh release create --verify-tag` (401 with `${{ github.token }}`)
+  - kept automatic GitHub Release workflow operational
+  - manual fallback documented in skill `github-actions-release-automation` Pitfall 4
+
+### Added
+
+- `scripts/product-polish-n-smoke-test.sh` (55 checks, 55/55 PASS).
+- `LibraryHistoryPanel` component in `src/features/library/Library.tsx` (collapsible history overview, filter chips, history action badges).
+- `TrackHistoryTimeline` component (replaces M-stage `TrackHistoryList`, adds collapse 5 / expand 300 / 查看全部 / 收起 / 7 action badges).
+- `handleBatchNoteEdit` function in `Library.tsx` (overwrite / append modes, 500-char cap, history recording).
+- Library CSS additions: `.timelineActions`, `.timelineBadge`, `.timelineBadgeXxx`, `.timelineToggleRow`, `.historyFilterRow`, `.batchNoteInput`, `.batchNoteTextarea`, `.batchNoteActions`, `.batchNoteHint`, `.libraryHistoryPanel`, `.libraryHistoryList`, `.libraryHistoryEmpty`, `.libraryHistoryMeta`, `.libraryHistoryBadge`.
+
+### Changed
+
+- `scripts/product-polish-m-smoke-test.sh` now accepts both `TrackHistoryList` / `最近标注历史` and `TrackHistoryTimeline` / `标注时间线` (backward compatibility for the rename).
+
+### Notes
+
+- Annotation history remains browser-local.
+- No server schema migration.
+- No generation is performed for this release.
+- Library playback and queues are unaffected.
+
 ## [v0.4.21-alpha] — 2026-06-10
 
 ### Highlights

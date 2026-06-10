@@ -1,29 +1,36 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.21-alpha · 2026-06-10
+> 文档版本：v0.4.22-alpha · 2026-06-11
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
-**v0.4.21-alpha** — Phase Release v0.4.21-alpha: Protected Ops and release automation closeout.
+**v0.4.22-alpha** — Phase Release v0.4.22-alpha: Annotation timeline and batch notes release.
 
+- Annotation timeline (per-track): default 5 entries + 查看全部 / 收起 (expand to full local history, 300 cap).
+- 7 action badges: 添加标签 / 删除标签 / 批量添加标签 / 批量删除标签 / 更新备注 / 合并导入 / 覆盖导入.
+- Library-wide annotation history panel (`LibraryHistoryPanel`): latest 20 events, 4 filter chips (全部 / 标签变更 / 备注变更 / 导入), collapsible, no 清空 button.
+- Batch note editing: overwrite / append modes, 500-char note cap, records `note_updated` annotation history with all selected trackIds.
+- Improved mobile Library polish (≤639px): horizontal-scroll filter chips, full-width batch note textarea.
 - Annotation history (browser-local): `mmx-studio:annotation-history:v1`, cap 300, includes
   tag_added / tag_removed / batch_tag_added / batch_tag_removed / note_updated /
   backup_import_merge / backup_import_replace.
+- Local backup v1.0 includes `annotationHistory`; v1.0 backups without history still importable
+  (replace-mode preserves current history; merge-mode dedupes by id, cap 300).
 - Batch remove tag (case-insensitive) added to batch toolbar.
 - Collection URL state: `?q=&source=&collection=&tag=` written via `history.replaceState`.
 - Collection share link button in toolbar: copies a shareable URL of the current filter view.
 - Drawer shows `最近标注历史` (last 5 actions) for the current track.
-- Local backup now includes `annotationHistory`; v1.0 backups without history still importable
-  (replace-mode preserves current history; merge-mode dedupes by id, cap 300).
 - Collection export Markdown / JSON now include `collectionUrl` + `filters` (query / source / smart collection / tag).
+- Included **Release workflow fix** (commit `9662754`): removed `gh release create --verify-tag`
+  (401 with `${{ github.token }}`); kept automatic GitHub Release workflow operational.
 - **No server schema migration.**
 - **No server upload.**
 - **No generation is performed for this release.**
 
-### In-flight phase: none — Deploy-CF-C and Release-Automation-A are both closed (2026-06-10)
+### In-flight phase: none — Deploy-CF-C, Release-Automation-A, and Product Polish-N are all closed (2026-06-10/11)
 
 - **Phase Deploy-CF-C** (Cloudflare Access for Ops / Status) — ✅ verified 2026-06-10.
   - `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
@@ -43,7 +50,7 @@
 
 ### Next recommended phases
 
-- **Phase Product Polish-N** — ✅ PASS 2026-06-11 — annotation history UI upgrade (Annotation timeline with collapse 5 / expand 300 + 查看全部/收起), action badges (7 types), Library-wide 标注历史总览 折叠面板 (last 20 + 4 filter chips), batch note editor (覆盖/追加 modes, 500-char cap, history records all selected trackIds), mobile CSS polish, browser-local only (no `/api/generate`, no server upload, no schema migration). Smoke test 51/51 PASS.
+- **Phase Product Polish-O** — follow-up UX polish (per-track timeline enhancements, optional dark-mode batch toolbar, drawer UX micro-polish).
 - **Phase Storage-B operator-confirmed cleanup** — operator-driven cleanup of
   `storage/guard/`, `storage/tracks/`, `storage/quota/`, `storage/audit/` (no auto delete; dry-run
   manifest; human confirmation required).

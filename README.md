@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.21--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.21-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.22--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.22-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -185,6 +185,27 @@ These guardrails are for public alpha protection. They are not a replacement for
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.22-alpha**：Phase Release v0.4.22-alpha — Annotation timeline and batch notes release (commit `f3ab915` + release prep, tag `v0.4.22-alpha`)
+
+### Current Status (v0.4.22-alpha)
+
+| Capability | Status |
+|------------|--------|
+| Annotation timeline: PASS | ✅ (Library drawer per-track 5-default / expand-to-300 timeline with 7 action badges) |
+| Library-wide history: PASS | ✅ (`LibraryHistoryPanel`, 20 latest events, 4 filter chips, collapsible, no 清空 button) |
+| Batch note editing: PASS | ✅ (overwrite + append modes, 500-char cap, `note_updated` history) |
+| Product Polish-N smoke: PASS | ✅ (55/55) |
+| Release workflow fix: PASS | ✅ (commit `9662754`, `--verify-tag` removed; manual fallback documented) |
+| Cloudflare Access for Ops: PASS | ✅ (HTTP 302 → Access login) |
+| `/ops` protected: PASS | ✅ |
+| `/api/status` protected: PASS | ✅ |
+| `/` public: PASS | ✅ (HTTP 200) |
+| `/library` public: PASS | ✅ (HTTP 200) |
+| `/api/health` public: PASS | ✅ (HTTP 200, JSON `ok:true`) |
+| `/api/generate` still owned by Launch Guard | ✅ Confirmed (no Access double-layer) |
+| Public URL: https://music.conanxin.com | ✅ |
+| Recommended backend: CLI | ✅ |
 
 **v0.4.21-alpha**：Phase Release v0.4.21-alpha — Protected Ops and release automation closeout (commits `b4d39b3` + `d0acc1f` + release prep, tag `v0.4.21-alpha`)
 

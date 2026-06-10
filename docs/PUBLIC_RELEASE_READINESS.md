@@ -1,12 +1,14 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.21-alpha · 2026-06-10
+> 文档版本：v0.4.22-alpha · 2026-06-11
 
 ## Current Public URL
 
 **https://music.conanxin.com**
 
 ## Current Release
+
+**v0.4.22-alpha** — Annotation timeline and batch notes release (Phase Release v0.4.22-alpha: per-track annotation timeline with 7 action badges + 查看全部 / 收起, Library-wide 标注历史总览 (collapsible, 20 latest, 4 filter chips, no 清空 button), batch note editor (overwrite / append modes, 500-char cap, `note_updated` history with all selected trackIds), improved Library mobile polish for timeline and batch note controls, included Release workflow fix after v0.4.21-alpha: removed `gh release create --verify-tag` (401 with `${{ github.token }}`); `product-polish-n-smoke-test` 55/55 PASS; all 15 smoke tests green, all 4 typecheck/build green)
 
 **v0.4.21-alpha** — Protected Ops and release automation closeout (Phase Release v0.4.21-alpha: verified Cloudflare Access protection for `/ops`, `/ops/*`, `/api/status`, `/api/debug/*` at the edge; `/`, `/library`, `/studio`, `/api/health` remain public; `/api/generate` remains owned by the server-side Launch Guard; added and verified automatic GitHub Release workflow `.github/workflows/release.yml` with tag-push trigger + `workflow_dispatch` backfill + zip safety check + built-in `${{ github.token }}`; backfilled `v0.4.18-alpha`, `v0.4.19-alpha`, `v0.4.20-alpha`; `deploy-cf-c-access-smoke-test` 12/12 PASS)
 
