@@ -4,6 +4,43 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.20-alpha] — 2026-06-10
+
+### Highlights
+
+- **Collection links and annotation history release.**
+- Added **Library collection sharing links** via URL query state.
+- Added URL query support for filter state:
+  - `q`
+  - `source`
+  - `collection`
+  - `tag`
+- Added **"copy current collection link"** action (`useSearchParams` + `{ replace: true }`).
+- Added **batch remove tag** action (case-insensitive match, 4 error prompt cases).
+- Added **browser-local annotation history** localStorage key: `mmx-studio:annotation-history:v1` (cap 300).
+- Added 7 annotation history action types: `tag_added`, `tag_removed`, `batch_tag_added`, `batch_tag_removed`, `note_updated`, `backup_import_merge`, `backup_import_replace`.
+- Added **recent annotation history** in Library drawer (last 5 per track, `notePreview` ≤ 80 chars).
+- Enhanced **collection Markdown export** with `collectionUrl` + filters.
+- Enhanced **collection JSON export** with `collectionUrl` + `filters` object.
+- Extended **`LibraryLocalBackupV1`** with `annotationHistory` field + `meta.historyCount`.
+- Preserved **backward compatibility** with older v1.0 backups (no `annotationHistory` field = no action).
+
+### Notes
+
+- Annotation history uses **browser localStorage only** — no account sync, no server upload.
+- Collection links do **not** include notes, prompts, selected track IDs, tokens, raw IP, or source hashes.
+- Annotation history does **not** include full prompts, API keys, tokens, raw IP, or source hashes.
+- **No server schema migration.**
+- **No generation is performed for this release.** No `/api/generate` call.
+- Library playback, queue, and download behaviour are unaffected.
+- Product-Polish-M smoke test: 82/82 PASS.
+
+### Safety
+
+- Browser-local only. No server upload of local metadata.
+- Backup import is backward compatible with v1.0 (older backups still importable).
+- URL filter state is shareable, but does **not** leak private local data.
+
 ## [v0.4.19-alpha] — 2026-06-10
 
 ### Highlights

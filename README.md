@@ -183,6 +183,24 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 ## Release
 
+**v0.4.20-alpha**：Phase Release v0.4.20-alpha — Collection links and annotation history release (commit `a05f60a`, tag `v0.4.20-alpha`)
+
+### Current Status (v0.4.20-alpha)
+
+| Capability | Status |
+|------------|--------|
+| Collection links | ✅ PASS |
+| URL query filters (`q` / `source` / `collection` / `tag`) | ✅ PASS |
+| Batch remove tag | ✅ PASS |
+| Annotation history | ✅ PASS |
+| Backup `annotationHistory` extension | ✅ PASS |
+| Markdown / JSON export `collectionUrl` + `filters` | ✅ PASS |
+| localStorage key `mmx-studio:annotation-history:v1` | ✅ PASS (cap 300) |
+| `LibraryLocalBackupV1` v1.0 backward compat | ✅ PASS |
+| 7 history action types | ✅ PASS |
+| Drawer history list (last 5 per track) | ✅ PASS |
+| Product-Polish-M smoke test (82/82) | ✅ PASS |
+
 **v0.4.20-alpha**：Phase Product-Polish-M — Collection sharing, tag cleanup, and annotation history release (annotation history `mmx-studio:annotation-history:v1` cap 300, batch remove tag, collection URL `?q=&source=&collection=&tag=` via `history.replaceState`, drawer history list, share link button, backup v1.0 now includes annotationHistory, collection export with collectionUrl+filters, mobile CSS, smoke test 67/67)
 
 **v0.4.19-alpha**：Phase Product-Polish-L — Collections export, library batch actions, and annotation backup release (`libraryBackup.ts` with LibraryLocalBackupV1 model, batch mode, collection MD/JSON export, local backup panel with merge/replace, mobile adaptation, smoke test)
