@@ -93,6 +93,19 @@ bash scripts/systemd-service-smoke-test.sh
 bash scripts/ops-monitor-a-smoke-test.sh
 ```
 
+### Storage management (Phase Storage-A)
+
+```bash
+# Current inventory: track count, audio count, orphan/missing counts
+bash scripts/storage-a-inventory-report.sh
+
+# Retention dry-run: candidate count + reclaimable bytes (no files deleted)
+RETENTION_DAYS=90 bash scripts/storage-a-retention-dry-run.sh
+
+# Backup manifest snapshot (stdout, safe to store externally)
+bash scripts/storage-a-backup-manifest.sh
+```
+
 ---
 
 ## Public alpha checklist
@@ -109,6 +122,7 @@ Use these to quickly assess the public deployment:
 - [ ] Secret scan is clean (`python3 scripts/ci-secret-scan.py`)
 - [ ] No runtime guard state committed to git
 - [ ] `/api/status` returns `runtimeStatus` with job queue and storage aggregates
+- [ ] No storage cleanup scripts are run automatically (operator-driven only)
 
 ---
 

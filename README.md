@@ -152,6 +152,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | API Adapter real BYOK call | ✅ One succeeded | `direct_audio` response kind |
 | Public Generation Guardrails | ✅ PASS | Phase Launch Guard-A — global pause, per-source daily limit, cooldown |
 | Public Ops Monitoring | ✅ PASS | Phase Ops-Monitor-A — `/api/health` + `/api/status`, job queue/storage aggregates |
+| Storage Management | ✅ Phase Storage-A | `storage-a-inventory-report.sh`, `storage-a-retention-dry-run.sh`, `storage-a-backup-manifest.sh`, no auto-deletion |
 
 ### Public Generation Guardrails
 
@@ -190,7 +191,7 @@ These guardrails are for public alpha protection. They are not a replacement for
 **v0.4.9-alpha**：Phase Product Polish-G — Global mini player and playback continuity
 **v0.4.8-alpha**：Phase Product Polish-F — Prompt templates and style presets
 
-**v0.4.14-alpha**：（规划中）Phase Release v0.4.14-alpha / Phase Ops-Monitor-A / Phase Storage-A
+**v0.4.15-alpha**：（规划中）Phase Storage-A / Phase Release v0.4.16-alpha
 
 **v0.4.6-alpha**：Stable public deployment release — Cloudflare Tunnel public access verified (`https://music.conanxin.com`); Node server installed as `mmx-music-studio.service` (enabled at boot, `Restart=always`, 50/day limit); CLI backend diagnostics (`cli-backend-diagnostics.sh` 13 checks, `cli-backend-readiness-smoke-test.sh` 26 checks); systemd helpers (unit file, install script, smoke test); README/handoff/deployment docs updated to reflect systemd-managed deployment.
 

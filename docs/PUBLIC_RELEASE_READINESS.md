@@ -22,7 +22,8 @@
 - Async polling readiness (types + Studio error UX)
 - HTTPS via Cloudflare Tunnel
 - Public generation guardrails (Phase Launch Guard-A)
-- Public runtime diagnostics (Phase Ops-Monitor-A: `/api/health` + `/api/status`)
+- Public runtime diagnostics (Phase Ops-Monitor-A: `/api/status`, job queue/storage aggregates)
+- Storage management and retention planning (Phase Storage-A: inventory, dry-run, backup manifest, no auto-deletion)
 
 ## What Remains Alpha / Experimental
 

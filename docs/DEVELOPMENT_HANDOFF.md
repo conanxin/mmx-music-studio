@@ -30,7 +30,8 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 额度限制/限流 | ✅ 完成 | Phase 4C：Rate Limit + Daily Quota |
 | 任务历史管理 | ✅ 完成 | Phase 4D：Jobs 页面 + delete/retry/stats API |
 | 公开生成保护 | ✅ 完成 | Phase Launch Guard-A：全局暂停/每来源日限额/冷却/SHA256源识别 |
-|| 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
+| 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
+| 存储治理 | ✅ Phase Storage-A | inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
 
 ---
 
