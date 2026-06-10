@@ -1,24 +1,27 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.23-alpha · 2026-06-11
+> 文档版本：v0.4.24-alpha · 2026-06-11
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
-**v0.4.23-alpha** — Phase Release v0.4.23-alpha: Library UX polish and timeline clarity release.
+**v0.4.24-alpha** — Phase Release v0.4.24-alpha: Library interaction consistency release.
 
-- Current view summary added
-- Clear all filters added
-- Empty states improved (search / smart collection / tag / favorites / batch / annotation history)
-- Batch toolbar grouping added (选择 / 批量标注 / 导出)
-- Drawer hierarchy polish completed (标签与备注 section, drawer section dividers, historyHintInline)
-- Timeline readability polish completed (border consistency, hint inline)
-- Mobile polish 639 / 390 breakpoints
+- Phase Product Polish-P completed
+- Active filter chips added (来源 / 集合 / 标签 / 搜索 with per-chip × remove buttons)
+- Per-filter clear added (search / source / collection / tag — single filter clear without affecting others)
+- Search match hints added (标题 / Prompt / 歌词 / 模式 / 来源 / 标签 / 备注, max 3 + N more)
+- Batch operation scope hint added (已选 N 首 / 请选择作品后再执行批量操作)
+- Timeline accessibility polish completed (role=group, aria-label, per-chip title)
+- Timeline filter actions a11y polish
+- Track checkbox aria-pressed added
+- aria-label / title polish across batch toggle, filter chips, drawer buttons
+- Mobile polish 390px / 639px (activeFilterChip wrap, match hint ellipsis, batchScopeHint role=status)
 - No server schema migration, no generation logic changes, browser-local only
 
-**v0.4.23-alpha** — Phase Release v0.4.22-alpha: Annotation timeline and batch notes release.
+**v0.4.23-alpha** — Phase Release v0.4.23-alpha: Library UX polish and timeline clarity release.
 
 **Phase Product Polish-O completed** — Library UX polish round 2:
 - Current view summary + clear all filters
@@ -26,20 +29,10 @@
 - Batch toolbar grouping (选择 / 批量标注 / 导出)
 - Drawer hierarchy polish (标签与备注 section heading, drawer section dividers)
 - Timeline readability polish (border consistency, today/yesterday hint)
-- Mobile polish 639 / 390 breakpoints
+- Mobile polish639 /390 breakpoints
 - No server schema migration, no generation logic changes, browser-local only
 
-**Phase Product Polish-P pending closeout** — Library interaction polish round 3:
-- Active filter chips (来源 / 集合 / 标签 / 搜索) with per-chip × remove buttons
-- Per-filter clear handlers (search/source/collection/tag) — single filter clear without affecting others
-- Search match hints on each card (matching 标题 / Prompt / 歌词 / 模式 / 来源 / 标签 / 备注, max 3 + N more)
-- Batch operation scope hint (批量操作将作用于已选择的 N 首作品 / 请选择作品后再执行批量操作)
-- Timeline action filters a11y polish (role=group, aria-label, per-chip title)
-- Accessibility polish across batch toggle, checkbox, filter chips, drawer buttons
-- Mobile polish: activeFilterChip wrap, match hint ellipsis, batchScopeHint role=status
-- No server schema migration, no generation, browser-local only
-
-- Annotation timeline (per-track): default 5 entries + 查看全部 / 收起 (expand to full local history, 300 cap).
+- Annotation timeline (per-track): default5 entries + 查看全部 /收起 (expand to full local history,300 cap).
 - 7 action badges: 添加标签 / 删除标签 / 批量添加标签 / 批量删除标签 / 更新备注 / 合并导入 / 覆盖导入.
 - Library-wide annotation history panel (`LibraryHistoryPanel`): latest 20 events, 4 filter chips (全部 / 标签变更 / 备注变更 / 导入), collapsible, no 清空 button.
 - Batch note editing: overwrite / append modes, 500-char note cap, records `note_updated` annotation history with all selected trackIds.
@@ -60,9 +53,16 @@
 - **No server upload.**
 - **No generation is performed for this release.**
 
-### In-flight phase: none — Deploy-CF-C, Release-Automation-A, and Product Polish-N are all closed (2026-06-10/11)
+### In-flight phase: none — Phase Release v0.4.24-alpha closed (2026-06-11)
 
-- **Phase Deploy-CF-C** (Cloudflare Access for Ops / Status) — ✅ verified 2026-06-10.
+- **Phase Release v0.4.24-alpha** (Phase Product Polish-P promoted to release) — ✅ closed2026-06-11.
+ - Library interaction consistency: removable active filter chips, per-filter clear handlers,
+ search match hints (categories only, max3 + N more), batch operation scope hints,
+ timeline accessibility polish (role=group, aria-label, per-chip title), track checkbox
+ aria-pressed, full a11y / title polish across Library controls, mobile polish390 /639.
+ - No server schema migration, no `/api/generate` calls, no server upload, browser-local only.
+ - See `docs/release/RELEASE_NOTES_v0.4.24-alpha.md` and `CHANGELOG.md` v0.4.24-alpha.
+- **Phase Deploy-CF-C** (Cloudflare Access for Ops / Status) — ✅ verified2026-06-10.
   - `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
     (`MMX Music Studio Ops`, self-hosted, paths `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`).
   - Public paths retained: `/`, `/library`, `/studio`, `/api/health`.
@@ -80,14 +80,10 @@
 
 ### Next recommended phases
 
-- **Phase Product Polish-P** — follow-up UX polish (per-track timeline enhancements, optional drawer micro-polish).
 - **Phase Storage-B operator-confirmed cleanup** — operator-driven dry run + manual confirm cleanup of `storage/tracks/`, `storage/quota/`, `storage/audit/`, `storage/guard/`.
-- **Phase Deploy-CF-D** (optional) — broader Cloudflare Access coverage or Turnstile if desired.
-- **Phase Storage-B operator-confirmed cleanup** — operator-driven cleanup of
-  `storage/guard/`, `storage/tracks/`, `storage/quota/`, `storage/audit/` (no auto delete; dry-run
-  manifest; human confirmation required).
-- **Phase Deploy-CF-D** (optional) — if broader Access / Turnstile coverage is desired (e.g.
-  Turnstile on `/api/generate`, Access on additional debug endpoints).
+- **Phase Deploy-CF-D** (optional) — broader Cloudflare Access coverage or Turnstile if desired
+ (e.g. Turnstile on `/api/generate`, Access on additional debug endpoints).
+
 
 ### Local backup localStorage keys
 

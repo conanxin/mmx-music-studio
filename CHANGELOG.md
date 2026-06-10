@@ -4,6 +4,28 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.24-alpha] — 2026-06-11
+
+### Highlights
+
+- Library interaction consistency release.
+- Added removable active filter chips.
+- Added per-filter clear actions.
+- Added search match hints on Library cards.
+- Added batch operation scope hints.
+- Improved disabled states for batch actions.
+- Improved timeline filter accessibility.
+- Added aria-label / title / aria-pressed polish for key Library controls.
+- Improved mobile layout for active filters and timeline filters.
+- Added Product Polish-P smoke test.
+
+### Notes
+
+- No server schema migration.
+- No generation is performed for this release.
+- Library playback and queues are unaffected.
+- Local Library data remains browser-local.
+
 ## [v0.4.23-alpha] — 2026-06-11
 
 ### Highlights
