@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import styles from './Library.module.css';
 import { MOCK_TASKS, formatDuration, formatRelativeTime, MODE_LABELS } from '../../mock/data';
@@ -8,11 +8,22 @@ import type { GlobalPlayerTrack } from '../../lib/globalPlayerTrack';
 import {
   loadTrackAnnotations,
   saveTrackAnnotations,
+  setTrackAnnotation as setTrackAnnotationHelper,
   normalizeTags,
   getAllAnnotationTags,
 } from '../../lib/trackAnnotations';
-
-const FAVORITES_KEY = 'mmx-studio:favorites';
+import {
+  buildLibraryBackup,
+  validateLibraryBackup,
+  applyLibraryBackup,
+  buildCollectionMarkdown,
+  buildCollectionJson,
+  makeBackupFilename,
+  makeCollectionFilename,
+  FAVORITES_KEY,
+  type CollectionTrackExport,
+  type LibraryLocalBackupV1,
+} from '../../lib/libraryBackup';
 
 type FilterSource = 'all' | 'mmx-cli' | 'minimax-api' | 'mock' | 'favorites';
 type SmartCollection = 'all' | 'tagged' | 'with-note' | 'recent' | 'cli-generated' | 'api-generated';
@@ -144,6 +155,12 @@ export default function Library({
   const [annotations, setAnnotations] = useState(() => loadTrackAnnotations());
   const [smartCollection, setSmartCollection] = useState<SmartCollection>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  // Phase Product Polish-L: Batch selection + batch tag input
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set());
+  const [batchTagInput, setBatchTagInput] = useState('');
+  // Phase Product Polish-L: Backup file input ref
+  const backupFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast, showCopy } = useCopyToast();
 
   const loadTracks = async () => {
@@ -321,6 +338,191 @@ function AnnotationEditor({
     const md = `# ${track.title || '无标题'}\n\n- 来源：${source}\n- 时长：${track.durationText || '—'}\n- 创建时间：${createdAt}\n- Track ID：${track.id}${downloadLine}${promptLine}${tagsLine}${noteLine}
 `;
     navigator.clipboard.writeText(md).then(() => showCopy('作品信息已复制')).catch(() => showCopy('复制失败'));
+  };
+
+  // Phase Product Polish-L: Build export payload for one track
+  const trackToExport = (track: TrackItem): CollectionTrackExport => {
+    const ann = annotations[track.id];
+    const source = sourceLabel(track.generationSource, track.isMock);
+    const shareUrl = `${window.location.origin}/library?track=${encodeURIComponent(track.id)}`;
+    return {
+      id: track.id,
+      title: track.title,
+      prompt: track.prompt,
+      lyrics: track.lyrics,
+      mode: track.mode,
+      source,
+      durationMs: track.durationMs,
+      createdAt: track.createdAt ? new Date(track.createdAt).toISOString() : '',
+      shareUrl,
+      tags: ann ? ann.tags : [],
+      note: ann ? ann.note : '',
+    };
+  };
+
+  // Phase Product Polish-L: Smart collection label for export buttons
+  const smartCollectionLabel = useMemo(() => {
+    if (smartCollection === 'all') return '';
+    if (smartCollection === 'tagged') return '有标签';
+    if (smartCollection === 'with-note') return '有备注';
+    if (smartCollection === 'recent') return '最近生成';
+    if (smartCollection === 'cli-generated') return 'CLI 生成';
+    if (smartCollection === 'api-generated') return 'API 生成';
+    return '';
+  }, [smartCollection]);
+
+  const collectionLabel = useMemo(() => {
+    if (smartCollectionLabel) return `智能集合：${smartCollectionLabel}`;
+    if (tagFilter) return `标签筛选：${tagFilter}`;
+    if (searchQuery) return `搜索：${searchQuery}`;
+    if (filterSource === 'all') return '全部作品';
+    if (filterSource === 'favorites') return '收藏列表';
+    if (filterSource === 'mmx-cli') return 'MMX CLI 列表';
+    if (filterSource === 'minimax-api') return 'MiniMax API 列表';
+    if (filterSource === 'mock') return '示例列表';
+    return '当前列表';
+  }, [smartCollectionLabel, tagFilter, searchQuery, filterSource]);
+
+  // Phase Product Polish-L: trigger browser download from a string blob
+  const triggerDownload = (filename: string, mime: string, content: string) => {
+    try {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      showCopy('下载失败');
+    }
+  };
+
+  const handleExportCollectionMarkdown = (tracks: TrackItem[], label: string) => {
+    if (tracks.length === 0) {
+      showCopy('当前集合为空');
+      return;
+    }
+    const md = buildCollectionMarkdown(label, tracks.map(trackToExport));
+    triggerDownload(makeCollectionFilename('md'), 'text/markdown;charset=utf-8', md);
+    showCopy(`已导出 ${tracks.length} 首为 Markdown`);
+  };
+
+  const handleExportCollectionJson = (tracks: TrackItem[], label: string) => {
+    if (tracks.length === 0) {
+      showCopy('当前集合为空');
+      return;
+    }
+    const json = buildCollectionJson(label, tracks.map(trackToExport));
+    triggerDownload(makeCollectionFilename('json'), 'application/json;charset=utf-8', json);
+    showCopy(`已导出 ${tracks.length} 首为 JSON`);
+  };
+
+  // Phase Product Polish-L: Batch selection handlers
+  const toggleTrackSelected = (id: string) => {
+    setSelectedTrackIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    setSelectedTrackIds(new Set(filteredTracks.map(t => t.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedTrackIds(new Set());
+  };
+
+  const handleBatchAddTag = () => {
+    if (selectedTrackIds.size === 0) {
+      showCopy('请先选择作品');
+      return;
+    }
+    const tag = batchTagInput.trim();
+    if (!tag) {
+      showCopy('请输入标签');
+      return;
+    }
+    let updated = annotations;
+    for (const trackId of selectedTrackIds) {
+      const ann = updated[trackId] ?? { trackId, tags: [], note: '', updatedAt: '' };
+      const merged = normalizeTags([...ann.tags, tag]);
+      updated = setTrackAnnotationHelper(updated, trackId, merged, ann.note);
+    }
+    setAnnotations(updated);
+    saveTrackAnnotations(updated);
+    setBatchTagInput('');
+    showCopy(`已为 ${selectedTrackIds.size} 首作品添加标签`);
+  };
+
+  const handleExportSelectedMarkdown = () => {
+    const tracks = filteredTracks.filter(t => selectedTrackIds.has(t.id));
+    handleExportCollectionMarkdown(tracks, `所选作品（${tracks.length} 首）`);
+  };
+
+  const handleExportSelectedJson = () => {
+    const tracks = filteredTracks.filter(t => selectedTrackIds.has(t.id));
+    handleExportCollectionJson(tracks, `所选作品（${tracks.length} 首）`);
+  };
+
+  // Phase Product Polish-L: Local backup export
+  const handleExportBackup = () => {
+    try {
+      const payload = buildLibraryBackup();
+      const json = JSON.stringify(payload, null, 2);
+      triggerDownload(makeBackupFilename(), 'application/json;charset=utf-8', json);
+      showCopy(`已导出本地资料（${payload.meta.annotationCount} 条标注）`);
+    } catch {
+      showCopy('导出失败');
+    }
+  };
+
+  // Phase Product Polish-L: Local backup import (file input)
+  const handleBackupFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const result = validateLibraryBackup(parsed);
+      if (!result.ok) {
+        showCopy(`导入失败：${result.error}`);
+        return;
+      }
+      // Mode buttons handle the actual apply; here we just stash the file and prompt via toast.
+      // The two separate buttons (合并 / 覆盖) below read the cached file from ref.
+      pendingBackupRef.current = result.payload;
+      showCopy('备份文件已读取，请选择导入方式');
+    } catch {
+      showCopy('导入失败：文件格式不正确');
+    } finally {
+      if (backupFileInputRef.current) backupFileInputRef.current.value = '';
+    }
+  };
+
+  // Stash the most-recent validated backup payload until user picks a mode
+  const pendingBackupRef = useRef<LibraryLocalBackupV1 | null>(null);
+
+  const handleApplyImport = (mode: 'merge' | 'replace') => {
+    const payload = pendingBackupRef.current;
+    if (!payload) {
+      showCopy('请先选择备份文件');
+      return;
+    }
+    const result = applyLibraryBackup(payload, mode);
+    pendingBackupRef.current = null;
+    // Refresh local state from localStorage
+    setAnnotations(loadTrackAnnotations());
+    try {
+      const rawFavs = localStorage.getItem(FAVORITES_KEY);
+      if (rawFavs) setFavorites(new Set(JSON.parse(rawFavs) as string[]));
+    } catch { /* ignore */ }
+    showCopy(`本地资料已导入（${result.annotationsMerged} 条标注）`);
   };
 
   // Phase Product Polish-G: Convert TrackItem → GlobalPlayerTrack
@@ -569,6 +771,118 @@ const handlePlay = (track: TrackItem) => {
               </button>
             </div>
           )}
+
+          {/* Phase Product Polish-L: Batch mode toolbar + collection export */}
+          <div className={styles.batchToolbar}>
+            <button
+              className={`${styles.batchToggle} ${batchMode ? styles.batchActive : ''}`}
+              onClick={() => {
+                setBatchMode(b => !b);
+                if (batchMode) clearSelection();
+              }}
+              aria-pressed={batchMode}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+              {batchMode ? '退出批量管理' : '批量管理'}
+            </button>
+
+            {batchMode && (
+              <>
+                <span className={styles.batchSelected}>已选择 {selectedTrackIds.size} 首</span>
+                <button
+                  className={styles.batchSelectAll}
+                  onClick={selectAllFiltered}
+                  disabled={filteredTracks.length === 0}
+                >全选当前列表</button>
+                <button
+                  className={styles.batchClear}
+                  onClick={clearSelection}
+                  disabled={selectedTrackIds.size === 0}
+                >清除选择</button>
+                <div className={styles.batchTagRow}>
+                  <input
+                    className={styles.batchTagInput}
+                    placeholder="给所选作品添加标签"
+                    value={batchTagInput}
+                    onChange={e => setBatchTagInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleBatchAddTag(); } }}
+                  />
+                  <button
+                    className={styles.batchAddTag}
+                    onClick={handleBatchAddTag}
+                    disabled={selectedTrackIds.size === 0 || !batchTagInput.trim()}
+                  >批量添加标签</button>
+                </div>
+                <button
+                  className={`${styles.collectionExportBtn} ${styles.secondary}`}
+                  onClick={handleExportSelectedMarkdown}
+                  disabled={selectedTrackIds.size === 0}
+                >导出所选 Markdown</button>
+                <button
+                  className={`${styles.collectionExportBtn} ${styles.secondary}`}
+                  onClick={handleExportSelectedJson}
+                  disabled={selectedTrackIds.size === 0}
+                >导出所选 JSON</button>
+              </>
+            )}
+
+            <button
+              className={styles.collectionExportBtn}
+              onClick={() => handleExportCollectionMarkdown(filteredTracks, collectionLabel)}
+              disabled={filteredTracks.length === 0}
+              title={`导出 ${collectionLabel}`}
+            >
+              {smartCollectionLabel
+                ? `导出「${smartCollectionLabel}」Markdown`
+                : '导出当前集合 Markdown'}
+            </button>
+            <button
+              className={`${styles.collectionExportBtn} ${styles.secondary}`}
+              onClick={() => handleExportCollectionJson(filteredTracks, collectionLabel)}
+              disabled={filteredTracks.length === 0}
+              title={`导出 ${collectionLabel}`}
+            >
+              {smartCollectionLabel
+                ? `导出「${smartCollectionLabel}」JSON`
+                : '导出当前集合 JSON'}
+            </button>
+          </div>
+        </div>
+
+        {/* Phase Product Polish-L: Local backup panel */}
+        <div className={styles.backupPanel}>
+          <div className={styles.backupHeader}>
+            <strong className={styles.backupTitle}>本地资料备份</strong>
+            <span className={styles.backupHint}>这些资料只保存在当前浏览器。导出备份可用于换浏览器或避免本地数据丢失。</span>
+          </div>
+          <div className={styles.backupRow}>
+            <button
+              className={styles.backupBtn}
+              onClick={handleExportBackup}
+            >导出本地资料</button>
+            <button
+              className={`${styles.backupBtn} ${styles.secondary}`}
+              onClick={() => backupFileInputRef.current?.click()}
+            >导入本地资料</button>
+            <input
+              ref={backupFileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleBackupFileChosen}
+              className={styles.backupFileInput}
+              aria-label="选择备份文件"
+            />
+            <button
+              className={`${styles.backupBtn} ${styles.secondary}`}
+              onClick={() => handleApplyImport('merge')}
+            >合并导入</button>
+            <button
+              className={`${styles.backupBtn} ${styles.secondary}`}
+              onClick={() => handleApplyImport('replace')}
+            >覆盖导入</button>
+          </div>
         </div>
 
         {/* Hint */}
@@ -580,8 +894,27 @@ const handlePlay = (track: TrackItem) => {
 
         {/* Grid */}
         <div className={styles.grid}>
-          {filteredTracks.map(track => (
-            <div key={track.id} className={styles.card}>
+          {filteredTracks.map(track => {
+            const isSelected = selectedTrackIds.has(track.id);
+            return (
+            <div
+              key={track.id}
+              className={`${styles.card} ${batchMode ? styles.cardSelect : ''} ${isSelected ? styles.cardSelected : ''}`}
+            >
+              {/* Phase Product Polish-L: batch mode checkbox */}
+              {batchMode && (
+                <label
+                  className={styles.checkbox}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleTrackSelected(track.id)}
+                    aria-label={`选择 ${track.title}`}
+                  />
+                </label>
+              )}
               <div className={styles.cardHeader}>
                 <div className={styles.cardInfo}>
                   <h3 className={styles.cardTitle}>{track.title}</h3>
@@ -659,7 +992,8 @@ const handlePlay = (track: TrackItem) => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Empty state */}

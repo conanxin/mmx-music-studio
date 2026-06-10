@@ -374,9 +374,18 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | Phase Storage-A | Storage management and cleanup | ✅ 完成 |
 | **Phase Ops-Monitor-B** | **Read-only operations panel: OpsPanel.tsx, /api/health+status aggregation, launch guard/job queue/storage cards, diagnostic summary with copy, auto-refresh, nav entry, mobile CSS, no sensitive data exposed** | ✅ PASS |
 | **Phase Release v0.4.17-alpha** | **Read-only operations panel release — /ops page, CI** | ✅ PASS |
+| **Phase Product-Polish-L** | **Collections export, library batch actions, and annotation backup: libraryBackup.ts, batch mode, collection MD/JSON export, local backup panel** | ✅ PASS |
 | **Phase Product-Polish-K** | **Tags, notes, and smart collections** | ✅ PASS |
 
 > **Browser localStorage:** Track annotations use `mmx-studio:track-annotations:v1` (tags[], note, updatedAt per trackId). Tags max 12, note max 500 chars. Not synced to server. See `src/lib/trackAnnotations.ts`.
+
+> **Phase Product-Polish-L — localStorage snapshot for backup (`src/lib/libraryBackup.ts`):**
+> - `mmx-studio:track-annotations:v1` — annotations map (tags + note per trackId)
+> - `mmx-studio:favorites` — array of favorited trackIds
+> - `mmx-studio:prompt-templates` — Studio prompt templates
+> - `mmx-studio:playback-queue:v1` — playback queue + mode (App.tsx)
+> - `mmx-studio:playback-progress:v1` — last position per track (Layout.tsx)
+> Backup is browser-local export/import only. Never uploaded to the server. No schema migration. No account sync.
 
 | Phase 4C | 多用户鉴权 + 速率限制 + 每日额度 | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
