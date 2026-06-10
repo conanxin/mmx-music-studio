@@ -1,12 +1,24 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.22-alpha · 2026-06-11
+> 文档版本：v0.4.23-alpha · 2026-06-11
+
+## Release notes
+
+- **v0.4.23-alpha — Library UX polish and timeline clarity release**
+  - Library current view summary improved
+  - Library empty states improved
+  - Export / backup local-only clarification improved
+  - No server upload
+  - No server schema migration
+  - `/ops` and `/api/status` remain protected by Cloudflare Access
 
 ## Current Public URL
 
 **https://music.conanxin.com**
 
 ## Current Release
+
+**v0.4.23-alpha** — Library UX polish and timeline clarity release
 
 **v0.4.22-alpha** — Annotation timeline and batch notes release
 

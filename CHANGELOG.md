@@ -4,6 +4,28 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.23-alpha] — 2026-06-11
+
+### Highlights
+
+- Library UX polish and timeline clarity release.
+- Added current view summary.
+- Added clear all filters action.
+- Added better empty states.
+- Grouped batch toolbar into selection, annotation, and export sections.
+- Improved Library drawer hierarchy.
+- Improved timeline readability and hints.
+- Clarified collection link, export, and local backup copy.
+- Improved mobile Library layout.
+- Added Product Polish-O smoke test.
+
+### Notes
+
+- No server schema migration.
+- No generation is performed for this release.
+- Library playback and queues are unaffected.
+- Local Library data remains browser-local.
+
 ## [v0.4.22-alpha] — 2026-06-11
 
 ### Highlights

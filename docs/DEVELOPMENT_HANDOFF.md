@@ -1,15 +1,26 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.22-alpha · 2026-06-11
+> 文档版本：v0.4.23-alpha · 2026-06-11
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
+**v0.4.23-alpha** — Phase Release v0.4.23-alpha: Library UX polish and timeline clarity release.
+
+- Current view summary added
+- Clear all filters added
+- Empty states improved (search / smart collection / tag / favorites / batch / annotation history)
+- Batch toolbar grouping added (选择 / 批量标注 / 导出)
+- Drawer hierarchy polish completed (标签与备注 section, drawer section dividers, historyHintInline)
+- Timeline readability polish completed (border consistency, hint inline)
+- Mobile polish 639 / 390 breakpoints
+- No server schema migration, no generation logic changes, browser-local only
+
 **v0.4.22-alpha** — Phase Release v0.4.22-alpha: Annotation timeline and batch notes release.
 
-**Phase Product Polish-O (pending closeout)** — Library UX polish round 2 (commit pending):
+**Phase Product Polish-O completed** — Library UX polish round 2:
 - Current view summary + clear all filters
 - Better empty states (search / smart collection / tag / batch)
 - Batch toolbar grouping (选择 / 批量标注 / 导出)
@@ -59,7 +70,9 @@
 
 ### Next recommended phases
 
-- **Phase Product Polish-O** — ✅ closeout pending — Library UX polish round 2 (current view summary, clear all filters, empty states, batch grouping, drawer hierarchy, timeline polish, mobile polish).
+- **Phase Product Polish-P** — follow-up UX polish (per-track timeline enhancements, optional drawer micro-polish).
+- **Phase Storage-B operator-confirmed cleanup** — operator-driven dry run + manual confirm cleanup of `storage/tracks/`, `storage/quota/`, `storage/audit/`, `storage/guard/`.
+- **Phase Deploy-CF-D** (optional) — broader Cloudflare Access coverage or Turnstile if desired.
 - **Phase Storage-B operator-confirmed cleanup** — operator-driven cleanup of
   `storage/guard/`, `storage/tracks/`, `storage/quota/`, `storage/audit/` (no auto delete; dry-run
   manifest; human confirmation required).

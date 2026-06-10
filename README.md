@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.22--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.22-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.23--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.23-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -186,23 +186,25 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 ## Release
 
+**v0.4.23-alpha**：Phase Release v0.4.23-alpha — Library UX polish and timeline clarity release (commit `bde4cff` + release prep, tag `v0.4.23-alpha`)
+
 **v0.4.22-alpha**：Phase Release v0.4.22-alpha — Annotation timeline and batch notes release (commit `f3ab915` + release prep, tag `v0.4.22-alpha`)
 
 **Phase Product Polish-O**：Library final polish, timeline refinements, and UX consistency (commit pending — Current view summary, Clear all filters, Better empty states, Batch toolbar grouping, Drawer hierarchy polish, Timeline readability polish, Local-only export / backup clarification, Mobile polish 639/390)
 
-### Current Status (v0.4.22-alpha)
+### Current Status (v0.4.23-alpha)
 
-### Phase Product Polish-O (pending closeout)
+- Current view summary: PASS
+- Clear all filters: PASS
+- Better empty states: PASS
+- Batch toolbar grouping: PASS
+- Drawer hierarchy polish: PASS
+- Timeline readability polish: PASS
+- Mobile Library polish: PASS
+- Cloudflare Access for Ops: PASS
+- Public URL: https://music.conanxin.com
+- Recommended backend: CLI
 
-- Current view summary (source / smart collection / tag / search / count)
-- Clear all filters (resets search + source + smart collection + tag + URL query)
-- Better empty states (no search results / smart collection empty / tag empty / batch nothing selected)
-- Batch toolbar grouping (选择 / 批量标注 / 导出, three groups)
-- Drawer hierarchy polish (标签与备注 section heading, drawer section dividers, historyHintInline)
-- Timeline readability polish (border consistency, today/yesterday short format via existing rendering, hint inline)
-- Local-only export / backup clarification (collection link only copies filter conditions, local backup does not include audio, no server upload)
-- No server schema migration
-- No generation logic changes
 
 ### Current Status (v0.4.22-alpha)
 
