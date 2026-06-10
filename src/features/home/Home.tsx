@@ -218,6 +218,7 @@ export default function Home() {
           <div className={styles.trustCard}>
             <h3>生成保护</h3>
             <p>公开 Alpha 启用了轻量生成保护：同一访问来源每日有生成次数与冷却限制，用于保护服务器和额度。</p>
+            <p>运行状态可通过健康检查与公开状态摘要观察。</p>
           </div>
         </div>
       </section>

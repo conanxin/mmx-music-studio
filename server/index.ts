@@ -87,6 +87,7 @@ import {
   isGuardBlocked,
   type LaunchGuardConfig,
 } from './launch-guard.js';
+import { buildRuntimeStatusSummary } from './runtime-status.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
 import { setJobApiKey, getKeyLengthBucket } from './byok-secrets.js';
 
@@ -582,6 +583,37 @@ async function handleGenAccessLogout(
   }
   res.setHeader('Set-Cookie', clearGenAccessCookie());
   sendJson(res, 200, { ok: true, message: '已退出生成访问' });
+}
+
+async function handleStatus(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  /**
+   * Public-safe runtime status endpoint.
+   * Exposes job queue aggregate, storage aggregate, launch guard summary.
+   * Does NOT expose: raw IP, sourceHash, token, API key, prompt, raw logs.
+   */
+  const summary = buildRuntimeStatusSummary({
+    backend: config.backend,
+    realGenerationEnabled: config.realGenerationEnabled,
+    mockGenerationEnabled: config.mockGenerationEnabled,
+    launchGuardConfig: config.launchGuard,
+    outputDir: config.outputDir,
+  });
+
+  sendJson(res, 200, {
+    ok: true,
+    service: 'mmx-music-studio',
+    timestamp: summary.service.timestamp,
+    runtimeStatus: {
+      backend: summary.backend,
+      launchGuard: summary.launchGuard,
+      jobQueue: summary.jobQueue,
+      storage: summary.storage,
+    },
+  });
 }
 
 async function handleHealth(
@@ -1436,6 +1468,8 @@ async function routeHandler(
 
   if (url === '/api/health') {
     await handleHealth(req, res, config);
+  } else if (url === '/api/status') {
+    await handleStatus(req, res, config);
   } else if (url === '/api/debug/reset-rate-limit') {
     if (!debugResetEndpointsEnabled) {
       res.writeHead(404).end();

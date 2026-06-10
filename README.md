@@ -151,6 +151,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | BYOK key storage | ✅ Memory only | No disk persistence |
 | API Adapter real BYOK call | ✅ One succeeded | `direct_audio` response kind |
 | Public Generation Guardrails | ✅ PASS | Phase Launch Guard-A — global pause, per-source daily limit, cooldown |
+| Public Ops Monitoring | ✅ PASS | Phase Ops-Monitor-A — `/api/health` + `/api/status`, job queue/storage aggregates |
 
 ### Public Generation Guardrails
 

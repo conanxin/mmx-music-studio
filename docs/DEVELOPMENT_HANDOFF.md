@@ -30,6 +30,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 额度限制/限流 | ✅ 完成 | Phase 4C：Rate Limit + Daily Quota |
 | 任务历史管理 | ✅ 完成 | Phase 4D：Jobs 页面 + delete/retry/stats API |
 | 公开生成保护 | ✅ 完成 | Phase Launch Guard-A：全局暂停/每来源日限额/冷却/SHA256源识别 |
+| 公开运行观测 | ✅ 进行中 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
 
 ---
 
@@ -367,7 +368,7 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Release v0.4.13-alpha** | **Public launch readiness and trust UX release** | ✅ PASS |
 | **Phase Launch Guard-A** | **Public generation guardrails: global pause, per-source daily limit, per-source cooldown, source hash (no raw IP), /api/health guard fields, Studio 3-error UX, Home Trust section, .env.example, systemd smoke, smoke test** | ✅ PASS |
 | **Phase Release v0.4.14-alpha** | **Protected public generation release — global pause, per-source daily limit, cooldown, hashed source guard, /api/health guard fields, Studio/Home UX, systemd smoke, CI** | ✅ PASS |
-| Phase Ops-Monitor-A | Server monitoring and health observation | 📋 规划 |
+| Phase Ops-Monitor-A | Public runtime diagnostics: `/api/status`, job queue aggregate, storage aggregate, ops monitoring doc | 📋 进行中 |
 | Phase Storage-A | Storage management and cleanup | 📋 规划 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
