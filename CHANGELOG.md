@@ -4,9 +4,31 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [v0.4.16-alpha] — 2026-06-10
+## [v0.4.17-alpha] — 2026-06-10
 
 ### Highlights
+
+- **Read-only operations panel** — new `/ops` page summarizing `/api/health` and `/api/status` in a single diagnostics view
+- **Navigation entry** — "运维" tab in the top navigation bar (between Jobs and Settings)
+- **Home entry** — link to Ops panel from the Home page
+- **Service status card** — public URL, backend, generation flags, timestamp
+- **Launch Guard card** — enabled/disabled, per-source daily limit, cooldown seconds
+- **Job queue card** — pending, running, succeeded, failed counts with status badges
+- **Storage card** — track count, audio count, approximate bytes (human-readable)
+- **Release card** — current version, GitHub repo and releases links
+- **Copyable diagnostics summary** — clipboard copy of the full ops summary
+- **Manual refresh** + **30-second auto-refresh**
+- **Loading and error states** for both health and status requests
+- **Responsive mobile layout** — single-column below 639px, full-width buttons below 390px
+- **Ops-Monitor-B smoke test** — full coverage of panels, safety guarantees, and doc integration
+
+### Safety
+
+- The Ops panel is **read-only** — GET requests only, never calls `/api/generate`
+- No raw IP, source hash, prompt, token, raw logs, or absolute runtime paths are exposed
+- No cleanup, deletion, reset, or restart operations are performed
+
+## [v0.4.16-alpha] — 2026-06-10
 
 - **Storage management and retention dry-run release** — Phase Storage-A
 - Added `server/storage-maintenance.ts` — storage inventory, retention dry-run, backup manifest

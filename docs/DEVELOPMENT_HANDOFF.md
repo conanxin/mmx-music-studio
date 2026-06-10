@@ -372,7 +372,8 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | Phase Ops-Monitor-A | Public runtime diagnostics: `/api/status`, job queue aggregate, storage aggregate, ops monitoring doc | ✅ 完成 |
 | **Phase Release v0.4.16-alpha** | **Storage management dry-run release — storage-maintenance.ts, inventory/retention-dry-run/backup-manifest scripts, STORAGE_POLICY.md, CI** | ✅ PASS |
 | Phase Storage-A | Storage management and cleanup | ✅ 完成 |
-| **Phase Ops-Monitor-B** | **Read-only operations panel: OpsPanel.tsx, /api/health+status aggregation, launch guard/job queue/storage cards, diagnostic summary with copy, auto-refresh, nav entry, mobile CSS, no sensitive data exposed** | ✅ 进行中 |
+| **Phase Ops-Monitor-B** | **Read-only operations panel: OpsPanel.tsx, /api/health+status aggregation, launch guard/job queue/storage cards, diagnostic summary with copy, auto-refresh, nav entry, mobile CSS, no sensitive data exposed** | ✅ PASS |
+| **Phase Release v0.4.17-alpha** | **Read-only operations panel release — /ops page, CI** | ✅ PASS |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |

@@ -1,6 +1,6 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.16-alpha · 2026-06-10
+> 文档版本：v0.4.17-alpha · 2026-06-10
 
 ## Current Public URL
 
@@ -8,7 +8,7 @@
 
 ## Current Release
 
-**v0.4.16-alpha** — Storage management and retention dry-run release (Phase Storage-A: inventory, retention dry-run, backup manifest, STORAGE_POLICY.md, no auto-deletion)
+**v0.4.17-alpha** — Read-only operations panel release (Phase Ops-Monitor-B: `/ops` page, service/Launch Guard/job queue/storage summary cards, copyable diagnostics, manual refresh, 30s auto-refresh, mobile layout, Ops-Monitor-B smoke test)
 
 **v0.4.15-alpha** — Public runtime diagnostics release (Phase Ops-Monitor-A: `/api/status`, job queue/storage aggregates, ops monitoring docs)
 

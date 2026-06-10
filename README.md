@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.16--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.16-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.17--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.17-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -181,21 +181,25 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 ## Release
 
-**v0.4.16-alpha**：Phase Storage-A — Storage management and retention dry-run release (`server/storage-maintenance.ts`, inventory/retention-dry-run/backup-manifest scripts, `docs/STORAGE_POLICY.md`, dry-run only, no auto-deletion)
+**v0.4.17-alpha**：Phase Ops-Monitor-B — Read-only operations panel release (`/ops` page, service/Launch Guard/job queue/storage summary cards, copyable diagnostics, manual refresh, 30s auto-refresh, mobile layout, Ops-Monitor-B smoke test)
 
-**v0.4.16-alpha**：（规划中）Phase Ops-Monitor-B / Phase Release v0.4.17-alpha
+**v0.4.16-alpha**：Phase Storage-A — Storage management and retention dry-run release (`server/storage-maintenance.ts`, inventory/retention-dry-run/backup-manifest scripts, `docs/STORAGE_POLICY.md`, dry-run only, no auto-deletion)
 
 **v0.4.15-alpha**：Phase Ops-Monitor-A — Public runtime diagnostics release (`GET /api/status`, job queue/storage aggregates, public-safe runtime status summary, ops monitoring docs)
 
 **v0.4.14-alpha**：Phase Launch Guard-A — Protected public generation release (global pause, per-source daily limit, generation cooldown, hashed source guard state, `/api/health` guard fields)
-**v0.4.13-alpha**：Phase Product Polish-J — Public launch readiness and trust UX release
-**v0.4.12-alpha**：API Adapter async polling readiness + Product Polish-J public launch readiness
-**v0.4.11-alpha**：Phase Product Polish-I — Playback queue persistence and playback modes
-**v0.4.10-alpha**：Phase Product Polish-H — Playback queue and continuous playback
-**v0.4.9-alpha**：Phase Product Polish-G — Global mini player and playback continuity
-**v0.4.8-alpha**：Phase Product Polish-F — Prompt templates and style presets
 
-**v0.4.15-alpha**：（规划中）Phase Storage-A / Phase Release v0.4.16-alpha
+**v0.4.13-alpha**：Phase Product Polish-J — Public launch readiness and trust UX release
+
+**v0.4.12-alpha**：API Adapter async polling readiness + Product Polish-J public launch readiness
+
+**v0.4.11-alpha**：Phase Product Polish-I — Playback queue persistence and playback modes
+
+**v0.4.10-alpha**：Phase Product Polish-H — Playback queue and continuous playback
+
+**v0.4.9-alpha**：Phase Product Polish-G — Global mini player and playback continuity
+
+**v0.4.8-alpha**：Phase Product Polish-F — Prompt templates and style presets
 
 **v0.4.6-alpha**：Stable public deployment release — Cloudflare Tunnel public access verified (`https://music.conanxin.com`); Node server installed as `mmx-music-studio.service` (enabled at boot, `Restart=always`, 50/day limit); CLI backend diagnostics (`cli-backend-diagnostics.sh` 13 checks, `cli-backend-readiness-smoke-test.sh` 26 checks); systemd helpers (unit file, install script, smoke test); README/handoff/deployment docs updated to reflect systemd-managed deployment.
 
