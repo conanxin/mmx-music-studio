@@ -10,6 +10,7 @@
 **v0.4.24-alpha** — Phase Release v0.4.24-alpha: Library interaction consistency release.
 
 - Phase Product Polish-P completed
+- Phase Product Polish-N completed (annotation timeline + batch note editing + Library-wide history panel — see v0.4.22-alpha notes below)
 - Active filter chips added (来源 / 集合 / 标签 / 搜索 with per-chip × remove buttons)
 - Per-filter clear added (search / source / collection / tag — single filter clear without affecting others)
 - Search match hints added (标题 / Prompt / 歌词 / 模式 / 来源 / 标签 / 备注, max 3 + N more)
@@ -56,6 +57,7 @@
 ### In-flight phase: none — Phase Release v0.4.24-alpha closed (2026-06-11)
 
 - **Phase Release v0.4.24-alpha** (Phase Product Polish-P promoted to release) — ✅ closed2026-06-11.
+- **Phase Storage-B0 closed (2026-06-11)** — Operator-confirmed cleanup **dry-run + safety design only** (no deletion): `scripts/storage-b-operator-cleanup-dry-run.sh` (read-only manifest with sha256 + paths + estimatedReclaimableBytes, `destructive: false`), `scripts/storage-b-confirmation-guard.sh` (rejects unless `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP`, never deletes), `docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md` (candidate categories, never-delete list, rollback note, required confirmation phrase), `scripts/storage-b-smoke-test.sh` (55/55 PASS — 55/55 storage-b smoke PASS, includes 4 documentation-records assertions). No `/api/generate` call, no music generation, no server schema change, no runtime storage committed. **Next Storage-B1 is a separate phase** that will only proceed with operator confirmation.
  - Library interaction consistency: removable active filter chips, per-filter clear handlers,
  search match hints (categories only, max3 + N more), batch operation scope hints,
  timeline accessibility polish (role=group, aria-label, per-chip title), track checkbox
@@ -123,6 +125,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 公开生成保护 | ✅ 完成 | Phase Launch Guard-A：全局暂停/每来源日限额/冷却/SHA256源识别 |
 | 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
 | 存储治理 | ✅ 完成 | Phase Storage-A：inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
+| 算子确认清理（仅 dry-run） | ✅ Phase Storage-B0 closed | `storage-b-operator-cleanup-dry-run.sh`（只读，输出 manifest JSON，destructive=false）+ `storage-b-confirmation-guard.sh`（必须 `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP` 才接受）+ `docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md`；**B0 不删除任何文件**，未调用 /api/generate，未生成音乐 |
 | Cloudflare Access for Ops/Status | ✅ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 应用 `MMX Music Studio Ops` 已启用，smoke test 12/12 PASS；`/api/generate` 仍由 Launch Guard 守 |
 | 自动 Release 工作流 | ✅ Phase Release-Automation-A | `.github/workflows/release.yml` 已上线：tag push 触发 + `workflow_dispatch` 手动 backfill + zip 安全检查 + 内置 `github.token`；v0.4.18/19/20 backfill 3/3 success |
 | Recent Release History backfilled | ✅ 完成 | v0.4.18-alpha → bd5736c, v0.4.19-alpha → 5c7fec2, v0.4.20-alpha → 7edb764，tag 全部未被移动 |

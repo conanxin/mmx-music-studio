@@ -135,6 +135,39 @@ RETENTION_DAYS=90 bash scripts/storage-a-retention-dry-run.sh
 bash scripts/storage-a-backup-manifest.sh
 ```
 
+### Storage operator-confirmed cleanup (Phase Storage-B0)
+
+**B0 is dry-run + safety design only.** No file is ever deleted by B0. A future
+phase (Storage-B1) will require a human operator to confirm a B0 manifest
+before any deletion path becomes available.
+
+```bash
+# Read-only dry-run: emits a JSON manifest with sha256 + paths
+# plus a "destructive: false" footer. The script never modifies anything.
+bash scripts/storage-b-operator-cleanup-dry-run.sh
+
+# Optional flags (both default-safe)
+bash scripts/storage-b-operator-cleanup-dry-run.sh --retention-days 30
+bash scripts/storage-b-operator-cleanup-dry-run.sh --json /tmp/storage-b-dry-run.json
+
+# Confirmation guard: rejects unless STORAGE_B_CONFIRMATION is set
+# to the exact required phrase. The guard itself does NOT delete.
+STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP bash scripts/storage-b-confirmation-guard.sh
+# exits 0 → confirmation accepted (still no deletion in B0)
+# exits non-zero → confirmation missing or rejected
+
+# B0 smoke test (55/55 PASS expectations)
+bash scripts/storage-b-smoke-test.sh
+```
+
+Required confirmation phrase for any future B1 action:
+`CONFIRM_STORAGE_B_CLEANUP` (must be passed via `STORAGE_B_CONFIRMATION`
+environment variable; not a CLI argument).
+
+The B0 manifest reports: `orphanAudio`, `orphanMetadata`, `missingAudioRefs`,
+`oldTrackCandidates` (only if `--retention-days` is provided), and
+`estimatedReclaimableBytes`. **B0 reports but does not act.**
+
 ### Ops panel (Phase Ops-Monitor-B)
 
 The public alpha includes a read-only operations panel at `/ops`.

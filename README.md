@@ -159,6 +159,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Public Generation Guardrails | ✅ PASS | Phase Launch Guard-A — global pause, per-source daily limit, cooldown |
 | Public Ops Monitoring | ✅ PASS | Phase Ops-Monitor-A — `/api/health` + `/api/status`, job queue/storage aggregates |
 | Storage Management | ✅ Phase Storage-A | `storage-a-inventory-report.sh`, `storage-a-retention-dry-run.sh`, `storage-a-backup-manifest.sh`, no auto-deletion |
+| Operator-Confirmed Cleanup (Dry-Run) | ✅ Phase Storage-B0 | `storage-b-operator-cleanup-dry-run.sh` (read-only), `storage-b-confirmation-guard.sh` (rejects without `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP`), `docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md`; **B0 does NOT delete any file** — confirmation-gated B1 will be a separate phase |
 
 ### Public Generation Guardrails
 
