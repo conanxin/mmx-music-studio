@@ -4,6 +4,35 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.19-alpha] — 2026-06-10
+
+### Highlights
+
+- **Collection export and local backup release.**
+- Added **Library batch mode** — checkbox per track card, select-all/clear, batch add tags.
+- Added **selected track count** in batch toolbar.
+- Added **batch add tags** — max 12 tags per track, max 24 chars per tag, normalized duplicate detection.
+- Added **current collection export** — Markdown / JSON (filtered or smart-collection).
+- Added **selected tracks export** — Markdown / JSON.
+- Added **browser-local Library backup export** — JSON via `libraryBackup.ts`.
+- Added **browser-local Library backup import** — JSON with `merge` or `replace` mode.
+- Added `LibraryLocalBackupV1` data model with schema validation.
+
+### Notes
+
+- Backup and restore use browser `localStorage` only. **No server upload.**
+- **No server schema migration.**
+- **No generation is performed for this release.** No `/api/generate` call.
+- Library playback and queues are unaffected.
+- Smart collection active state is reflected in export button labels (e.g. `导出「有标签」Markdown`).
+- Product-Polish-L smoke test: 67/67 PASS.
+
+### Safety
+
+- Backup JSON contains only browser-local data: annotations, favorites, prompt templates, playback queue, playback progress.
+- No audio binary, no API key, no token, no raw log, no raw IP, no source hash, no absolute runtime path is exported.
+- Import validate gate rejects malformed JSON before any localStorage write.
+
 ## [v0.4.18-alpha] — 2026-06-10
 
 ### Highlights

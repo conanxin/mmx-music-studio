@@ -1,7 +1,31 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.18-alpha · 2026-06-10
+> 文档版本：v0.4.19-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
+
+---
+
+## Current release line
+
+**v0.4.19-alpha** — Phase Product-Polish-L: Collections export, library batch actions, and annotation backup.
+
+- Library batch mode added (checkbox per track card, select-all / clear selection).
+- Batch add tags added (max 12 tags per track, max 24 chars per tag, normalized duplicate detection).
+- Collection export Markdown / JSON added (filtered + selected + smart-collection labeled).
+- Local backup export / import added (browser `localStorage` JSON, no server upload).
+- Merge / replace import modes.
+- `LibraryLocalBackupV1` data model in `src/lib/libraryBackup.ts`.
+- **No server schema migration.**
+- **No server upload.**
+- **No generation is performed for this release.**
+
+### Local backup localStorage keys
+
+- `mmx-studio:track-annotations:v1`
+- `mmx-studio:favorites`
+- `mmx-studio:prompt-templates`
+- `mmx-studio:playback-queue:v1`
+- `mmx-studio:playback-progress:v1`
 
 ---
 

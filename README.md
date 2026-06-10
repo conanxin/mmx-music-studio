@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.18--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.18-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.19--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.19-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
