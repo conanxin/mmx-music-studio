@@ -43,7 +43,7 @@
 
 ### Next recommended phases
 
-- **Phase Product Polish-N** — follow-up UX polish (collection sharing refinements, annotation history UI).
+- **Phase Product Polish-N** — ✅ PASS 2026-06-11 — annotation history UI upgrade (Annotation timeline with collapse 5 / expand 300 + 查看全部/收起), action badges (7 types), Library-wide 标注历史总览 折叠面板 (last 20 + 4 filter chips), batch note editor (覆盖/追加 modes, 500-char cap, history records all selected trackIds), mobile CSS polish, browser-local only (no `/api/generate`, no server upload, no schema migration). Smoke test 51/51 PASS.
 - **Phase Storage-B operator-confirmed cleanup** — operator-driven cleanup of
   `storage/guard/`, `storage/tracks/`, `storage/quota/`, `storage/audit/` (no auto delete; dry-run
   manifest; human confirmation required).

@@ -13,8 +13,10 @@ import {
   getAllAnnotationTags,
   recordAnnotationHistory,
   getTrackAnnotationHistory,
+  loadAnnotationHistory,
   type TrackAnnotationsMap,
   type AnnotationHistoryEntry,
+  type AnnotationHistoryAction,
 } from '../../lib/trackAnnotations';
 import {
   buildLibraryBackup,
@@ -162,6 +164,15 @@ export default function Library({
   const [batchTagInput, setBatchTagInput] = useState('');
   // Phase Product Polish-M: Batch remove tag input
   const [batchRemoveTagInput, setBatchRemoveTagInput] = useState('');
+  // Phase Product Polish-N: batch note editing state
+  const [batchNoteInput, setBatchNoteInput] = useState('');
+  const [batchNoteMode, setBatchNoteMode] = useState<'overwrite' | 'append'>('overwrite');
+  // Phase Product Polish-N: library-wide history panel state
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'tag' | 'note' | 'import'>('all');
+  const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
+  // Phase Product Polish-N: per-track timeline expand/collapse
+  const [trackHistoryExpanded, setTrackHistoryExpanded] = useState(false);
   // Phase Product Polish-L: Backup file input ref
   const backupFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast, showCopy } = useCopyToast();
@@ -548,6 +559,7 @@ function AnnotationEditor({
       label: `批量添加「${tag}」`,
       tags: [tag],
     });
+    setHistoryRefreshTick(t => t + 1);
     showCopy(`已为 ${selectedTrackIds.size} 首作品添加标签`);
   };
 
@@ -587,7 +599,51 @@ function AnnotationEditor({
       label: `批量删除「${tag}」（${touchedCount}/${selectedTrackIds.size} 首）`,
       tags: [tag],
     });
+    setHistoryRefreshTick(t => t + 1);
     showCopy(`已从 ${touchedCount} 首作品移除标签`);
+  };
+
+  // Phase Product Polish-N: Batch note edit (overwrite or append)
+  const handleBatchNoteEdit = () => {
+    if (selectedTrackIds.size === 0) {
+      showCopy('请先选择作品');
+      return;
+    }
+    const note = batchNoteInput.trim();
+    if (!note) {
+      showCopy('请输入备注');
+      return;
+    }
+    let updated = annotations;
+    let touchedCount = 0;
+    const mode = batchNoteMode;
+    for (const trackId of selectedTrackIds) {
+      const ann = updated[trackId] ?? { trackId, tags: [], note: '', updatedAt: '' };
+      const nextNote = mode === 'append' && ann.note
+        ? `${ann.note}
+
+${note}`.slice(0, 500)
+        : note.slice(0, 500);
+      if (nextNote === ann.note) continue;
+      updated = setTrackAnnotationHelper(updated, trackId, ann.tags, nextNote);
+      touchedCount += 1;
+    }
+    if (touchedCount === 0) {
+      showCopy('所选作品的备注没有变化');
+      return;
+    }
+    setAnnotations(updated);
+    saveTrackAnnotations(updated);
+    // record one batch history entry referencing all selected tracks
+    recordAnnotationHistory({
+      action: 'note_updated',
+      trackIds: Array.from(selectedTrackIds),
+      label: `批量${mode === 'append' ? '追加' : '更新'}备注（${touchedCount}/${selectedTrackIds.size} 首）`,
+      notePreview: note.slice(0, 80),
+    });
+    setBatchNoteInput('');
+    setHistoryRefreshTick(t => t + 1);
+    showCopy(`已为 ${touchedCount} 首作品更新备注`);
   };
 
   const handleExportSelectedMarkdown = () => {
@@ -969,6 +1025,45 @@ const handlePlay = (track: TrackItem) => {
                     disabled={selectedTrackIds.size === 0 || !batchRemoveTagInput.trim()}
                   >批量删除标签</button>
                 </div>
+                {/* Phase Product Polish-N: Batch note editing (overwrite / append) */}
+                <div className={`${styles.batchTagRow} ${styles.batchNoteRow}`}>
+                  <textarea
+                    className={`${styles.batchTagInput} ${styles.batchNoteTextarea}`}
+                    placeholder="为所选作品写入备注（覆盖 / 追加）"
+                    value={batchNoteInput}
+                    onChange={e => setBatchNoteInput(e.target.value.slice(0, 500))}
+                    rows={2}
+                    maxLength={500}
+                    aria-label="批量备注"
+                  />
+                  <div className={styles.batchNoteControls}>
+                    <label className={styles.batchNoteModeLabel}>
+                      <input
+                        type="radio"
+                        name="batchNoteMode"
+                        value="overwrite"
+                        checked={batchNoteMode === 'overwrite'}
+                        onChange={() => setBatchNoteMode('overwrite')}
+                      />
+                      <span>覆盖备注</span>
+                    </label>
+                    <label className={styles.batchNoteModeLabel}>
+                      <input
+                        type="radio"
+                        name="batchNoteMode"
+                        value="append"
+                        checked={batchNoteMode === 'append'}
+                        onChange={() => setBatchNoteMode('append')}
+                      />
+                      <span>追加到备注</span>
+                    </label>
+                    <button
+                      className={`${styles.batchAddTag} ${styles.batchNoteSaveBtn}`}
+                      onClick={handleBatchNoteEdit}
+                      disabled={selectedTrackIds.size === 0 || !batchNoteInput.trim()}
+                    >批量保存备注</button>
+                  </div>
+                </div>
                 <button
                   className={`${styles.collectionExportBtn} ${styles.secondary}`}
                   onClick={handleExportSelectedMarkdown}
@@ -1016,6 +1111,45 @@ const handlePlay = (track: TrackItem) => {
                 : '导出当前集合 JSON'}
             </button>
           </div>
+        </div>
+
+        {/* Phase Product Polish-N: Library-wide annotation history overview */}
+        <div className={styles.historyPanel}>
+          <button
+            className={styles.historyPanelHeader}
+            onClick={() => setHistoryPanelOpen(v => !v)}
+            aria-expanded={historyPanelOpen}
+          >
+            <strong>标注历史总览</strong>
+            <span className={styles.historyPanelHint}>
+              {historyPanelOpen ? '收起' : '展开'}（最近 20 条 · 仅保存在当前浏览器）
+            </span>
+          </button>
+          {historyPanelOpen && (
+            <div className={styles.historyPanelBody}>
+              <div className={styles.historyFilterRow}>
+                {([
+                  ['all', '全部'],
+                  ['tag', '标签变更'],
+                  ['note', '备注变更'],
+                  ['import', '导入'],
+                ] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={`${styles.historyFilterChip} ${historyFilter === key ? styles.historyFilterChipActive : ''}`}
+                    onClick={() => setHistoryFilter(key)}
+                    aria-pressed={historyFilter === key}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <LibraryHistoryPanel filter={historyFilter} refreshTick={historyRefreshTick} />
+              <p className={styles.historyPanelFooter}>
+                历史仅保存在当前浏览器，用于回看本地标注操作。
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Phase Product Polish-L: Local backup panel */}
@@ -1258,15 +1392,25 @@ const handlePlay = (track: TrackItem) => {
                     }
                   }
                   showCopy('作品备注已保存');
+                  setHistoryRefreshTick(t => t + 1);
                 }}
               />
 
-              {/* Phase Product Polish-M: Annotation history for this track */}
+              {/* Phase Product Polish-N: Annotation timeline (per-track, expand/collapse) */}
               <div className={styles.historySection}>
-                <div className={styles.historyTitle}>最近标注历史</div>
-                <TrackHistoryList
+                <div className={styles.historyHeader}>
+                  <div className={styles.historyTitle}>标注时间线</div>
+                  <button
+                    className={styles.historyToggle}
+                    onClick={() => setTrackHistoryExpanded(v => !v)}
+                    aria-pressed={trackHistoryExpanded}
+                  >
+                    {trackHistoryExpanded ? '收起' : '查看全部'}
+                  </button>
+                </div>
+                <TrackHistoryTimeline
                   trackId={detailTrack.id}
-                  getTrackAnnotationHistory={getTrackAnnotationHistory}
+                  expanded={trackHistoryExpanded}
                 />
               </div>
 
@@ -1405,22 +1549,51 @@ const handlePlay = (track: TrackItem) => {
   );
 }
 
-// Phase Product Polish-M: Per-track history list (max 5, no prompt, no IP/keys)
-function TrackHistoryList({
+// Phase Product Polish-N: Action badge label map (browser-local history only)
+const HISTORY_ACTION_BADGE: Record<AnnotationHistoryAction, { label: string; tone: string }> = {
+  tag_added: { label: '添加标签', tone: 'tag' },
+  tag_removed: { label: '删除标签', tone: 'tag' },
+  batch_tag_added: { label: '批量添加标签', tone: 'batch' },
+  batch_tag_removed: { label: '批量删除标签', tone: 'batch' },
+  note_updated: { label: '更新备注', tone: 'note' },
+  backup_import_merge: { label: '合并导入', tone: 'import' },
+  backup_import_replace: { label: '覆盖导入', tone: 'import' },
+};
+
+function actionBadgeClass(tone: string): string {
+  switch (tone) {
+    case 'tag': return styles.badgeTag;
+    case 'batch': return styles.badgeBatch;
+    case 'note': return styles.badgeNote;
+    case 'import': return styles.badgeImport;
+    default: return styles.badgeDefault;
+  }
+}
+
+// Phase Product Polish-N: Per-track history timeline (collapse: 5, expand: all)
+function TrackHistoryTimeline({
   trackId,
-  getTrackAnnotationHistory,
+  expanded,
 }: {
   trackId: string;
-  getTrackAnnotationHistory: (trackId: string) => AnnotationHistoryEntry[];
+  expanded: boolean;
 }) {
-  const [entries, setEntries] = useState<AnnotationHistoryEntry[]>(() =>
-    getTrackAnnotationHistory(trackId).slice(0, 5)
-  );
+  const [entries, setEntries] = useState<AnnotationHistoryEntry[]>([]);
+  const [version, setVersion] = useState(0);
 
-  // Refresh on each render of the drawer
   useEffect(() => {
-    setEntries(getTrackAnnotationHistory(trackId).slice(0, 5));
-  }, [trackId, getTrackAnnotationHistory]);
+    setEntries(getTrackAnnotationHistory(trackId, expanded ? 300 : 5));
+  }, [trackId, expanded, version]);
+
+  // Re-read on localStorage changes (other tabs / other panels in same tab)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'mmx-studio:annotation-history:v1') setVersion(v => v + 1);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   if (entries.length === 0) {
     return <div className={styles.historyEmpty}>暂无标注历史</div>;
@@ -1428,15 +1601,86 @@ function TrackHistoryList({
 
   return (
     <ul className={styles.historyList}>
-      {entries.map(e => (
-        <li key={e.id} className={styles.historyItem}>
-          <div className={styles.historyAction}>{e.label}</div>
-          {e.notePreview && (
-            <div className={styles.historyNote}>「{e.notePreview}」</div>
-          )}
-          <div className={styles.historyTime}>{formatHistoryTime(e.createdAt)}</div>
-        </li>
-      ))}
+      {entries.map(e => {
+        const badge = HISTORY_ACTION_BADGE[e.action] || { label: e.label, tone: 'default' };
+        return (
+          <li key={e.id} className={styles.historyItem}>
+            <div className={styles.historyItemHeader}>
+              <span className={`${styles.actionBadge} ${actionBadgeClass(badge.tone)}`}>
+                {badge.label}
+              </span>
+              {e.tags && e.tags.length > 0 && (
+                <span className={styles.historyTags}>
+                  {e.tags.map(t => `#${t}`).join(' ')}
+                </span>
+              )}
+            </div>
+            {e.notePreview && (
+              <div className={styles.historyNote}>「{e.notePreview}」</div>
+            )}
+            <div className={styles.historyTime}>{formatHistoryTime(e.createdAt)}</div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// Phase Product Polish-N: Library-wide annotation history (recent 20, filter chips)
+function LibraryHistoryPanel({
+  filter,
+  refreshTick,
+}: {
+  filter: 'all' | 'tag' | 'note' | 'import';
+  refreshTick: number;
+}) {
+  const [entries, setEntries] = useState<AnnotationHistoryEntry[]>([]);
+
+  useEffect(() => {
+    const all = loadAnnotationHistory();
+    const filtered = all.filter(e => {
+      if (filter === 'all') return true;
+      if (filter === 'tag') return e.action.startsWith('tag_') || e.action.startsWith('batch_tag_');
+      if (filter === 'note') return e.action === 'note_updated';
+      if (filter === 'import') return e.action === 'backup_import_merge' || e.action === 'backup_import_replace';
+      return true;
+    });
+    setEntries(filtered.slice(0, 20));
+  }, [filter, refreshTick]);
+
+  if (entries.length === 0) {
+    return <div className={styles.historyEmpty}>暂无符合条件的标注历史</div>;
+  }
+
+  return (
+    <ul className={styles.historyList}>
+      {entries.map(e => {
+        const badge = HISTORY_ACTION_BADGE[e.action] || { label: e.label, tone: 'default' };
+        const count = e.trackIds?.length ?? (e.trackId ? 1 : 0);
+        return (
+          <li key={e.id} className={styles.historyItem}>
+            <div className={styles.historyItemHeader}>
+              <span className={`${styles.actionBadge} ${actionBadgeClass(badge.tone)}`}>
+                {badge.label}
+              </span>
+              {count > 0 && (
+                <span className={styles.historyTrackCount}>
+                  {count === 1 ? '1 首' : `${count} 首`}
+                </span>
+              )}
+              {e.tags && e.tags.length > 0 && (
+                <span className={styles.historyTags}>
+                  {e.tags.map(t => `#${t}`).join(' ')}
+                </span>
+              )}
+            </div>
+            {e.notePreview && (
+              <div className={styles.historyNote}>「{e.notePreview}」</div>
+            )}
+            <div className={styles.historyTime}>{formatHistoryTime(e.createdAt)}</div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

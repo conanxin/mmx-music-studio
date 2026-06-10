@@ -191,17 +191,17 @@ else
     fail "Library.tsx missing empty-tag warning"
 fi
 
-# 3c. Drawer history list
-if grep -qE "TrackHistoryList" "$LIB_FILE"; then
-    pass "Library.tsx defines TrackHistoryList component"
+# 3c. Drawer history list (Phase M baseline; Phase N renamed to TrackHistoryTimeline / 标注时间线)
+if grep -qE "TrackHistoryList|TrackHistoryTimeline" "$LIB_FILE"; then
+    pass "Library.tsx defines TrackHistoryList/TrackHistoryTimeline component"
 else
-    fail "Library.tsx missing TrackHistoryList"
+    fail "Library.tsx missing TrackHistoryList/TrackHistoryTimeline"
 fi
 
-if grep -qE "最近标注历史" "$LIB_FILE"; then
-    pass "Library.tsx renders 最近标注历史 section"
+if grep -qE "最近标注历史|标注时间线" "$LIB_FILE"; then
+    pass "Library.tsx renders 最近标注历史 / 标注时间线 section"
 else
-    fail "Library.tsx missing 最近标注历史 section"
+    fail "Library.tsx missing 最近标注历史 / 标注时间线 section"
 fi
 
 if grep -qE "暂无标注历史" "$LIB_FILE"; then

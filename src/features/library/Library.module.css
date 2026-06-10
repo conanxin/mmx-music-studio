@@ -1177,6 +1177,53 @@
     width: 100%;
   }
 
+  /* Phase Product Polish-N: batch note on mobile */
+  .batchNoteTextarea {
+    width: 100%;
+  }
+
+  .batchNoteControls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .batchNoteModeLabel {
+    justify-content: flex-start;
+  }
+
+  .batchNoteSaveBtn {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* Phase Product Polish-N: history panel + timeline mobile */
+  .historyPanelHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .historyFilterRow {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .historyFilterRow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .historyFilterChip {
+    flex-shrink: 0;
+  }
+
+  .historyItemHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
   /* Backup panel: full-width buttons on mobile */
   .backupPanel {
     padding: var(--space-2);
@@ -1346,6 +1393,202 @@
 .collectionShareBtn:hover:not(:disabled) {
   background: var(--color-primary, #3b82f6);
   color: #fff;
+}
+
+/* ── Phase Product Polish-N ────────────────────────────────────────────────── */
+/* Annotation timeline header + toggle button */
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.historyToggle {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg, #fff);
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.historyToggle:hover {
+  background: var(--color-bg-secondary, #f8f9fb);
+  color: var(--color-text, #1f2937);
+}
+
+.historyItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Action badges */
+.actionBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badgeTag {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1e40af;
+}
+
+.badgeBatch {
+  background: rgba(168, 85, 247, 0.14);
+  color: #6b21a8;
+}
+
+.badgeNote {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+}
+
+.badgeImport {
+  background: rgba(16, 185, 129, 0.16);
+  color: #065f46;
+}
+
+.badgeDefault {
+  background: rgba(107, 114, 128, 0.14);
+  color: #374151;
+}
+
+.historyTags {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  word-break: break-word;
+}
+
+.historyTrackCount {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  background: var(--color-bg-secondary, #f8f9fb);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* Library-wide history panel */
+.historyPanel {
+  margin: var(--space-3) 0 var(--space-2);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--color-bg, #fff);
+  overflow: hidden;
+}
+
+.historyPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  color: var(--color-text, #1f2937);
+}
+
+.historyPanelHeader:hover {
+  background: var(--color-bg-secondary, #f8f9fb);
+}
+
+.historyPanelHint {
+  font-size: 11px;
+  color: var(--color-text-secondary, #9ca3af);
+  font-weight: 400;
+}
+
+.historyPanelBody {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.historyFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0 8px;
+}
+
+.historyFilterChip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg, #fff);
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.historyFilterChip:hover {
+  border-color: var(--color-text-secondary, #6b7280);
+}
+
+.historyFilterChipActive {
+  background: var(--color-text, #1f2937);
+  color: var(--color-bg, #fff);
+  border-color: var(--color-text, #1f2937);
+}
+
+.historyPanelFooter {
+  font-size: 11px;
+  color: var(--color-text-secondary, #9ca3af);
+  margin: 8px 0 0;
+  font-style: italic;
+}
+
+/* Batch note editing */
+.batchNoteRow {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.batchNoteTextarea {
+  resize: vertical;
+  min-height: 56px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px 8px;
+}
+
+.batchNoteControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.batchNoteModeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+}
+
+.batchNoteModeLabel input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.batchNoteSaveBtn {
+  margin-left: auto;
 }
 
 @media (max-width: 639px) {
