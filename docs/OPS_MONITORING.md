@@ -1,6 +1,6 @@
 # Ops Monitoring — mmx-music-studio
 
-> 文档版本：v0.4.20-alpha · 2026-06-10
+> 文档版本：v0.4.21-alpha · 2026-06-10
 
 ## Cloudflare Access protection (Phase Deploy-CF-C)
 

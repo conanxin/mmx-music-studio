@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.20--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.20-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.21--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.21-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -184,6 +184,29 @@ These guardrails are for public alpha protection. They are not a replacement for
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.21-alpha**：Phase Release v0.4.21-alpha — Protected Ops and release automation closeout (commits `b4d39b3` + `d0acc1f` + release prep, tag `v0.4.21-alpha`)
+
+### Current Status (v0.4.21-alpha)
+
+| Capability | Status |
+|------------|--------|
+| Cloudflare Access for Ops: PASS | ✅ |
+| `/ops` protected: PASS | ✅ (HTTP 302 → Access login) |
+| `/ops/*` protected: PASS | ✅ |
+| `/api/status` protected: PASS | ✅ (HTTP 302 → Access login) |
+| `/api/debug/*` protected: PASS | ✅ |
+| `/` public: PASS | ✅ (HTTP 200) |
+| `/library` public: PASS | ✅ (HTTP 200) |
+| `/studio` public: PASS | ✅ (HTTP 200) |
+| `/api/health` public: PASS | ✅ (HTTP 200, JSON `ok:true`) |
+| `/api/generate` still owned by Launch Guard | ✅ Confirmed (no Access double-layer) |
+| Release workflow: PASS | ✅ (`.github/workflows/release.yml` active) |
+| Release workflow backfill: PASS | ✅ (v0.4.18/19/20 3/3 success) |
+| Deploy-CF-C smoke test: PASS | ✅ (12/12, exit 0) |
+| `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` | ✅ Created + verification table |
+| Public URL: https://music.conanxin.com | ✅ Verified |
+| Recommended backend: CLI | ✅ |
 
 **v0.4.20-alpha**：Phase Release v0.4.20-alpha — Collection links and annotation history release (commit `a05f60a`, tag `v0.4.20-alpha`)
 

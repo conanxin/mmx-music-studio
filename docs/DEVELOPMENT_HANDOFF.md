@@ -1,13 +1,13 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.20-alpha · 2026-06-10
+> 文档版本：v0.4.21-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
-**v0.4.20-alpha** — Phase Product-Polish-M: Collection sharing, tag cleanup, and annotation history.
+**v0.4.21-alpha** — Phase Release v0.4.21-alpha: Protected Ops and release automation closeout.
 
 - Annotation history (browser-local): `mmx-studio:annotation-history:v1`, cap 300, includes
   tag_added / tag_removed / batch_tag_added / batch_tag_removed / note_updated /
@@ -23,18 +23,32 @@
 - **No server upload.**
 - **No generation is performed for this release.**
 
-### In-flight phase: Deploy-CF-C (Cloudflare Access for Ops / Status) — ✅ verified 2026-06-10
+### In-flight phase: none — Deploy-CF-C and Release-Automation-A are both closed (2026-06-10)
 
-- `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
-  (`MMX Music Studio Ops`, self-hosted, paths `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`).
-- Public paths retained: `/`, `/library`, `/studio`, `/api/health`.
-- `/api/generate` is **not** moved to Access — it stays under server-side Launch Guard.
-- Dashboard application `MMX Music Studio Ops` has been **enabled** by the operator.
-- `scripts/deploy-cf-c-access-smoke-test.sh` now returns `DEPLOY_CF_C_ACCESS_SMOKE_PASS`
-  (12/12, exit 0). Protected responses carry `Location: https://soft-wood-f891.cloudflareaccess.com/...`,
-  `www-authenticate: Cloudflare-Access`, and `set-cookie: CF_AppSession=...`.
-- Verification table recorded in `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` ("Verification (2026-06-10)").
+- **Phase Deploy-CF-C** (Cloudflare Access for Ops / Status) — ✅ verified 2026-06-10.
+  - `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
+    (`MMX Music Studio Ops`, self-hosted, paths `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`).
+  - Public paths retained: `/`, `/library`, `/studio`, `/api/health`.
+  - `/api/generate` is **not** moved to Access — it stays under server-side Launch Guard.
+  - Dashboard application `MMX Music Studio Ops` has been **enabled** by the operator.
+  - `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_SMOKE_PASS`
+    (12/12, exit 0). Protected responses carry `Location: https://soft-wood-f891.cloudflareaccess.com/...`,
+    `www-authenticate: Cloudflare-Access`, and `set-cookie: CF_AppSession=...`.
+  - Verification table recorded in `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` ("Verification (2026-06-10)").
+- **Phase Release-Automation-A** (`.github/workflows/release.yml`) — ✅ verified 2026-06-10.
+  - tag push trigger, `workflow_dispatch` backfill, `git archive` source zip, safety check,
+    `gh release create --verify-tag` / `upload --clobber`, built-in `${{ github.token }}`.
+  - Backfilled `v0.4.18-alpha`, `v0.4.19-alpha`, `v0.4.20-alpha` (3/3 success).
 - **No code changes** to server routes, storage, audit log, or generation logic.
+
+### Next recommended phases
+
+- **Phase Product Polish-N** — follow-up UX polish (collection sharing refinements, annotation history UI).
+- **Phase Storage-B operator-confirmed cleanup** — operator-driven cleanup of
+  `storage/guard/`, `storage/tracks/`, `storage/quota/`, `storage/audit/` (no auto delete; dry-run
+  manifest; human confirmation required).
+- **Phase Deploy-CF-D** (optional) — if broader Access / Turnstile coverage is desired (e.g.
+  Turnstile on `/api/generate`, Access on additional debug endpoints).
 
 ### Local backup localStorage keys
 
@@ -75,6 +89,9 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
 | 存储治理 | ✅ 完成 | Phase Storage-A：inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
 | Cloudflare Access for Ops/Status | ✅ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 应用 `MMX Music Studio Ops` 已启用，smoke test 12/12 PASS；`/api/generate` 仍由 Launch Guard 守 |
+| 自动 Release 工作流 | ✅ Phase Release-Automation-A | `.github/workflows/release.yml` 已上线：tag push 触发 + `workflow_dispatch` 手动 backfill + zip 安全检查 + 内置 `github.token`；v0.4.18/19/20 backfill 3/3 success |
+| Recent Release History backfilled | ✅ 完成 | v0.4.18-alpha → bd5736c, v0.4.19-alpha → 5c7fec2, v0.4.20-alpha → 7edb764，tag 全部未被移动 |
+| 当前 release line | ✅ v0.4.21-alpha | Phase Release v0.4.21-alpha：Protected Ops and release automation closeout |
 
 ---
 

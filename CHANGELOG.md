@@ -4,6 +4,37 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.21-alpha] — 2026-06-10
+
+### Highlights
+
+- **Protected Ops and release automation closeout.**
+- Verified **Cloudflare Access** protection for `/ops`, `/ops/*`, `/api/status`, and `/api/debug/*` at the edge.
+- Kept `/`, `/library`, `/studio`, and `/api/health` public.
+- Kept `/api/generate` protected by the **server-side Launch Guard** (per-source daily limit, generation cooldown, global pause).
+- Added and verified the **automatic GitHub Release workflow** (`.github/workflows/release.yml`):
+  - tag push trigger
+  - `workflow_dispatch` manual backfill
+  - `git archive` source zip + safety check
+  - `gh release create --verify-tag` / `upload --clobber`
+  - built-in `${{ github.token }}` (no PAT secret)
+- Backfilled recent GitHub Releases: `v0.4.18-alpha`, `v0.4.19-alpha`, `v0.4.20-alpha`.
+- Added `scripts/deploy-cf-c-access-smoke-test.sh` (12 checks, 12/12 PASS).
+- Updated Ops, public readiness, and Cloudflare Access documentation.
+
+### Added
+
+- `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` — operator policy, recommended Access application, rollback, verification table.
+- `docs/release/RELEASE_NOTES_v0.4.21-alpha.md` — this release's notes.
+- `scripts/deploy-cf-c-access-smoke-test.sh` — Access smoke test (PASS / PENDING / FAIL three-state).
+
+### Notes
+
+- No generation is performed for this release.
+- No `/api/generate` request was made during validation.
+- No Cloudflare token is stored in the repository.
+- Release automation uses the built-in GitHub Actions `github.token` (no PAT).
+
 ## [v0.4.20-alpha] — 2026-06-10
 
 ### Highlights

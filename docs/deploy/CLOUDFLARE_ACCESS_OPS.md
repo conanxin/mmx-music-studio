@@ -1,7 +1,7 @@
 # Cloudflare Access for Ops
 
-> Phase: **Deploy-CF-C**
-> Release: **v0.4.20-alpha**
+> Phase: **Deploy-CF-C** (closed, verified 2026-06-10)
+> Release: **v0.4.21-alpha** (Promoted to current release)
 > Status: **✅ PASS — Dashboard configured and verified (2026-06-10)**
 
 ## Goal
