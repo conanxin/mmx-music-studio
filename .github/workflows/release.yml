@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish, e.g. v0.4.20-alpha'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve tag
+        id: vars
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-alpha$ ]]; then
+            echo "Invalid tag format: $TAG" >&2
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "zip=mmx-music-studio-${TAG}.zip" >> "$GITHUB_OUTPUT"
+          echo "notes=docs/release/RELEASE_NOTES_${TAG}.md" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.vars.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify release notes
+        shell: bash
+        run: |
+          NOTES="${{ steps.vars.outputs.notes }}"
+          test -f "$NOTES"
+          test -s "$NOTES"
+
+      - name: Build source archive
+        shell: bash
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          ZIP="${{ steps.vars.outputs.zip }}"
+          git archive --format=zip --output="$ZIP" "$TAG"
+          ls -lh "$ZIP"
+
+      - name: Zip safety check
+        shell: bash
+        env:
+          ZIP: ${{ steps.vars.outputs.zip }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          import zipfile
+
+          zip_path = os.environ["ZIP"]
+          banned = []
+
+          with zipfile.ZipFile(zip_path) as z:
+              for name in z.namelist():
+                  # Runtime / build artifacts
+                  if name.startswith(("node_modules/", "dist/")):
+                      banned.append(name)
+                  # Real storage data (not empty .gitkeep placeholders)
+                  if name.startswith("storage/tracks/") and name != "storage/tracks/.gitkeep":
+                      banned.append(name)
+                  if name.startswith("storage/quota/") and name != "storage/quota/.gitkeep":
+                      banned.append(name)
+                  if name.startswith("storage/audit/") and name != "storage/audit/.gitkeep":
+                      banned.append(name)
+                  # Live guard state
+                  if name == "storage/guard/public-generation-guard.json":
+                      banned.append(name)
+                  # Audio binaries
+                  if name.endswith((".mp3", ".wav", ".flac")):
+                      banned.append(name)
+                  # Environment
+                  if name == ".env":
+                      banned.append(name)
+                  # TypeScript build cache
+                  if name == "tsconfig.tsbuildinfo":
+                      banned.append(name)
+
+          print("banned_count:", len(banned))
+          for item in banned[:20]:
+              print("banned:", item)
+
+          if banned:
+              sys.exit("release zip contains banned files")
+          else:
+              print("zip_safety_check: PASS")
+          PY
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          ZIP="${{ steps.vars.outputs.zip }}"
+          NOTES="${{ steps.vars.outputs.notes }}"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release exists, uploading asset with --clobber: $TAG"
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            echo "Creating release: $TAG"
+            gh release create "$TAG" "$ZIP" \
+              --title "mmx-music-studio $TAG" \
+              --notes-file "$NOTES" \
+              --verify-tag
+          fi
+
+      - name: Verify release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          gh release view "$TAG" --json tagName,name,url,assets,isDraft,isPrerelease
