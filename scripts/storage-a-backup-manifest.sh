@@ -11,18 +11,26 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="${OUTPUT_DIR:-./storage/tracks}"
 
-if ! command -v node &>/dev/null; then
-  echo "ERROR: node not found"
+if ! command -v npx &>/dev/null; then
+  echo "ERROR: npx not found"
   exit 1
 fi
 
-node --input-type=module <<'EOF'
-import { buildStorageBackupManifest } from './server/storage-maintenance.js';
+TMPFILE=$(mktemp --suffix=.mts "$PROJECT_DIR/.storage-a-tmp-XXXXXX")
+cleanup() { rm -f "$TMPFILE"; }
+trap cleanup EXIT
 
-const outputDir = process.env.OUTPUT_DIR ?? './storage/tracks';
+cat > "$TMPFILE" <<'SCRIPT'
+import { buildStorageBackupManifest } from "./server/storage-maintenance.js";
+
+const outputDir = process.env.OUTPUT_DIR ?? "./storage/tracks";
 const manifest = buildStorageBackupManifest(outputDir);
 
-process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
-EOF
+process.stdout.write(JSON.stringify(manifest, null, 2) + "\n");
+SCRIPT
+
+npx --prefix "$PROJECT_DIR" tsx "$TMPFILE"
