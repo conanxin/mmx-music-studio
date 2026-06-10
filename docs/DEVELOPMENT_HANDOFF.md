@@ -23,6 +23,17 @@
 - **No server upload.**
 - **No generation is performed for this release.**
 
+### In-flight phase: Deploy-CF-C (Cloudflare Access for Ops / Status)
+
+- `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
+  (`MMX Music Studio Ops`, self-hosted, paths `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`).
+- Public paths retained: `/`, `/library`, `/studio`, `/api/health`.
+- `/api/generate` is **not** moved to Access — it stays under server-side Launch Guard.
+- Dashboard configuration of the Access app is pending operator action.
+- `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_PENDING` before
+  Dashboard config and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` after.
+- **No code changes** to server routes, storage, audit log, or generation logic.
+
 ### Local backup localStorage keys
 
 - `mmx-studio:track-annotations:v1`
@@ -61,6 +72,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 公开生成保护 | ✅ 完成 | Phase Launch Guard-A：全局暂停/每来源日限额/冷却/SHA256源识别 |
 | 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
 | 存储治理 | ✅ 完成 | Phase Storage-A：inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
+| Cloudflare Access for Ops/Status | ⏳ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 配置待用户执行；`/api/generate` 仍由 Launch Guard 守 |
 
 ---
 

@@ -1,6 +1,29 @@
 # Ops Monitoring — mmx-music-studio
 
-> 文档版本：v0.4.17-alpha · 2026-06-10
+> 文档版本：v0.4.20-alpha · 2026-06-10
+
+## Cloudflare Access protection (Phase Deploy-CF-C)
+
+> Operator-only paths are protected by **Cloudflare Access** at the edge.
+> Cloudflare Access is configured in the Cloudflare Dashboard (Zero Trust → Access),
+> not in application code. Rollback is a single Dashboard toggle; no code change is required.
+
+| Path | Exposure | Owner |
+| --- | --- | --- |
+| `/ops`, `/ops/*` | **Cloudflare Access** — operator email only | Dashboard (Phase Deploy-CF-C) |
+| `/api/status` | **Cloudflare Access** — operator email only | Dashboard (Phase Deploy-CF-C) |
+| `/api/debug/*` | **Cloudflare Access** — operator email only | Dashboard (Phase Deploy-CF-C) |
+| `/api/health` | Public (uptime checks must remain unauthenticated) | — |
+| `/` | Public | — |
+| `/library` | Public | — |
+| `/studio` | Public | — |
+| `/api/generate` | Server-side **Launch Guard** (NOT moved to Access) | Phase Launch Guard-A |
+
+Full configuration reference: [`docs/deploy/CLOUDFLARE_ACCESS_OPS.md`](deploy/CLOUDFLARE_ACCESS_OPS.md).
+
+> The Access smoke test (`scripts/deploy-cf-c-access-smoke-test.sh`) returns
+> `DEPLOY_CF_C_ACCESS_PENDING` until the Dashboard application is enabled,
+> and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` afterwards. This is by design.
 
 ## Public endpoints
 

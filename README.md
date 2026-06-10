@@ -136,6 +136,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Async API polling | ✅ Design | `pollingEndpointConfigured: false`, `MINIMAX_API_ASYNC_POLLING_REQUIRED`, Studio error card, 3 async fixtures |
 
 **Product Polish releases:**
+- **Phase Product-Polish-M** — Collection links and annotation history: `mmx-studio:annotation-history:v1` (cap 300, 7 action types), batch remove tag (case-insensitive), collection URL state `?q=&source=&collection=&tag=` via `history.replaceState`, share link button copies current filter URL, drawer `最近标注历史` last 5 actions per track, `LibraryLocalBackupV1.annotationHistory` field with backward compat for v1.0 backups, collection Markdown/JSON export include `collectionUrl` + `filters`, mobile CSS, smoke test
+- **Phase Deploy-CF-C** — Cloudflare Access for Ops and Status: protects `/ops`, `/ops/*`, `/api/status`, `/api/debug/*` at the Cloudflare edge; keeps `/`, `/library`, `/studio`, `/api/health` public; `/api/generate` remains owned by the server-side Launch Guard; Access is configured in the Cloudflare Dashboard (Zero Trust → Access), not in app code; `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the operator policy and rollback; `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_PENDING` before Dashboard config and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` after
 - **Phase Product-Polish-L** — Collections export, library batch actions, and annotation backup: `libraryBackup.ts` (LibraryLocalBackupV1 model + validate/merge/replace), Library batch mode (checkbox per card, select-all/clear, batch add tag with 12-tag / 24-char cap), collection export Markdown/JSON (filtered / selected / smart-collection labeled), local backup panel (export/import localStorage JSON with merge or replace), mobile adaptation, smoke test
 - **Phase Product-Polish-K** — Tags, notes, and smart collections: localStorage annotation (tags + note per track), Library drawer editor (tag chips + note textarea, save button), smart collection filters (有标签/有备注/最近生成/CLI生成/API生成), tag filter chips with count, card annotation display (3 chips + overflow + note icon), annotation search (tags + note), Markdown export with Tags/Notes, mobile adaptation
 - **Phase Product-Polish-I** — Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence / repeat-all / repeat-one / shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label
@@ -200,6 +202,18 @@ These guardrails are for public alpha protection. They are not a replacement for
 | 7 history action types | ✅ PASS |
 | Drawer history list (last 5 per track) | ✅ PASS |
 | Product-Polish-M smoke test (82/82) | ✅ PASS |
+
+**Phase Deploy-CF-C — Cloudflare Access for Ops and Status (in progress, see [docs/deploy/CLOUDFLARE_ACCESS_OPS.md](docs/deploy/CLOUDFLARE_ACCESS_OPS.md))**
+
+| Capability | Status |
+|------------|--------|
+| Cloudflare Access app config (Dashboard) | ⏳ Pending user |
+| `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` | ✅ Created |
+| `scripts/deploy-cf-c-access-smoke-test.sh` | ✅ Created (PENDING before Dashboard config) |
+| `/`, `/library`, `/studio` remain public | ✅ Verified |
+| `/api/health` remains public | ✅ Verified |
+| `/api/generate` still owned by Launch Guard (NOT moved to Access) | ✅ Confirmed |
+| Protected paths: `/ops`, `/ops/*`, `/api/status`, `/api/debug/*` | ✅ Documented |
 
 **v0.4.20-alpha**：Phase Product-Polish-M — Collection sharing, tag cleanup, and annotation history release (annotation history `mmx-studio:annotation-history:v1` cap 300, batch remove tag, collection URL `?q=&source=&collection=&tag=` via `history.replaceState`, drawer history list, share link button, backup v1.0 now includes annotationHistory, collection export with collectionUrl+filters, mobile CSS, smoke test 67/67)
 

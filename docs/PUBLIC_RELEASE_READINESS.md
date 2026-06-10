@@ -36,6 +36,7 @@
 - Browser-local Library annotations (Phase Product-Polish-K: track tags, notes, smart collections, tag filter, enhanced search, Markdown export with tags/notes, `mmx-studio:track-annotations:v1` localStorage)
 - Library batch actions, collections export, local annotation backup (Phase Product-Polish-L: `libraryBackup.ts` with LibraryLocalBackupV1 model, batch mode checkbox + select-all/clear + batch add tag (≤12 tags, ≤24 chars), current/selected collection export Markdown/JSON with smart-collection labels, local backup panel exporting/importing localStorage data with merge or replace — no server upload, no schema migration)
 - Collection sharing, tag cleanup, annotation history (Phase Product-Polish-M: `mmx-studio:annotation-history:v1` cap 300, 7 action types, batch remove tag (case-insensitive), collection URL state `?q=&source=&collection=&tag=` via `history.replaceState`, share link button copies current filter URL, drawer `最近标注历史` last 5 actions per track, `LibraryLocalBackupV1.annotationHistory` field with backward compat for v1.0 backups, collection Markdown/JSON export now include `collectionUrl` + `filters`)
+- Cloudflare Access for Ops / Status (Phase Deploy-CF-C: `docs/deploy/CLOUDFLARE_ACCESS_OPS.md`, protects `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`; keeps `/`, `/library`, `/studio`, `/api/health` public; `/api/generate` remains owned by Launch Guard; Access configured in Cloudflare Dashboard, not in app code; smoke test `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_PENDING` before Dashboard config and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` after)
 
 ## What Remains Alpha / Experimental
 
@@ -43,7 +44,7 @@
 |------|--------|
 | BYOK API Adapter | Experimental — verified `direct_audio` once |
 | Async polling | Design-only — endpoint not confirmed |
-| Cloudflare Access | Not enabled |
+| Cloudflare Access | Documented — Dashboard config pending (Phase Deploy-CF-C) |
 | Queue / local preferences | Browser-local only, no cross-device sync |
 | Account system | None |
 | Production SLA | None |
