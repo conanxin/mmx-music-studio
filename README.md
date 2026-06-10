@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.9--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.9-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.11--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.11-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -130,6 +130,9 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Prompt template composer | ✅ PASS | 4 groups: scene/mood/instrument/use, apply to textarea |
 | Custom prompt templates | ✅ localStorage | `mmx-studio:prompt-templates`, max 20, browser-local only |
 | Playback queue | ✅ PASS | App-level queue state, prev/next buttons, audio ended → next, Library plays filtered list, detail drawer add-to-queue, queue panel with remove/clear |
+| Playback queue persistence | ✅ PASS | Queue survives page refresh via localStorage (`mmx-studio:playback-queue:v1`), mode saved |
+| Playback modes | ✅ PASS | sequence / repeat-all / repeat-one / shuffle toggle button, mode label in queue panel |
+| Playback progress memory | ✅ PASS | Throttled 5s save to localStorage, progress restored on track reload |
 
 **Product Polish releases:**
 - **Phase Product Polish-I** — Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence / repeat-all / repeat-one / shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label

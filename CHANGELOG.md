@@ -4,6 +4,24 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.11-alpha] — 2026-06-10
+
+### Highlights
+
+- **Playback queue persistence release** — queue survives page refresh via browser localStorage
+- Browser-local playback queue storage (`mmx-studio:playback-queue:v1`)
+- Browser-local playback progress memory (`mmx-studio:playback-progress:v1`)
+- Four playback modes: `sequence`, `repeat-all`, `repeat-one`, `shuffle`
+- Queue panel mode label (顺序 / 列表循环 / 单曲循环 / 随机) and clickable queue items
+- Audio ended behavior now respects playback mode
+- Mobile queue panel polish (70vh max-height on small screens)
+
+### Notes
+
+- No generation is performed for this release — pure UX/stability release
+- Queue and progress are **localStorage-only** — no cross-browser/cross-device sync
+- CLI backend remains the recommended default path; BYOK API Adapter remains experimental
+
 ## [v0.4.9-alpha] — 2026-06-10
 
 ### Highlights
