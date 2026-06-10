@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.15--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.15-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.16--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.16-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -180,6 +180,8 @@ These guardrails are for public alpha protection. They are not a replacement for
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
 ## Release
+
+**v0.4.16-alpha**：Phase Storage-A — Storage management and retention dry-run release (`server/storage-maintenance.ts`, inventory/retention-dry-run/backup-manifest scripts, `docs/STORAGE_POLICY.md`, dry-run only, no auto-deletion)
 
 **v0.4.15-alpha**：Phase Ops-Monitor-A — Public runtime diagnostics release (`GET /api/status`, job queue/storage aggregates, public-safe runtime status summary, ops monitoring docs)
 

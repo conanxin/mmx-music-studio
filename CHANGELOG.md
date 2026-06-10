@@ -4,6 +4,26 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.16-alpha] — 2026-06-10
+
+### Highlights
+
+- **Storage management and retention dry-run release** — Phase Storage-A
+- Added `server/storage-maintenance.ts` — storage inventory, retention dry-run, backup manifest
+- Added `scripts/storage-a-inventory-report.sh` — human-readable inventory summary
+- Added `scripts/storage-a-retention-dry-run.sh` — retention dry-run with configurable days (RETENTION_DAYS env var)
+- Added `scripts/storage-a-backup-manifest.sh` — lightweight JSON backup manifest to stdout
+- Added `docs/STORAGE_POLICY.md` — storage categories, retention proposal, safety rules
+- Updated `docs/OPS_MONITORING.md` — storage command reference
+- Updated `docs/DEVELOPMENT_HANDOFF.md` and `docs/PUBLIC_RELEASE_READINESS.md` — Storage-A status
+
+### Notes
+
+- No files are deleted by this release — all cleanup logic is dry-run only
+- No generation is performed for this release
+- Runtime storage is not committed
+- Storage-B may add operator-confirmed cleanup later
+
 ## [v0.4.15-alpha] — 2026-06-10
 
 ### Highlights

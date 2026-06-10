@@ -1,6 +1,6 @@
 # Ops Monitoring — mmx-music-studio
 
-> 文档版本：v0.4.14-alpha · 2026-06-10
+> 文档版本：v0.4.16-alpha · 2026-06-10
 
 ## Public endpoints
 

@@ -1,12 +1,14 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.15-alpha · 2026-06-10
+> 文档版本：v0.4.16-alpha · 2026-06-10
 
 ## Current Public URL
 
 **https://music.conanxin.com**
 
 ## Current Release
+
+**v0.4.16-alpha** — Storage management and retention dry-run release (Phase Storage-A: inventory, retention dry-run, backup manifest, STORAGE_POLICY.md, no auto-deletion)
 
 **v0.4.15-alpha** — Public runtime diagnostics release (Phase Ops-Monitor-A: `/api/status`, job queue/storage aggregates, ops monitoring docs)
 

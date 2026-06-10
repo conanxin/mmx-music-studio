@@ -1,6 +1,6 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.15-alpha · 2026-06-10
+> 文档版本：v0.4.16-alpha · 2026-06-10
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
@@ -31,7 +31,7 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 任务历史管理 | ✅ 完成 | Phase 4D：Jobs 页面 + delete/retry/stats API |
 | 公开生成保护 | ✅ 完成 | Phase Launch Guard-A：全局暂停/每来源日限额/冷却/SHA256源识别 |
 | 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
-| 存储治理 | ✅ Phase Storage-A | inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
+| 存储治理 | ✅ 完成 | Phase Storage-A：inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
 
 ---
 
@@ -368,9 +368,10 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Product Polish-J** | **Public Launch Readiness: Home Launch/Trust/Feedback UX blocks, v0.4.12-alpha badge, Settings backend/BYOK explanation, PUBLIC_RELEASE_READINESS.md, data notes, feedback links** | ✅ PASS |
 | **Phase Release v0.4.13-alpha** | **Public launch readiness and trust UX release** | ✅ PASS |
 | **Phase Launch Guard-A** | **Public generation guardrails: global pause, per-source daily limit, per-source cooldown, source hash (no raw IP), /api/health guard fields, Studio 3-error UX, Home Trust section, .env.example, systemd smoke, smoke test** | ✅ PASS |
-| **Phase Release v0.4.14-alpha** | **Protected public generation release — global pause, per-source daily limit, cooldown, hashed source guard, /api/health guard fields, Studio/Home UX, systemd smoke, CI** | ✅ PASS |
-| Phase Ops-Monitor-A | Public runtime diagnostics: `/api/status`, job queue aggregate, storage aggregate, ops monitoring doc | 📋 进行中 |
-| Phase Storage-A | Storage management and cleanup | 📋 规划 |
+| **Phase Release v0.4.15-alpha** | **Public runtime diagnostics release — /api/status, job queue/storage aggregates, ops monitoring doc, CI** | ✅ PASS |
+| Phase Ops-Monitor-A | Public runtime diagnostics: `/api/status`, job queue aggregate, storage aggregate, ops monitoring doc | ✅ 完成 |
+| **Phase Release v0.4.16-alpha** | **Storage management dry-run release — storage-maintenance.ts, inventory/retention-dry-run/backup-manifest scripts, STORAGE_POLICY.md, CI** | ✅ PASS |
+| Phase Storage-A | Storage management and cleanup | ✅ 完成 |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |
