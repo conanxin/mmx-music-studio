@@ -168,6 +168,17 @@ The B0 manifest reports: `orphanAudio`, `orphanMetadata`, `missingAudioRefs`,
 `oldTrackCandidates` (only if `--retention-days` is provided), and
 `estimatedReclaimableBytes`. **B0 reports but does not act.**
 
+**Recommendation when `candidates = 0` (current state):** **do not run cleanup.**
+There is nothing to reclaim. Re-run the dry-run periodically; only if non-zero
+candidates appear AND the operator reviews the manifest should a future
+Storage-B1 phase be considered.
+
+**Required confirmation phrase for any future B1 action:**
+`CONFIRM_STORAGE_B_CLEANUP` (must be passed via `STORAGE_B_CONFIRMATION`
+environment variable; not a CLI argument). The guard is enforced by
+`scripts/storage-b-confirmation-guard.sh` and rejects by default. The guard
+**itself never deletes** — it only validates the phrase.
+
 ### Ops panel (Phase Ops-Monitor-B)
 
 The public alpha includes a read-only operations panel at `/ops`.

@@ -4,6 +4,26 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.25-alpha] — 2026-06-11
+
+### Highlights
+
+- Storage-B0 operator cleanup dry-run and safety design release.
+- Added non-destructive storage cleanup dry-run.
+- Added confirmation guard for future Storage-B1 cleanup.
+- Added Storage-B0 design documentation.
+- Added Storage-B0 smoke test.
+- Added dry-run JSON manifest with `destructive: false`.
+- Added storage candidate reporting for orphan audio, orphan metadata, missing audio references, and old track candidates.
+- Fixed historical Product Polish-N handoff doc drift so Product Polish-N smoke is green again.
+
+### Notes
+
+- No files are deleted in Storage-B0.
+- No cleanup is executed in this release.
+- No generation is performed for this release.
+- Current Storage-B0 inventory reports zero cleanup candidates.
+
 ## [v0.4.24-alpha] — 2026-06-11
 
 ### Highlights

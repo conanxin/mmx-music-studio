@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.24--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.24-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.25--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.25-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -136,7 +136,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Async API polling | ✅ Design | `pollingEndpointConfigured: false`, `MINIMAX_API_ASYNC_POLLING_REQUIRED`, Studio error card, 3 async fixtures |
 
 **Product Polish releases:**
-- **Phase Release v0.4.24-alpha** — Library interaction consistency release: removable active filter chips (来源 /集合 /标签 /搜索) with per-chip × remove buttons, per-filter clear handlers (search / source / collection / tag — single filter clear without affecting others), search match hints on each track card (matching标题 / Prompt /歌词 /模式 / 来源 /标签 /备注, max3 + N more, categories only — no prompt/note full text), batch operation scope hints (disabled reason / scope text), timeline action filters a11y polish (role=group, aria-label, per-chip title), accessibility polish across batch toggle / track checkbox / filter chips / drawer buttons, mobile polish (activeFilterChip wrap, match hint ellipsis, batchScopeHint role=status), no `/api/generate` calls, no server upload, no schema migration
+- **Phase Release v0.4.25-alpha** — Storage-B0 operator cleanup dry-run and safety design release: read-only storage cleanup dry-run (`storage-b-operator-cleanup-dry-run.sh`, optional `--retention-days` / `--json`, `destructive: false` footer), confirmation guard (`storage-b-confirmation-guard.sh` requires `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP` env var, case-sensitive, never deletes by itself), design doc (`docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md` — candidate categories, never-delete list, required report, rollback note), `storage-b-smoke-test.sh` 59/59 PASS (file presence / executable / static safety / runtime behavior / design doc content / documentation records), Product Polish-N handoff doc drift fixed (smoke 55/55 PASS restored), no `/api/generate` calls, no server schema change, no cleanup executed, current inventory reports 0 candidates, 0 reclaimable bytes
 - **Phase Product Polish-N** — Annotation timeline, batch note editing, and Library polish: per-track 标注时间线 (collapse: 5, expand: 300 via 查看全部 / 收起), action badges (添加标签 / 删除标签 / 批量添加标签 / 批量删除标签 / 更新备注 / 合并导入 / 覆盖导入), Library-wide 标注历史总览 折叠面板 (最近 20 条 + filter chips: 全部 / 标签变更 / 备注变更 / 导入), batch note editor in batch toolbar (覆盖备注 / 追加到备注, 500-char cap, records `note_updated` history with all selected trackIds), mobile CSS (historyFilterRow horizontal scroll, batch note full-width), no `/api/generate` calls, no server upload, no schema migration, smoke test 51/51 PASS
 - **Phase Product-Polish-M** — Collection links and annotation history: `mmx-studio:annotation-history:v1` (cap 300, 7 action types), batch remove tag (case-insensitive), collection URL state `?q=&source=&collection=&tag=` via `history.replaceState`, share link button copies current filter URL, drawer `最近标注历史` last 5 actions per track, `LibraryLocalBackupV1.annotationHistory` field with backward compat for v1.0 backups, collection Markdown/JSON export include `collectionUrl` + `filters`, mobile CSS, smoke test
 - **Phase Deploy-CF-C** — Cloudflare Access for Ops and Status (✅ **verified 2026-06-10**): protects `/ops`, `/ops/*`, `/api/status`, `/api/debug/*` at the Cloudflare edge; keeps `/`, `/library`, `/studio`, `/api/health` public; `/api/generate` remains owned by the server-side Launch Guard; Access is configured in the Cloudflare Dashboard (Zero Trust → Access), not in app code; `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the operator policy, rollback and verification table; `scripts/deploy-cf-c-access-smoke-test.sh` returns `DEPLOY_CF_C_ACCESS_PENDING` before Dashboard config and `DEPLOY_CF_C_ACCESS_SMOKE_PASS` after — current state PASS, `/ops` and `/api/status` return `302` to Cloudflare Access login
@@ -194,14 +194,14 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 **Phase Product Polish-O**：Library final polish, timeline refinements, and UX consistency (commit pending — Current view summary, Clear all filters, Better empty states, Batch toolbar grouping, Drawer hierarchy polish, Timeline readability polish, Local-only export / backup clarification, Mobile polish 639/390)
 
-### Current Status (v0.4.24-alpha)
+### Current Status (v0.4.25-alpha)
 
-- Active filter chips: PASS
-- Per-filter clear: PASS
-- Search match hints: PASS
-- Batch operation scope hint: PASS
-- Timeline accessibility polish: PASS
-- Mobile interaction polish: PASS
+- Storage-B0 dry-run: PASS
+- Confirmation guard: PASS
+- destructive=false: PASS
+- Storage candidates: 0
+- Product Polish-N smoke restored: PASS
+- Storage-B smoke: PASS
 - Product Polish-P smoke: PASS
 - Cloudflare Access for Ops: PASS
 - Public URL: https://music.conanxin.com

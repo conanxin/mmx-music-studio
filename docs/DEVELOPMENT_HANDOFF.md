@@ -7,7 +7,9 @@
 
 ## Current release line
 
-**v0.4.24-alpha** — Phase Release v0.4.24-alpha: Library interaction consistency release.
+> 文档版本：v0.4.25-alpha · 2026-06-11
+
+**v0.4.25-alpha** — Phase Release v0.4.25-alpha: Storage-B0 operator cleanup dry-run and safety design release.
 
 - Phase Product Polish-P completed
 - Phase Product Polish-N completed (annotation timeline + batch note editing + Library-wide history panel — see v0.4.22-alpha notes below)
@@ -54,16 +56,20 @@
 - **No server upload.**
 - **No generation is performed for this release.**
 
-### In-flight phase: none — Phase Release v0.4.24-alpha closed (2026-06-11)
+### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 
-- **Phase Release v0.4.24-alpha** (Phase Product Polish-P promoted to release) — ✅ closed2026-06-11.
-- **Phase Storage-B0 closed (2026-06-11)** — Operator-confirmed cleanup **dry-run + safety design only** (no deletion): `scripts/storage-b-operator-cleanup-dry-run.sh` (read-only manifest with sha256 + paths + estimatedReclaimableBytes, `destructive: false`), `scripts/storage-b-confirmation-guard.sh` (rejects unless `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP`, never deletes), `docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md` (candidate categories, never-delete list, rollback note, required confirmation phrase), `scripts/storage-b-smoke-test.sh` (55/55 PASS — 55/55 storage-b smoke PASS, includes 4 documentation-records assertions). No `/api/generate` call, no music generation, no server schema change, no runtime storage committed. **Next Storage-B1 is a separate phase** that will only proceed with operator confirmation.
- - Library interaction consistency: removable active filter chips, per-filter clear handlers,
- search match hints (categories only, max3 + N more), batch operation scope hints,
- timeline accessibility polish (role=group, aria-label, per-chip title), track checkbox
- aria-pressed, full a11y / title polish across Library controls, mobile polish390 /639.
- - No server schema migration, no `/api/generate` calls, no server upload, browser-local only.
- - See `docs/release/RELEASE_NOTES_v0.4.24-alpha.md` and `CHANGELOG.md` v0.4.24-alpha.
+- **Phase Release v0.4.25-alpha** (Phase Storage-B0 promoted to release) — ✅ closed2026-06-11.
+- **Storage-B0 dry-run + safety design** (Storage-B0 promoted to release): `scripts/storage-b-operator-cleanup-dry-run.sh` (read-only, `destructive: false`, optional `--retention-days` / `--json`), `scripts/storage-b-confirmation-guard.sh` (rejects unless `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP`, never deletes), `docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md` (candidate categories: orphan audio / orphan metadata / missing audio refs / old tracks; never-delete list; required report; rollback note; required confirmation phrase), `scripts/storage-b-smoke-test.sh` (59/59 PASS — file presence / executable / static safety / runtime behavior / design doc content / documentation records).
+- **Current inventory (Storage-B0)**: 300 audio files, 0 orphan audio, 0 orphan metadata, 0 missing audio references, 0 old track candidates, 0 reclaimable bytes, `destructive: false`.
+- **No `/api/generate` call, no music generation, no server schema change, no runtime storage committed.**
+- **Product Polish-N doc drift fixed** — `DEVELOPMENT_HANDOFF.md` now explicitly lists "Phase Product Polish-N completed" at the top; Product Polish-N smoke restored to 55/55 PASS.
+- See `docs/release/RELEASE_NOTES_v0.4.25-alpha.md` and `CHANGELOG.md` v0.4.25-alpha.
+
+### Next recommended phases
+
+- **Phase Storage-B1** — operator-confirmed cleanup **only if** real candidates exist AND the operator reviews and approves the Storage-B0 manifest. Current dry-run shows **0 candidates**, so Storage-B1 is **not urgent**.
+- **Phase Deploy-CF-D** — optional Turnstile on `/api/generate` or broader Cloudflare Access coverage.
+- **Phase Product Polish-Q** — optional next round of UI polish.
 - **Phase Deploy-CF-C** (Cloudflare Access for Ops / Status) — ✅ verified2026-06-10.
   - `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
     (`MMX Music Studio Ops`, self-hosted, paths `/ops`, `/ops/*`, `/api/status`, `/api/debug/*`).

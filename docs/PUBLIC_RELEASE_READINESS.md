@@ -1,6 +1,8 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.23-alpha · 2026-06-11
+> 文档版本：v0.4.25-alpha · 2026-06-11
+>
+> **Current Release: v0.4.25-alpha — Storage-B0 operator cleanup dry-run and safety design release.** Storage-B0 is **dry-run only**: `destructive=false`, no files deleted, no server schema migration, no generation. Current cleanup candidates: **0**. `/ops` and `/api/status` remain protected by Cloudflare Access; `/api/health` remains public; `/api/generate` remains protected by Launch Guard.
 
 ## Release notes
 
@@ -69,7 +71,7 @@
 - Public generation guardrails (Phase Launch Guard-A)
 - Public runtime diagnostics (Phase Ops-Monitor-A: `/api/status`, job queue/storage aggregates)
 - Storage management and retention planning (Phase Storage-A: inventory, dry-run, backup manifest, no auto-deletion)
-- **Phase Storage-B0**: operator-confirmed cleanup **dry-run + safety design only** (no deletion). `storage-b-operator-cleanup-dry-run.sh` reports orphan/missing/old candidates and emits a JSON manifest with sha256 + paths + `destructive: false`; `storage-b-confirmation-guard.sh` enforces `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP` (rejects by default, never deletes). The actual deletion logic is a **separate future phase (Storage-B1)** that will only run after a human operator confirms the B0 manifest. No `/api/generate` calls, no music generation, no server schema change, no runtime storage committed.
+- **Phase Storage-B0** (promoted to v0.4.25-alpha): operator-confirmed cleanup **dry-run + safety design only** (no deletion). `storage-b-operator-cleanup-dry-run.sh` reports orphan/missing/old candidates and emits a JSON manifest with sha256 + paths + `destructive: false`; `storage-b-confirmation-guard.sh` enforces `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP` (rejects by default, never deletes). The actual deletion logic is a **separate future phase (Storage-B1)** that will only run after a human operator confirms the B0 manifest. No `/api/generate` calls, no music generation, no server schema change, no runtime storage committed.
 - Read-only operations panel (Phase Ops-Monitor-B: OpsPanel.tsx, `/api/health`+`/api/status` aggregation, launch guard/job queue/storage status cards, copyable diagnostic summary, auto-refresh, nav entry, mobile CSS)
 - Browser-local Library annotations (Phase Product-Polish-K: track tags, notes, smart collections, tag filter, enhanced search, Markdown export with tags/notes, `mmx-studio:track-annotations:v1` localStorage)
 - Library batch actions, collections export, local annotation backup (Phase Product-Polish-L: `libraryBackup.ts` with LibraryLocalBackupV1 model, batch mode checkbox + select-all/clear + batch add tag (≤12 tags, ≤24 chars), current/selected collection export Markdown/JSON with smart-collection labels, local backup panel exporting/importing localStorage data with merge or replace — no server upload, no schema migration)
