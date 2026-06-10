@@ -4,6 +4,26 @@ All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v0.4.13-alpha] — 2026-06-10
+
+### Highlights
+
+- **Public launch readiness release** — trust UX for first-time visitors
+- Added Public Alpha launch readiness section on Home with 4 cards: Real Generation / Library / Local Experience / Experimental Capabilities
+- Added Trust and Data Notes: browser localStorage data, server-side track records, BYOK API key handling, alpha limitations
+- Added Feedback and Version section: release badge, GitHub Issues, GitHub repository, Release Notes links
+- Updated Home status card version to `v0.4.12-alpha`
+- Added responsive layout for launch / trust / feedback sections (639px single column, 389px full width)
+- Added `docs/PUBLIC_RELEASE_READINESS.md`
+- Added `scripts/product-polish-j-smoke-test.sh` (31 assertions)
+
+### Notes
+
+- No generation is performed for this release
+- CLI backend remains the recommended default path
+- BYOK API Adapter remains experimental
+- This remains an alpha release
+
 ## [v0.4.12-alpha] — 2026-06-10
 
 ### Highlights
