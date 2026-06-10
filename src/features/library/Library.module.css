@@ -698,6 +698,176 @@
   pointer-events: none;
 }
 
+/* Smart collections row */
+.smartCollections {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.smartLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.smartChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.smartChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.smartChip:hover {
+  background: var(--color-border);
+}
+
+.smartActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.smartActive:hover {
+  background: var(--color-primary);
+}
+
+.smartBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.smartChip:not(.smartActive) .smartBadge {
+  background: var(--color-border);
+}
+
+/* Tag filter chips */
+.tagFilters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.tagFilterLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.tagChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tagChip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tagActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.tagCount {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.tagChip:not(.tagActive) .tagCount {
+  background: var(--color-border);
+  padding: 0 4px;
+  border-radius: 8px;
+}
+
+.smartActive .smartBadge,
+.tagActive .tagCount {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.tagClear {
+  padding: 3px 9px;
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: 14px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+/* Card annotation display */
+.cardAnnotations {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.cardTagChip {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.cardTagMore {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.cardNoteIcon {
+  font-size: 11px;
+  cursor: default;
+}
+
 /* Toast notification */
 .toast {
   position: fixed;
@@ -762,6 +932,47 @@
     padding: 8px 14px;
     font-size: 12px;
     min-height: 36px;
+  }
+
+  /* Smart collections: scrollable on mobile */
+  .smartCollections {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 2px;
+  }
+
+  .smartCollections::-webkit-scrollbar {
+    display: none;
+  }
+
+  .smartChips {
+    flex-wrap: nowrap;
+  }
+
+  /* Tag filters: scrollable on mobile */
+  .tagFilters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 5px;
+    padding-bottom: 2px;
+  }
+
+  .tagFilters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tagChips {
+    flex-wrap: nowrap;
+  }
+
+  /* Card annotation: ensure chips wrap and don't squeeze title */
+  .cardAnnotations {
+    margin-top: 3px;
   }
 
   /* Card footer: allow wrapping on mobile */

@@ -1,14 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import styles from './Library.module.css';
 import { MOCK_TASKS, formatDuration, formatRelativeTime, MODE_LABELS } from '../../mock/data';
 import { listTracks, deleteTrack } from '../../lib/serverApi';
 import type { TrackLike } from '../../lib/serverApi';
 import type { GlobalPlayerTrack } from '../../lib/globalPlayerTrack';
+import {
+  loadTrackAnnotations,
+  saveTrackAnnotations,
+  normalizeTags,
+  getAllAnnotationTags,
+} from '../../lib/trackAnnotations';
 
 const FAVORITES_KEY = 'mmx-studio:favorites';
 
 type FilterSource = 'all' | 'mmx-cli' | 'minimax-api' | 'mock' | 'favorites';
+type SmartCollection = 'all' | 'tagged' | 'with-note' | 'recent' | 'cli-generated' | 'api-generated';
 type FilterTab = { key: FilterSource; label: string };
 
 const FILTER_TABS: FilterTab[] = [
@@ -17,6 +24,15 @@ const FILTER_TABS: FilterTab[] = [
   { key: 'minimax-api', label: 'MiniMax API' },
   { key: 'mock', label: '示例' },
   { key: 'favorites', label: '收藏' },
+];
+
+const SMART_COLLECTIONS: Array<{ key: SmartCollection; label: string; icon: string }> = [
+  { key: 'all', label: '全部', icon: '📋' },
+  { key: 'tagged', label: '有标签', icon: '🏷️' },
+  { key: 'with-note', label: '有备注', icon: '📝' },
+  { key: 'recent', label: '最近生成', icon: '🕐' },
+  { key: 'cli-generated', label: 'CLI 生成', icon: '💻' },
+  { key: 'api-generated', label: 'API 生成', icon: '🔌' },
 ];
 
 type TrackItem = {
@@ -124,6 +140,10 @@ export default function Library({
   const [searchQuery, setSearchQuery] = useState('');
   const [detailTrack, setDetailTrack] = useState<TrackItem | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => readFavorites());
+  // Phase Product Polish-K: Track annotations (localStorage)
+  const [annotations, setAnnotations] = useState(() => loadTrackAnnotations());
+  const [smartCollection, setSmartCollection] = useState<SmartCollection>('all');
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const { toast, showCopy } = useCopyToast();
 
   const loadTracks = async () => {
@@ -187,16 +207,118 @@ export default function Library({
     navigator.clipboard.writeText(shareUrl).then(() => showCopy('分享链接已复制')).catch(() => showCopy('复制失败'));
   };
 
+// Phase Product Polish-K: Annotation editor component
+function AnnotationEditor({
+  trackId,
+  annotations,
+  onChange,
+}: {
+  trackId: string;
+  annotations: import('../../lib/trackAnnotations').TrackAnnotationsMap;
+  onChange: (updated: import('../../lib/trackAnnotations').TrackAnnotationsMap) => void;
+}) {
+  const ann = annotations[trackId] ?? { trackId, tags: [], note: '', updatedAt: '' };
+  const [tags, setTags] = useState<string[]>(ann.tags);
+  const [note, setNote] = useState(ann.note);
+  const [tagInput, setTagInput] = useState('');
+
+  const MAX_TAGS = 12;
+  const MAX_NOTE = 500;
+
+  const handleAddTag = () => {
+    const t = tagInput.trim();
+    if (!t || tags.length >= MAX_TAGS) return;
+    const next = normalizeTags([...tags, t]);
+    setTags(next);
+    setTagInput('');
+  };
+
+  const handleRemoveTag = (remove: string) => {
+    setTags(tags.filter(tag => tag !== remove));
+  };
+
+  const handleSave = () => {
+    const { setTrackAnnotation } = require('../../lib/trackAnnotations');
+    const updated = setTrackAnnotation(annotations, trackId, tags, note);
+    onChange(updated);
+  };
+
+  return (
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+        标签与备注
+      </div>
+
+      {/* Tags */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+          {tags.map(tag => (
+            <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--color-primary)', color: '#fff', borderRadius: 20, padding: '2px 8px 2px 10px', fontSize: 12 }}>
+              {tag}
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}
+                aria-label={`删除标签 ${tag}`}
+              >×</button>
+            </span>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+            placeholder={tags.length >= MAX_TAGS ? '已达上限 12 个标签' : '添加标签，例如 Lo-fi、播客、睡前'}
+            style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, outline: 'none' }}
+            disabled={tags.length >= MAX_TAGS}
+          />
+          <button
+            onClick={handleAddTag}
+            disabled={!tagInput.trim() || tags.length >= MAX_TAGS}
+            style={{ padding: '6px 12px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: tags.length >= MAX_TAGS ? 'not-allowed' : 'pointer', opacity: tags.length >= MAX_TAGS ? 0.5 : 1 }}
+          >
+            添加
+          </button>
+        </div>
+        {tags.length >= MAX_TAGS && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4 }}>最多 12 个标签</div>
+        )}
+      </div>
+
+      {/* Note */}
+      <div>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value.slice(0, MAX_NOTE))}
+          placeholder="记录这首音乐适合什么场景、是否需要重做、可用于哪个项目…"
+          rows={3}
+          style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+        />
+        <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+          {note.length} / {MAX_NOTE}
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        style={{ marginTop: 10, padding: '8px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', width: '100%' }}
+      >
+        保存标签与备注
+      </button>
+    </div>
+  );
+}
+
   const handleExportTrackInfo = (track: TrackItem) => {
     const source = track.isMock ? '示例' : (track.generationSource === 'mmx-cli' ? 'MMX CLI' : track.generationSource === 'minimax' ? 'MiniMax API' : track.generationSource || '—');
     const createdAt = track.createdAt ? new Date(track.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—';
     const downloadLine = track.downloadUrl ? `- 下载：${track.downloadUrl}` : '';
     const promptLine = track.prompt ? `\n\n## Prompt\n\n${track.prompt}` : '\n\n## Prompt\n\n未记录 prompt';
-    const md = `# ${track.title || '无标题'}
-\n- 来源：${source}
-- 时长：${track.durationText || '—'}
-- 创建时间：${createdAt}
-- Track ID：${track.id}${downloadLine}${promptLine}
+    // Phase Product Polish-K: include tags + notes in export
+    const ann = annotations[track.id];
+    const tagsLine = ann && ann.tags.length > 0 ? `\n\n## Tags\n\n${ann.tags.map(t => `- ${t}`).join('\n')}` : '\n\n## Tags\n\nnone';
+    const noteLine = ann && ann.note.trim() ? `\n\n## Notes\n\n${ann.note}` : '\n\n## Notes\n\nnone';
+    const md = `# ${track.title || '无标题'}\n\n- 来源：${source}\n- 时长：${track.durationText || '—'}\n- 创建时间：${createdAt}\n- Track ID：${track.id}${downloadLine}${promptLine}${tagsLine}${noteLine}
 `;
     navigator.clipboard.writeText(md).then(() => showCopy('作品信息已复制')).catch(() => showCopy('复制失败'));
   };
@@ -247,30 +369,66 @@ const handlePlay = (track: TrackItem) => {
     }
   };
 
-  // Combined filter: source × search
-  const filteredTracks = tracks.filter(t => {
-    // Source filter
-    if (filterSource === 'favorites') {
-      if (!favorites.has(t.id)) return false;
-    } else if (filterSource === 'mock') {
-      if (!t.isMock) return false;
-    } else if (filterSource === 'mmx-cli') {
-      if (t.generationSource !== 'mmx-cli') return false;
-    } else if (filterSource === 'minimax-api') {
-      if (t.generationSource !== 'minimax') return false;
-    }
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const matchTitle = t.title.toLowerCase().includes(q);
-      const matchPrompt = (t.prompt || '').toLowerCase().includes(q);
-      const matchLyrics = (t.lyrics || '').toLowerCase().includes(q);
-      const matchSource = sourceLabel(t.generationSource, t.isMock).toLowerCase().includes(q);
-      const matchMode = (MODE_LABELS[t.mode as keyof typeof MODE_LABELS] || t.mode).toLowerCase().includes(q);
-      if (!matchTitle && !matchPrompt && !matchLyrics && !matchSource && !matchMode) return false;
-    }
-    return true;
-  });
+  // Phase Product Polish-K: Smart collections + tag filter + annotation search
+  const filteredTracks = useMemo(() => {
+    return tracks.filter(t => {
+      // 1. Source filter (original tabs)
+      if (filterSource === 'favorites') {
+        if (!favorites.has(t.id)) return false;
+      } else if (filterSource === 'mock') {
+        if (!t.isMock) return false;
+      } else if (filterSource === 'mmx-cli') {
+        if (t.generationSource !== 'mmx-cli') return false;
+      } else if (filterSource === 'minimax-api') {
+        if (t.generationSource !== 'minimax') return false;
+      }
+
+      // 2. Smart collection filter
+      if (smartCollection === 'tagged') {
+        const ann = annotations[t.id];
+        if (!ann || ann.tags.length === 0) return false;
+      } else if (smartCollection === 'with-note') {
+        const ann = annotations[t.id];
+        if (!ann || !ann.note.trim()) return false;
+      } else if (smartCollection === 'recent') {
+        // keep as-is — show all, sorted by recency
+      } else if (smartCollection === 'cli-generated') {
+        if (t.generationSource !== 'mmx-cli') return false;
+      } else if (smartCollection === 'api-generated') {
+        if (t.generationSource !== 'minimax') return false;
+      }
+
+      // 3. Tag filter
+      if (tagFilter) {
+        const ann = annotations[t.id];
+        if (!ann || !ann.tags.some(tag => tag.toLowerCase() === tagFilter.toLowerCase())) return false;
+      }
+
+      // 4. Search filter (including annotation tags + notes)
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const matchTitle = t.title.toLowerCase().includes(q);
+        const matchPrompt = (t.prompt || '').toLowerCase().includes(q);
+        const matchLyrics = (t.lyrics || '').toLowerCase().includes(q);
+        const matchSource = sourceLabel(t.generationSource, t.isMock).toLowerCase().includes(q);
+        const matchMode = (MODE_LABELS[t.mode as keyof typeof MODE_LABELS] || t.mode).toLowerCase().includes(q);
+        // Phase Product Polish-K: also search annotation tags + note
+        const ann = annotations[t.id];
+        const matchTags = ann ? ann.tags.some(tag => tag.toLowerCase().includes(q)) : false;
+        const matchNote = ann ? ann.note.toLowerCase().includes(q) : false;
+        if (!matchTitle && !matchPrompt && !matchLyrics && !matchSource && !matchMode && !matchTags && !matchNote) return false;
+      }
+
+      // 5. Recent sort — handled in the sort() below
+      return true;
+    }).sort((a, b) => {
+      // Recent: sort descending by createdAt
+      if (smartCollection === 'recent') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return 0;
+    });
+  }, [tracks, filterSource, favorites, smartCollection, tagFilter, searchQuery, annotations]);
 
   const handleCloseDetail = () => setDetailTrack(null);
 
@@ -338,6 +496,58 @@ const handlePlay = (track: TrackItem) => {
             ))}
           </div>
 
+          {/* Phase Product Polish-K: Smart collections */}
+          <div className={styles.smartCollections}>
+            <span className={styles.smartLabel}>智能集合</span>
+            <div className={styles.smartChips}>
+              {SMART_COLLECTIONS.map(sc => {
+                const count = sc.key === 'all' ? tracks.length
+                  : sc.key === 'tagged' ? Object.values(annotations).filter(a => a.tags.length > 0).length
+                  : sc.key === 'with-note' ? Object.values(annotations).filter(a => a.note.trim()).length
+                  : sc.key === 'cli-generated' ? tracks.filter(t => t.generationSource === 'mmx-cli').length
+                  : sc.key === 'api-generated' ? tracks.filter(t => t.generationSource === 'minimax').length
+                  : filteredTracks.length;
+                return (
+                  <button
+                    key={sc.key}
+                    className={`${styles.smartChip} ${smartCollection === sc.key ? styles.smartActive : ''}`}
+                    onClick={() => { setSmartCollection(sc.key); setTagFilter(null); }}
+                  >
+                    {sc.icon} {sc.label}
+                    {count > 0 && <span className={styles.smartBadge}>{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Phase Product Polish-K: Tag filter chips */}
+          {(() => {
+            const topTags = getAllAnnotationTags(annotations).slice(0, 12);
+            if (topTags.length === 0) return null;
+            return (
+              <div className={styles.tagFilters}>
+                <span className={styles.tagFilterLabel}>标签</span>
+                <div className={styles.tagChips}>
+                  {topTags.map(({ tag, count }) => (
+                    <button
+                      key={tag}
+                      className={`${styles.tagChip} ${tagFilter === tag ? styles.tagActive : ''}`}
+                      onClick={() => setTagFilter(prev => prev === tag ? null : tag)}
+                    >
+                      {tag}<span className={styles.tagCount}>{count}</span>
+                    </button>
+                  ))}
+                  {tagFilter && (
+                    <button className={styles.tagClear} onClick={() => setTagFilter(null)}>
+                      清除筛选
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Phase Product Polish-H: Play current filtered list */}
           {filteredTracks.length > 0 && onPlayQueue && (
             <div className={styles.playlistActions}>
@@ -383,6 +593,20 @@ const handlePlay = (track: TrackItem) => {
                       {sourceLabel(track.generationSource, track.isMock)}
                     </span>
                   </div>
+                  {/* Phase Product Polish-K: Annotation tags on card */}
+                  {(() => {
+                    const ann = annotations[track.id];
+                    if (!ann || (ann.tags.length === 0 && !ann.note.trim())) return null;
+                    return (
+                      <div className={styles.cardAnnotations}>
+                        {ann.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className={styles.cardTagChip}>{tag}</span>
+                        ))}
+                        {ann.tags.length > 3 && <span className={styles.cardTagMore}>+{ann.tags.length - 3}</span>}
+                        {ann.note.trim() && <span className={styles.cardNoteIcon} title="有备注">📝</span>}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {/* Favorite button */}
                 <button
@@ -491,6 +715,17 @@ const handlePlay = (track: TrackItem) => {
                   {MODE_LABELS[detailTrack.mode as keyof typeof MODE_LABELS] || detailTrack.mode}
                 </span>
               </div>
+
+              {/* Phase Product Polish-K: Annotation editor */}
+              <AnnotationEditor
+                trackId={detailTrack.id}
+                annotations={annotations}
+                onChange={(updated) => {
+                  setAnnotations(updated);
+                  saveTrackAnnotations(updated);
+                  showCopy('作品备注已保存');
+                }}
+              />
 
               <div className={styles.detailGrid}>
                 <div className={styles.detailRow}>

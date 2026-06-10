@@ -136,7 +136,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Async API polling | ✅ Design | `pollingEndpointConfigured: false`, `MINIMAX_API_ASYNC_POLLING_REQUIRED`, Studio error card, 3 async fixtures |
 
 **Product Polish releases:**
-- **Phase Product Polish-I** — Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence / repeat-all / repeat-one / shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label
+- **Phase Product-Polish-K** — Tags, notes, and smart collections: localStorage annotation (tags + note per track), Library drawer editor (tag chips + note textarea, save button), smart collection filters (有标签/有备注/最近生成/CLI生成/API生成), tag filter chips with count, card annotation display (3 chips + overflow + note icon), annotation search (tags + note), Markdown export with Tags/Notes, mobile adaptation
+- **Phase Product-Polish-I** — Playback queue persistence: localStorage queue/mode restore on mount, 4 playback modes (sequence / repeat-all / repeat-one / shuffle), throttled progress save/restore, queue item click-to-jump, queue panel mode label
 - **Phase Product Polish-H** — Playback queue: App-level playbackQueue state, prev/next buttons, audio ended → next track, Library plays current filtered list, detail drawer add-to-queue, queue panel with remove/clear, mobile responsive
 - **Phase Product Polish-G** — Global mini player: App-level currentPlayingTrack state, fixed bottom player in Layout, Library and Studio play actions unified
 - **Phase Product Polish-E** — Library sharing / Markdown export / URL deep-link / mobile drawer polish
@@ -182,6 +183,8 @@ These guardrails are for public alpha protection. They are not a replacement for
 ## Release
 
 **v0.4.17-alpha**：Phase Ops-Monitor-B — Read-only operations panel release (`/ops` page, service/Launch Guard/job queue/storage summary cards, copyable diagnostics, manual refresh, 30s auto-refresh, mobile layout, Ops-Monitor-B smoke test)
+
+**v0.4.18-alpha**：Phase Product Poli...[truncated]
 
 **v0.4.16-alpha**：Phase Storage-A — Storage management and retention dry-run release (`server/storage-maintenance.ts`, inventory/retention-dry-run/backup-manifest scripts, `docs/STORAGE_POLICY.md`, dry-run only, no auto-deletion)
 

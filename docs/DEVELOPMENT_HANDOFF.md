@@ -374,7 +374,11 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | Phase Storage-A | Storage management and cleanup | ✅ 完成 |
 | **Phase Ops-Monitor-B** | **Read-only operations panel: OpsPanel.tsx, /api/health+status aggregation, launch guard/job queue/storage cards, diagnostic summary with copy, auto-refresh, nav entry, mobile CSS, no sensitive data exposed** | ✅ PASS |
 | **Phase Release v0.4.17-alpha** | **Read-only operations panel release — /ops page, CI** | ✅ PASS |
-| **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
+| **Phase Product-Polish-K** | **Tags, notes, and smart collections** | ✅ PASS |
+
+> **Browser localStorage:** Track annotations use `mmx-studio:track-annotations:v1` (tags[], note, updatedAt per trackId). Tags max 12, note max 500 chars. Not synced to server. See `src/lib/trackAnnotations.ts`.
+
+| Phase 4C | 多用户鉴权 + 速率限制 + 每日额度 | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |
 | **Phase 5A** | **BYOK API Key 模式** | ✅ 完成 |
