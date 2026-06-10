@@ -9,6 +9,15 @@
 
 **v0.4.22-alpha** — Phase Release v0.4.22-alpha: Annotation timeline and batch notes release.
 
+**Phase Product Polish-O (pending closeout)** — Library UX polish round 2 (commit pending):
+- Current view summary + clear all filters
+- Better empty states (search / smart collection / tag / batch)
+- Batch toolbar grouping (选择 / 批量标注 / 导出)
+- Drawer hierarchy polish (标签与备注 section heading, drawer section dividers)
+- Timeline readability polish (border consistency, today/yesterday hint)
+- Mobile polish 639 / 390 breakpoints
+- No server schema migration, no generation logic changes, browser-local only
+
 - Annotation timeline (per-track): default 5 entries + 查看全部 / 收起 (expand to full local history, 300 cap).
 - 7 action badges: 添加标签 / 删除标签 / 批量添加标签 / 批量删除标签 / 更新备注 / 合并导入 / 覆盖导入.
 - Library-wide annotation history panel (`LibraryHistoryPanel`): latest 20 events, 4 filter chips (全部 / 标签变更 / 备注变更 / 导入), collapsible, no 清空 button.
@@ -50,7 +59,7 @@
 
 ### Next recommended phases
 
-- **Phase Product Polish-O** — follow-up UX polish (per-track timeline enhancements, optional dark-mode batch toolbar, drawer UX micro-polish).
+- **Phase Product Polish-O** — ✅ closeout pending — Library UX polish round 2 (current view summary, clear all filters, empty states, batch grouping, drawer hierarchy, timeline polish, mobile polish).
 - **Phase Storage-B operator-confirmed cleanup** — operator-driven cleanup of
   `storage/guard/`, `storage/tracks/`, `storage/quota/`, `storage/audit/` (no auto delete; dry-run
   manifest; human confirmation required).

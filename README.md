@@ -188,6 +188,22 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 **v0.4.22-alpha**：Phase Release v0.4.22-alpha — Annotation timeline and batch notes release (commit `f3ab915` + release prep, tag `v0.4.22-alpha`)
 
+**Phase Product Polish-O**：Library final polish, timeline refinements, and UX consistency (commit pending — Current view summary, Clear all filters, Better empty states, Batch toolbar grouping, Drawer hierarchy polish, Timeline readability polish, Local-only export / backup clarification, Mobile polish 639/390)
+
+### Current Status (v0.4.22-alpha)
+
+### Phase Product Polish-O (pending closeout)
+
+- Current view summary (source / smart collection / tag / search / count)
+- Clear all filters (resets search + source + smart collection + tag + URL query)
+- Better empty states (no search results / smart collection empty / tag empty / batch nothing selected)
+- Batch toolbar grouping (选择 / 批量标注 / 导出, three groups)
+- Drawer hierarchy polish (标签与备注 section heading, drawer section dividers, historyHintInline)
+- Timeline readability polish (border consistency, today/yesterday short format via existing rendering, hint inline)
+- Local-only export / backup clarification (collection link only copies filter conditions, local backup does not include audio, no server upload)
+- No server schema migration
+- No generation logic changes
+
 ### Current Status (v0.4.22-alpha)
 
 | Capability | Status |

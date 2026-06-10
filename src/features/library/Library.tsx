@@ -440,6 +440,29 @@ function AnnotationEditor({
     return '当前列表';
   }, [smartCollectionLabel, tagFilter, searchQuery, filterSource]);
 
+  // Phase Product Polish-O: clear all filters (search + source + smart collection + tag + URL)
+  const hasAnyFilter = Boolean(
+    searchQuery
+    || filterSource !== 'all'
+    || smartCollection !== 'all'
+    || tagFilter
+  );
+  const handleClearAllFilters = () => {
+    setSearchQuery('');
+    setFilterSource('all');
+    setSmartCollection('all');
+    setTagFilter(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('q');
+      url.searchParams.delete('source');
+      url.searchParams.delete('collection');
+      url.searchParams.delete('tag');
+      window.history.replaceState({}, '', url.toString());
+    }
+    showCopy('已清除全部筛选');
+  };
+
   // Phase Product Polish-L: trigger browser download from a string blob
   const triggerDownload = (filename: string, mime: string, content: string) => {
     try {
@@ -967,6 +990,39 @@ const handlePlay = (track: TrackItem) => {
             </div>
           )}
 
+          {/* Phase Product Polish-O: Current view summary + clear-all-filters */}
+          <div className={styles.viewSummary}>
+            <div className={styles.viewSummaryLabel}>当前视图</div>
+            <div className={styles.viewSummaryContent}>
+              <span className={styles.viewSummaryTag}>{collectionLabel}</span>
+              {filterSource !== 'all' && (
+                <span className={styles.viewSummaryHint}>
+                  来源：{filterSource === 'mmx-cli' ? 'MMX CLI' : filterSource === 'minimax-api' ? 'MiniMax API' : filterSource === 'mock' ? '示例' : filterSource === 'favorites' ? '收藏' : '全部'}
+                </span>
+              )}
+              {tagFilter && (
+                <span className={styles.viewSummaryHint}>标签：{tagFilter}</span>
+              )}
+              {searchQuery && (
+                <span className={styles.viewSummaryHint}>搜索：{searchQuery}</span>
+              )}
+              <span className={styles.viewSummaryCount}>
+                {filteredTracks.length === tracks.length
+                  ? `共 ${tracks.length} 首`
+                  : `${filteredTracks.length} / ${tracks.length} 首`}
+              </span>
+            </div>
+            {hasAnyFilter && (
+              <button
+                className={styles.viewSummaryClear}
+                onClick={handleClearAllFilters}
+                aria-label="清除全部筛选"
+              >
+                清除全部筛选
+              </button>
+            )}
+          </div>
+
           {/* Phase Product Polish-L: Batch mode toolbar + collection export */}
           <div className={styles.batchToolbar}>
             <button
@@ -985,18 +1041,25 @@ const handlePlay = (track: TrackItem) => {
 
             {batchMode && (
               <>
-                <span className={styles.batchSelected}>已选择 {selectedTrackIds.size} 首</span>
-                <button
-                  className={styles.batchSelectAll}
-                  onClick={selectAllFiltered}
-                  disabled={filteredTracks.length === 0}
-                >全选当前列表</button>
-                <button
-                  className={styles.batchClear}
-                  onClick={clearSelection}
-                  disabled={selectedTrackIds.size === 0}
-                >清除选择</button>
-                <div className={styles.batchTagRow}>
+                <div className={styles.batchGroup} aria-label="选择">
+                  <span className={styles.batchGroupLabel}>选择</span>
+                  <span className={styles.batchSelected}>已选择 {selectedTrackIds.size} 首</span>
+                  <div className={styles.batchGroupRow}>
+                    <button
+                      className={styles.batchSelectAll}
+                      onClick={selectAllFiltered}
+                      disabled={filteredTracks.length === 0}
+                    >全选当前列表</button>
+                    <button
+                      className={styles.batchClear}
+                      onClick={clearSelection}
+                      disabled={selectedTrackIds.size === 0}
+                    >清除选择</button>
+                  </div>
+                </div>
+                <div className={styles.batchGroup} aria-label="批量标注">
+                  <span className={styles.batchGroupLabel}>批量标注</span>
+                  <div className={styles.batchTagRow}>
                   <input
                     className={styles.batchTagInput}
                     placeholder="给所选作品添加标签"
@@ -1064,16 +1127,22 @@ const handlePlay = (track: TrackItem) => {
                     >批量保存备注</button>
                   </div>
                 </div>
-                <button
-                  className={`${styles.collectionExportBtn} ${styles.secondary}`}
-                  onClick={handleExportSelectedMarkdown}
-                  disabled={selectedTrackIds.size === 0}
-                >导出所选 Markdown</button>
-                <button
-                  className={`${styles.collectionExportBtn} ${styles.secondary}`}
-                  onClick={handleExportSelectedJson}
-                  disabled={selectedTrackIds.size === 0}
-                >导出所选 JSON</button>
+                </div>
+                <div className={styles.batchGroup} aria-label="导出">
+                  <span className={styles.batchGroupLabel}>导出</span>
+                  <div className={styles.batchGroupRow}>
+                    <button
+                      className={`${styles.collectionExportBtn} ${styles.secondary}`}
+                      onClick={handleExportSelectedMarkdown}
+                      disabled={selectedTrackIds.size === 0}
+                    >导出所选 Markdown</button>
+                    <button
+                      className={`${styles.collectionExportBtn} ${styles.secondary}`}
+                      onClick={handleExportSelectedJson}
+                      disabled={selectedTrackIds.size === 0}
+                    >导出所选 JSON</button>
+                  </div>
+                </div>
               </>
             )}
 
@@ -1089,6 +1158,9 @@ const handlePlay = (track: TrackItem) => {
               </svg>
               复制当前集合链接
             </button>
+            <span className={styles.collectionHint}>
+              复制的是当前筛选条件，不包含本地标签备注详情。
+            </span>
 
             <button
               className={styles.collectionExportBtn}
@@ -1110,6 +1182,9 @@ const handlePlay = (track: TrackItem) => {
                 ? `导出「${smartCollectionLabel}」JSON`
                 : '导出当前集合 JSON'}
             </button>
+            <span className={styles.collectionHint}>
+              导出当前集合会包含作品信息和本地 tags / notes。
+            </span>
           </div>
         </div>
 
@@ -1146,7 +1221,7 @@ const handlePlay = (track: TrackItem) => {
               </div>
               <LibraryHistoryPanel filter={historyFilter} refreshTick={historyRefreshTick} />
               <p className={styles.historyPanelFooter}>
-                历史仅保存在当前浏览器，用于回看本地标注操作。
+                历史仅保存在当前浏览器，用于回看本地标注操作。保存标签或备注后，这里会显示本地操作记录。
               </p>
             </div>
           )}
@@ -1156,7 +1231,9 @@ const handlePlay = (track: TrackItem) => {
         <div className={styles.backupPanel}>
           <div className={styles.backupHeader}>
             <strong className={styles.backupTitle}>本地资料备份</strong>
-            <span className={styles.backupHint}>这些资料只保存在当前浏览器。导出备份可用于换浏览器或避免本地数据丢失。</span>
+            <span className={styles.backupHint}>
+              备份只包含当前浏览器的本地资料（标签 / 备注 / 收藏 / 模板 / 队列 / 进度 / 历史），不包含音频文件。导入只写入当前浏览器 localStorage，不上传服务器。
+            </span>
           </div>
           <div className={styles.backupRow}>
             <button
@@ -1297,7 +1374,7 @@ const handlePlay = (track: TrackItem) => {
           })}
         </div>
 
-        {/* Empty state */}
+        {/* Empty state — Phase Product Polish-O: extended coverage */}
         {filteredTracks.length === 0 && !loading && (
           <div className={styles.empty}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1305,9 +1382,30 @@ const handlePlay = (track: TrackItem) => {
             </svg>
             {searchQuery ? (
               <>
-                <h3>没有匹配「{searchQuery}」的作品</h3>
-                <p>试试其他关键词，或清除搜索</p>
-                <button className={styles.emptyBtn} onClick={() => setSearchQuery('')}>清除搜索</button>
+                <h3>没有找到匹配作品</h3>
+                <p>当前搜索词「{searchQuery}」没有命中任何作品。可以尝试清除搜索词或切换集合。</p>
+                <div className={styles.emptyActions}>
+                  <button className={styles.emptyBtn} onClick={() => setSearchQuery('')}>清除搜索</button>
+                  {hasAnyFilter && (
+                    <button className={styles.emptyBtn} onClick={handleClearAllFilters}>清除全部筛选</button>
+                  )}
+                </div>
+              </>
+            ) : smartCollection !== 'all' ? (
+              <>
+                <h3>这个集合暂时没有作品</h3>
+                <p>当前智能集合「{smartCollectionLabel || smartCollection}」下还没有任何作品。你可以去创作台生成新音乐或切换到其他集合。</p>
+                <div className={styles.emptyActions}>
+                  <button className={styles.emptyBtn} onClick={() => setSmartCollection('all')}>查看全部作品</button>
+                </div>
+              </>
+            ) : tagFilter ? (
+              <>
+                <h3>没有使用该标签的作品</h3>
+                <p>标签「{tagFilter}」当前没有关联任何作品。可以给作品添加该标签，或清除标签筛选。</p>
+                <div className={styles.emptyActions}>
+                  <button className={styles.emptyBtn} onClick={() => setTagFilter(null)}>清除标签筛选</button>
+                </div>
               </>
             ) : filterSource === 'favorites' ? (
               <>
@@ -1321,6 +1419,18 @@ const handlePlay = (track: TrackItem) => {
                 <Link to="/studio" className={styles.emptyBtn}>开始创作</Link>
               </>
             )}
+          </div>
+        )}
+
+        {/* Phase Product Polish-O: Batch-mode-but-nothing-selected hint */}
+        {batchMode && selectedTrackIds.size === 0 && filteredTracks.length > 0 && (
+          <div className={styles.emptyHint}>
+            <span>请选择作品后再执行批量操作</span>
+            <button
+              className={styles.emptyHintBtn}
+              onClick={selectAllFiltered}
+              disabled={filteredTracks.length === 0}
+            >全选当前列表</button>
           </div>
         )}
       </div>
@@ -1351,6 +1461,9 @@ const handlePlay = (track: TrackItem) => {
                 </span>
               </div>
 
+              {/* Phase Product Polish-O: Tags & Notes section heading */}
+              <div className={styles.drawerSection}>
+                <div className={styles.drawerSectionHeading}>标签与备注</div>
               {/* Phase Product Polish-K: Annotation editor */}
               <AnnotationEditor
                 trackId={detailTrack.id}
@@ -1395,11 +1508,15 @@ const handlePlay = (track: TrackItem) => {
                   setHistoryRefreshTick(t => t + 1);
                 }}
               />
+              </div>
 
               {/* Phase Product Polish-N: Annotation timeline (per-track, expand/collapse) */}
-              <div className={styles.historySection}>
+              <div className={`${styles.historySection} ${styles.drawerSection}`}>
                 <div className={styles.historyHeader}>
                   <div className={styles.historyTitle}>标注时间线</div>
+                  <span className={styles.historyHintInline}>
+                    {trackHistoryExpanded ? '显示全部' : '最近 5 条'}
+                  </span>
                   <button
                     className={styles.historyToggle}
                     onClick={() => setTrackHistoryExpanded(v => !v)}
