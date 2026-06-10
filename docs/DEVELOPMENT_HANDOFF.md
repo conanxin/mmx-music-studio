@@ -362,6 +362,7 @@ BYOK_KEY_STORAGE=memory    # 仅 memory（当前仅支持）
 | **Phase Release v0.4.11-alpha** | **Playback queue persistence and playback modes release** | ✅ PASS |
 | **Phase API-Debug-E** | **Async task polling design: polling.ts types, normalizeMiniMaxTaskStatus(), parseAsyncTaskReference(), pollingEndpointConfigured: false, 3 async fixtures (processing/succeeded/failed), Studio async polling error card, async polling design smoke test** | ✅ PASS |
 | **Phase Release v0.4.12-alpha** | **API Adapter async polling readiness release** | ✅ PASS |
+| **Phase Product Polish-J** | **Public Launch Readiness: Home Launch/Trust/Feedback UX blocks, v0.4.12-alpha badge, Settings backend/BYOK explanation, PUBLIC_RELEASE_READINESS.md, data notes, feedback links** | ✅ PASS |
 | **Phase 4C** | **多用户鉴权 + 速率限制 + 每日额度** | ✅ 完成 |
 | **Phase 4D** | **任务历史管理后台** | ✅ 完成 |
 | Phase 4E | API adapter 生产化 + HTTPS 域名实装 | ✅ 完成 |

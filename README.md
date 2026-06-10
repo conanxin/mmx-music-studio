@@ -165,7 +165,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 ## Release
 
-**v0.4.12-alpha**：API Adapter async polling readiness — polling.ts design, 3 async fixtures, Studio async polling error card, async polling design smoke test
+**v0.4.12-alpha**：API Adapter async polling readiness + Product Polish-J public launch readiness — Launch/Trust/Feedback UX blocks, version v0.4.12-alpha, Settings backend info, PUBLIC_RELEASE_READINESS.md
 **v0.4.11-alpha**：Phase Product Polish-I — Playback queue persistence and playback modes
 **v0.4.10-alpha**：Phase Product Polish-H — Playback queue and continuous playback
 

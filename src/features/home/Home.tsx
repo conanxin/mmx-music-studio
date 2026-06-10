@@ -81,9 +81,9 @@ export default function Home() {
               <span className={styles.statusLabel}>推荐后端</span>
               <span className={styles.statusValue}>MMX CLI</span>
             </div>
-           <div className={styles.statusItem}>
+            <div className={styles.statusItem}>
               <span className={styles.statusLabel}>当前版本</span>
-              <span className={styles.statusValue}>v0.4.4-alpha</span>
+              <span className={styles.statusValue}>v0.4.12-alpha</span>
             </div>
             <div className={styles.statusItem}>
               <span className={styles.statusLabel}>API Adapter</span>
@@ -141,6 +141,119 @@ export default function Home() {
             <h3>Cloudflare Tunnel</h3>
             <p>公网免 SSH Tunnel 访问 · HTTPS</p>
           </div>
+        </div>
+      </section>
+
+      {/* Public Launch Readiness */}
+      <section className={styles.launchSection}>
+        <h2 className={styles.sectionTitle}>公开 Alpha · 可以开始试用</h2>
+        <div className={styles.launchGrid}>
+          <div className={styles.launchCard}>
+            <div className={styles.launchCardIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <h3>真实生成</h3>
+            <p>当前默认使用服务器 MMX CLI backend 生成音乐。</p>
+          </div>
+          <div className={styles.launchCard}>
+            <div className={styles.launchCardIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+              </svg>
+            </div>
+            <h3>作品库</h3>
+            <p>生成后的作品会进入 Library，可搜索、收藏、播放、导出。</p>
+          </div>
+          <div className={styles.launchCard}>
+            <div className={styles.launchCardIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+            </div>
+            <h3>本地体验</h3>
+            <p>收藏、模板、播放队列保存在当前浏览器。</p>
+          </div>
+          <div className={styles.launchCard}>
+            <div className={styles.launchCardIcon}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+              </svg>
+            </div>
+            <h3>实验能力</h3>
+            <p>BYOK API Adapter 已验证 direct_audio，async polling 已预备，仍属实验能力。</p>
+          </div>
+        </div>
+        <div className={styles.launchCta}>
+          <Link to="/studio" className={styles.primaryBtn}>开始创作</Link>
+          <Link to="/library" className={styles.secondaryBtn}>查看作品库</Link>
+          <a href="https://github.com/conanxin/mmx-music-studio" target="_blank" rel="noopener noreferrer" className={styles.ghBtn}>GitHub</a>
+        </div>
+      </section>
+
+      {/* Data & Trust */}
+      <section className={styles.trustSection}>
+        <h2 className={styles.sectionTitle}>数据与限制</h2>
+        <div className={styles.trustGrid}>
+          <div className={styles.trustCard}>
+            <h3>浏览器本地数据</h3>
+            <p>收藏、Prompt 模板、播放队列、播放进度保存在当前浏览器 localStorage。</p>
+          </div>
+          <div className={styles.trustCard}>
+            <h3>生成记录</h3>
+            <p>生成后的曲目信息由服务器保存，用于 Library 展示和播放。</p>
+          </div>
+          <div className={styles.trustCard}>
+            <h3>API Key</h3>
+            <p>BYOK Key 仅用于一次生成请求的内存任务上下文，不写入磁盘；当前默认推荐 CLI backend。</p>
+          </div>
+          <div className={styles.trustCard}>
+            <h3>当前限制</h3>
+            <p>当前是 alpha 版本；Cloudflare Access 未启用；请不要输入敏感 prompt。</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Feedback & Version */}
+      <section className={styles.feedbackSection}>
+        <div className={styles.feedbackCard}>
+          <div className={styles.feedbackBadge}>
+            <span className={styles.feedbackDot}/>
+            v0.4.12-alpha · Public Alpha
+          </div>
+          <h2 className={styles.feedbackTitle}>反馈与参与</h2>
+          <div className={styles.feedbackLinks}>
+            <a href="https://github.com/conanxin/mmx-music-studio/issues" target="_blank" rel="noopener noreferrer" className={styles.feedbackLink}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              提交问题
+            </a>
+            <a href="https://github.com/conanxin/mmx-music-studio" target="_blank" rel="noopener noreferrer" className={styles.feedbackLink}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/>
+              </svg>
+              查看源码
+            </a>
+            <a href="https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.12-alpha" target="_blank" rel="noopener noreferrer" className={styles.feedbackLink}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Release Notes
+            </a>
+          </div>
+          <p className={styles.feedbackPublicUrl}>
+            公网访问：
+            <a href="https://music.conanxin.com" target="_blank" rel="noopener noreferrer">music.conanxin.com</a>
+          </p>
         </div>
       </section>
 
