@@ -126,6 +126,32 @@
 - **Next**: BYOK-E Official API Schema Validation → Deploy-CF-D Turnstile
 
 
+### Phase BYOK-G: Single Direct Live Call Verification
+
+- **Status**: **LIVE CALL SUCCESS**
+- **What**: 执行一次 operator-approved direct HTTPS BYOK live call
+- **Operator confirmation**: `CONFIRM_BYOK_G_SINGLE_DIRECT_LIVE_CALL` — received
+- **Live call**: **已执行**（1 次，使用 user-provided MiniMax API Key）
+- **Result**: **SUCCESS** — provider returned base64 audio, HTTP 200, status_code 0
+- **Audio summary**:
+  - Size: 2,967,813 bytes (~2.8 MB)
+  - Duration: 92,682 ms (~92s)
+  - Sample rate: 44,100 Hz
+  - Bitrate: 256,000 bps
+  - Channels: 2 (stereo)
+  - Trace ID: `0679ff5271e7cef9f7432485d6d39a1a`
+- **Safety**:
+  - No CLI used
+  - No site operator key used
+  - User key not persisted
+  - Raw provider response not recorded in repo
+  - Only redacted summary recorded
+  - Defaults remain disabled / dry-run
+- **No broad public BYOK launch**
+- **Report**: `docs/security/BYOK_DIRECT_SINGLE_LIVE_CALL_REPORT.md`
+- **Smoke**: BYOK-G smoke 21/21 PASS
+- **Next**: Release v0.4.29-alpha → Deploy-CF-D Turnstile
+
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 
 - **Phase Release v0.4.25-alpha** (Phase Storage-B0 promoted to release) — ✅ closed2026-06-11.

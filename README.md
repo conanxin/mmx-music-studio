@@ -520,22 +520,40 @@ Design documents:
 - **Release**: v0.4.28-alpha
 - **Next**: BYOK-E Official API Schema Validation → Deploy-CF-D Turnstile
 
-- **Status**: **DESIGN ONLY** (no live calls)
-- **What**: 设计 direct HTTPS provider call 架构，替代 CLI live path
-- **BYOK live**: DISABLED（design only，不执行真实调用）
+### Phase BYOK-F: Direct HTTPS API Relay Implementation
+
+- **Status**: **IMPLEMENTED**
+- **What**: 实现 gated direct HTTPS API relay path
+- **BYOK live**: DISABLED by default（需要显式 env gate + operator confirmation）
 - **BYOK fake/dry-run**: 仍可用
-- **Design doc**: `docs/security/BYOK_DIRECT_API_RELAY_DESIGN.md`
-- **Adapter skeleton**: `server/adapters/minimax-api/byok-direct.ts`
+- **Adapter**: `server/adapters/minimax-api/byok-direct.ts`
+- **Endpoint gates**:
+  - `BYOK_DIRECT_LIVE_ENABLED=true`
+  - `BYOK_DIRECT_LIVE_CONFIRMATION=CONFIRM_BYOK_DIRECT_LIVE_TEST`
 - **Key principles**:
   - 不使用 CLI spawn
   - 不使用 `MINIMAX_API_KEY` env injection
-  - 不使用 `--api-key` flag（会暴露 key 到 process argv）
-  - 未来使用 per-request `Authorization` header
+  - 不使用 `--api-key` flag
+  - 使用 per-request `Authorization: Bearer` header
   - user key 永不存储、永不记录、永不返回
   - provider error 全部 redact
-- **Blocked until**: 官方 MiniMax music generation API endpoint/schema 验证完成
-- **Next**: BYOK-E Official API Schema Validation → Deploy-CF-D Turnstile
+- **Release**: v0.4.28-alpha (design) → BYOK-F commit
+- **Next**: BYOK-G Single Direct Live Call Verification
 
+### Phase BYOK-G: Single Direct Live Call Verification
+
+- **Status**: **LIVE CALL SUCCESS**
+- **What**: 执行一次 operator-approved direct HTTPS BYOK live call
+- **Live call**: **已执行**（1 次，使用 user-provided MiniMax API Key）
+- **Result**: **SUCCESS** — provider returned base64 audio, HTTP 200, status_code 0
+- **Music generated**: **yes**（~2.8MB, ~92s, stereo, 44.1kHz, 256kbps MP3）
+- **Key persistence**: **no**
+- **Raw response in repo**: **no**（仅 redacted summary）
+- **CLI used**: **no**
+- **Site operator key used**: **no**
+- **Report**: `docs/security/BYOK_DIRECT_SINGLE_LIVE_CALL_REPORT.md`
+- **Safety**: Live env 已恢复默认（disabled / dry-run）
+- **Next**: Deploy-CF-D Turnstile → Release v0.4.29-alpha
 
 ### 快速启动
 
