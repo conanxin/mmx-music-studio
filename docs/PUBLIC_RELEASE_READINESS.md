@@ -4,6 +4,8 @@
 >
 > **Current Release: v0.4.25-alpha — Storage-B0 operator cleanup dry-run and safety design release.** Storage-B0 is **dry-run only**: `destructive=false`, no files deleted, no server schema migration, no generation. Current cleanup candidates: **0**. `/ops` and `/api/status` remain protected by Cloudflare Access; `/api/health` remains public; `/api/generate` remains protected by Launch Guard.
 
+**Phase BYOK-A in progress** -- Public BYOK generation readiness. Server-side relay scaffold only; BYOK is **disabled by default** at `POST /api/generate/byok` until Phase BYOK-B runs an explicit live relay test. Phase BYOK-A returns `byok_dry_run_only` (does NOT call real MiniMax). User keys are not written to disk / logs / metadata / track object; not put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query. Users pay with their own MiniMax account -- billing responsibility on user. Design: `docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md`.
+
 ## Release notes
 
 - **v0.4.23-alpha — Library UX polish and timeline clarity release**

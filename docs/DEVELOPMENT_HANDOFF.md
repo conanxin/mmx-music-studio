@@ -385,6 +385,41 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 ---
 
 
+## Phase BYOK-A: Public BYOK generation readiness (in progress)
+
+> Server-side relay scaffold only. BYOK is **disabled by default** for the
+> public endpoint until Phase BYOK-B runs an explicit live relay test.
+
+- Public endpoint candidate: `POST /api/generate/byok`
+- Kill switch: `PUBLIC_BYOK_ENABLED=false` returns 403 `byok_generation_disabled`
+- Phase BYOK-A returns a `byok_dry_run_only` response (does NOT call real MiniMax)
+- Server-side relay only -- no browser-side MiniMax calls
+- User key never written to disk / logs / metadata / track object
+- User key never put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query
+- User pays with their own MiniMax account -- billing responsibility on user
+- Real BYOK generation requires explicit later Phase BYOK-B (live relay test)
+
+Key files added/modified:
+
+- `docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md` (new, full design)
+- `server/security/redaction.ts` (new, redactSensitive / redactObject / validateApiKeyShape)
+- `server/index.ts` (added route + handleByokGenerate dry-run, imported redaction helpers, publicByokEnabled config flag)
+- `server/types.ts` (ServerConfig.publicByokEnabled field)
+- `src/features/studio/ByokPanel.tsx` (new UI block, password input + model select + confirmation + disabled-by-default)
+- `src/features/studio/ByokPanel.module.css` (new)
+- `src/features/studio/Studio.tsx` (mounts <ByokPanel />)
+- `scripts/byok-a-smoke-test.sh` (new, 50+ assertions)
+
+Distinction from Phase 5A (admin BYOK):
+
+- Phase 5A is admin/server-operator level, configured via env at startup
+- Phase BYOK-A is public endpoint with per-request user-supplied key
+- Both share `byokKeyStorage: memory` policy
+
+
+---
+
+
 ## Phase 5A: BYOK API Key Mode（已完成）
 
 ### 核心文件

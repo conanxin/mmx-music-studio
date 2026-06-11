@@ -349,6 +349,26 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 ---
 
+## Phase BYOK-A: Public BYOK generation readiness (in progress)
+
+> Server-side relay scaffold only. BYOK is **disabled by default** for the
+> public endpoint until Phase BYOK-B runs an explicit live relay test.
+
+- Public endpoint candidate: `POST /api/generate/byok`
+- Kill switch: `PUBLIC_BYOK_ENABLED=false` returns 403 `byok_generation_disabled`
+- Phase BYOK-A returns a `byok_dry_run_only` response (does NOT call real MiniMax)
+- Server-side relay only -- no browser-side MiniMax calls
+- User key never written to disk / logs / metadata / track object
+- User key never put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query
+- User pays with their own MiniMax account -- billing responsibility on user
+- Real BYOK generation requires explicit later Phase BYOK-B (live relay test)
+
+Design document: [`docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md`](docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md)
+
+
+
+---
+
 ## 三种运行模式
 
 | 模式 | 真实生成 | 额度消耗 | 用途 |

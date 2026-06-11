@@ -1,6 +1,14 @@
 /**
+ * mmx-music-studio API serve
+  // Phase BYOK-A: separate kill switch for the PUBLIC BYOK relay
+  // endpoint /api/generate/byok. Distinct from BYOK_ENABLED (admin internal).
+  // Default false.
+  publicByokEnabled: readBoolEnv('PUBLIC_BYOK_ENABLED', false),
+}
+
+/**
  * mmx-music-studio API server.
- * Phase 2I: Preview Access Gate (PIN protection).
+ * Phase 2I: Preview Access Gate (PIN protection). Preview Access Gate (PIN protection).
  *
  * Security guarantees:
  * - REAL_GENERATION_ENABLED=false by default — never calls MiniMax API
@@ -90,6 +98,15 @@ import {
 import { buildRuntimeStatusSummary } from './runtime-status.js';
 import { generateWithMmxCli, diagnoseMmxCli, runMmx } from './adapters/minimax-cli/index.js';
 import { setJobApiKey, getKeyLengthBucket } from './byok-secrets.js';
+// Phase BYOK-A: redaction helper for the public BYOK relay endpoint.
+// Used to ensure no API key, Authorization header, or Bearer literal
+// ever reaches logs, audit records, error responses, or generated
+// track metadata. See docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md.
+import {
+  redactObject,
+  redactSensitive,
+  validateApiKeyShape,
+} from './security/redaction.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -169,6 +186,10 @@ function loadConfig(): ServerConfig {
     byokEnabled: readBoolEnv('BYOK_ENABLED', false),
     serverKeyFallback: readBoolEnv('SERVER_KEY_FALLBACK', false),
     byokKeyStorage: 'memory' as const,
+    // Phase BYOK-A: separate kill switch for the PUBLIC BYOK relay
+    // endpoint /api/generate/byok. Distinct from BYOK_ENABLED (admin internal).
+    // Default false.
+    publicByokEnabled: readBoolEnv('PUBLIC_BYOK_ENABLED', false),
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -1511,6 +1532,13 @@ async function routeHandler(
       return;
     }
     await handleGenerate(req, res, config);
+  } else if (url === '/api/generate/byok' && req.method === 'POST') {
+    // Phase BYOK-A: public BYOK relay endpoint. Default disabled.
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
+    await handleByokGenerate(req, res, config);
   } else if (url === '/api/tracks' && req.method === 'GET') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '请先解锁访问', 401);
@@ -1654,6 +1682,132 @@ async function handleDebugCli(
   };
 
   sendJson(res, 200, response);
+}
+
+/**
+ * POST /api/generate/byok
+ *
+ * Phase BYOK-A: Public BYOK generation readiness.
+ *
+ * Behavior:
+ * 1. If PUBLIC_BYOK_ENABLED !== "true" → return 403 byok_generation_disabled
+ * 2. Validate apiKey (required, min length, shape) — NEVER logged
+ * 3. Validate prompt / lyrics / model via existing validateMusicInput
+ * 4. Reuse Launch Guard (cooldown + daily per-source limit)
+ * 5. Returns dry-run response byok_dry_run_only — NO real provider call
+ *
+ * Security:
+ * - apiKey is held in memory only, never written to disk
+ * - apiKey is never included in track metadata
+ * - apiKey is never logged (redactObject is used in any error path)
+ * - apiKey is never returned to the client
+ */
+interface ByokGenerateRequest {
+  apiKey?: string;
+  input?: unknown;
+  region?: 'cn' | 'global';
+}
+
+interface ByokDryRunResponse {
+  ok: true;
+  dryRun: true;
+  code: 'byok_dry_run_only';
+  message: string;
+  receivedKeyLengthBucket: 'tiny' | 'short' | 'normal' | 'long' | 'absurd';
+  requestId: string;
+  // Intentionally NO apiKey, NO Authorization, NO raw provider error.
+}
+
+async function handleByokGenerate(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  // 1. Kill switch: PUBLIC_BYOK_ENABLED must be true
+  if (config.publicByokEnabled !== true) {
+    sendJson(res, 403, {
+      ok: false,
+      code: 'byok_generation_disabled',
+      message: '公开 BYOK 生成暂未开放',
+      hint: '等待后续 phase 显式开启',
+    });
+    return;
+  }
+
+  // 2. Parse body
+  let body: ByokGenerateRequest;
+  try {
+    body = await parseBody<ByokGenerateRequest>(req, config.maxRequestBodyMb);
+  } catch {
+    sendError(res, 'unknown', '无效请求体');
+    return;
+  }
+
+  const requestId = `byok_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+
+  // 3. Validate apiKey — never log the key itself
+  const keyShape = validateApiKeyShape(body.apiKey);
+  if (!keyShape.ok) {
+    // Redact any key-like field in error path before logging
+    console.warn(
+      `[byok] invalid apiKey [${requestId}]:`,
+      redactSensitive(keyShape.reason ?? 'unknown'),
+    );
+    sendError(res, 'validation', 'API Key 格式无效', 400);
+    return;
+  }
+
+  // 4. Validate prompt / lyrics / model — reuse existing validator
+  const validation = validateMusicInput(
+    body.input as Parameters<typeof validateMusicInput>[0],
+  );
+  if (!validation.ok) {
+    sendError(
+      res,
+      'validation',
+      validation.errors.map((e) => e.message).join('；'),
+      400,
+    );
+    return;
+  }
+
+  // 5. Launch Guard — cooldown + daily per-source limit
+  const guard = checkLaunchGuard(req, config.launchGuard);
+  if (!guard.allowed) {
+    // guard has a discriminated union: code+message+retryAfterSeconds|resetsAt
+    const retryAfter = Math.max(
+      1,
+      Math.ceil(
+        ('retryAfterSeconds' in guard && guard.retryAfterSeconds
+          ? guard.retryAfterSeconds
+          : 15),
+      ),
+    );
+    auditGenerationBlocked('launch_guard', '/api/generate/byok', getClientHashShort(req), getUserAgent(req));
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Retry-After', String(retryAfter));
+    res.writeHead(429);
+    res.end(
+      JSON.stringify({
+        ok: false,
+        code: guard.code,
+        message: guard.message,
+        requestId,
+      }),
+    );
+    return;
+  }
+
+  // 6. Dry-run response — no real provider call. apiKey is NOT included.
+  const dryRun: ByokDryRunResponse = {
+    ok: true,
+    dryRun: true,
+    code: 'byok_dry_run_only',
+    message: 'BYOK 接通验证成功。真实 provider 调用将在 Phase BYOK-B 显式开启。',
+    receivedKeyLengthBucket: keyShape.bucket ?? 'normal',
+    requestId,
+  };
+  sendJson(res, 200, dryRun);
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────

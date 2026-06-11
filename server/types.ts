@@ -39,6 +39,13 @@ export interface ServerConfig {
   serverKeyFallback: boolean;
   /** BYOK: storage method for session keys */
   byokKeyStorage: 'memory';
+  /**
+   * Phase BYOK-A: separate kill switch for the PUBLIC BYOK relay
+   * endpoint /api/generate/byok. Distinct from byokEnabled
+   * (admin internal). Default false. When false, endpoint returns
+   * 403 byok_generation_disabled.
+   */
+  publicByokEnabled: boolean;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';

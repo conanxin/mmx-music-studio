@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Studio.module.css';
+// Phase BYOK-A: Public BYOK generation readiness panel
+import ByokPanel from './ByokPanel';
 import WaveformPlayer from '../../components/WaveformPlayer';
 import { useSettings } from '../../lib/settingsStore';
 import { getHealth, createGenerateJob, getJob, cancelJob, listTracks, listJobsFiltered } from '../../lib/serverApi';
@@ -907,6 +909,9 @@ export default function Studio({
           <div className={styles.header}>
             <h1 className={styles.pageTitle}>今天想创作什么音乐？</h1>
           </div>
+
+          {/* Phase BYOK-A: Public BYOK readiness panel (default disabled) */}
+          <ByokPanel />
 
           {/* Mode tabs */}
           <div className={styles.modeTabs}>
