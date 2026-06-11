@@ -1,3 +1,24 @@
+## v0.4.28-alpha
+
+### Highlights
+
+- BYOK Direct HTTPS API Relay Design skeleton release.
+- Added direct API relay design documentation.
+- Added direct API adapter skeleton (`server/adapters/minimax-api/byok-direct.ts`).
+- Added `byok_direct_api_not_verified` status code.
+- Updated Studio BYOK UI for direct relay status.
+- Preserved CLI live path fail-closed behavior.
+- Added BYOK-D smoke coverage.
+
+### Notes
+
+- No direct API live call is implemented.
+- No official endpoint/schema is verified in this release.
+- No real MiniMax call was executed.
+- No music was generated.
+- BYOK live remains disabled.
+- Broad public BYOK launch remains blocked.
+
 ## v0.4.27-alpha
 
 ### Highlights

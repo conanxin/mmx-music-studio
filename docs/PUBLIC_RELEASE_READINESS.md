@@ -6,6 +6,8 @@
 
 ****Phase BYOK-A shipped (commit 42c3ef3).** Public BYOK generation readiness. Server-side relay scaffold only; BYOK is **disabled by default** at `POST /api/generate/byok`. Phase BYOK-A returns `byok_dry_run_only` (does NOT call real MiniMax). User keys are not written to disk / logs / metadata / track object; not put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query. Users pay with their own MiniMax account -- billing responsibility on user. Design: `docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md`.
 
+**Current release**: v0.4.28-alpha
+
 **Phase BYOK-B in progress (commit pending).** Controlled BYOK relay test. Phase BYOK-C: protocol ready (`PROTOCOL_READY_NO_LIVE_CALL`), no live call executed.
 
 **Phase BYOK-C status**: `PROTOCOL_READY_NO_LIVE_CALL` -- 单次 live call 的可审计协议已交付,smoke test 通过,本轮未提供 operator confirmation,因此未执行真实 MiniMax live call。详细报告: [`docs/security/BYOK_SINGLE_LIVE_CALL_TEST_REPORT.md`](security/BYOK_SINGLE_LIVE_CALL_TEST_REPORT.md)。
