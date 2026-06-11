@@ -270,3 +270,8 @@ Replace CLI wrapping with a **direct HTTPS call** to MiniMax's music generation 
 - Controlled timeout, retry, and error redaction
 - Requires MiniMax HTTP API docs + schema mapping
 
+
+
+## Related
+
+- [BYOK-D Direct HTTPS API Relay Design](./BYOK_DIRECT_API_RELAY_DESIGN.md) — successor design that replaces CLI with direct HTTPS call.

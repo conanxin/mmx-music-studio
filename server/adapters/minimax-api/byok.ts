@@ -84,6 +84,7 @@ export interface ByokRelayResultErr {
   ok: false;
   code:
     | 'byok_live_provider_path_disabled'
+    | 'byok_direct_api_not_verified'
     | 'byok_provider_error'
     | 'byok_provider_auth_failed'
     | 'byok_provider_timeout'

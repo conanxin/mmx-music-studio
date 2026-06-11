@@ -82,6 +82,23 @@
 - **Current availability**: fake ✅ / dry-run ✅ / live ❌（直到 BYOK-C2 direct API relay）
 - **Next**: BYOK-C2 direct HTTPS API relay（per-request `Authorization`，无 CLI spawn）
 
+### Phase BYOK-D: Direct HTTPS API Relay Design
+
+- **Status**: DESIGN ONLY (no live calls)
+- **What**: 设计 direct HTTPS provider call 架构，替代 CLI live path
+- **Files**:
+  - `docs/security/BYOK_DIRECT_API_RELAY_DESIGN.md` — 设计文档
+  - `server/adapters/minimax-api/byok-direct.ts` — adapter skeleton
+- **Key principles**:
+  - 不使用 CLI spawn
+  - 不使用 `MINIMAX_API_KEY` env injection
+  - 不使用 `--api-key` flag（会暴露 key 到 process argv）
+  - 未来使用 per-request `Authorization` header
+  - user key 永不存储、永不记录、永不返回
+  - provider error 全部 redact
+- **Blocked until**: 官方 MiniMax music generation API endpoint/schema 验证完成
+- **Next**: BYOK-E Official API Schema Validation → Deploy-CF-D Turnstile
+
 
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 

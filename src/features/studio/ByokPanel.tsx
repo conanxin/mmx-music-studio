@@ -21,6 +21,10 @@
  * - byok_live_confirmation_required → "真实 BYOK 生成需要显式确认"
  * - byok_provider_error*     → "MiniMax 返回错误，已隐藏敏感信息"
  * - byok_generation_disabled → "BYOK 暂未开放"
+ *
+ * Phase BYOK-D added:
+ * - byok_live_provider_path_disabled → "BYOK live 路径已禁用（CLI key fallback bug）"
+ * - byok_direct_api_not_verified     → "BYOK direct API relay 尚未完成验证"
  */
 import { useState } from 'react';
 import styles from './ByokPanel.module.css';
@@ -42,6 +46,8 @@ type ByokResponseCode =
   | 'byok_provider_timeout'
   | 'byok_provider_not_found'
   | 'byok_provider_unsupported_mode'
+  | 'byok_live_provider_path_disabled'
+  | 'byok_direct_api_not_verified'
   | 'byok_invalid_input'
   | string;
 
@@ -52,6 +58,8 @@ const STATUS_MESSAGES: Record<string, string> = {
   byok_live_relay_ok: 'BYOK relay 测试通过（live 模式）',
   byok_live_not_enabled: '真实 BYOK 生成尚未启用',
   byok_live_confirmation_required: '真实 BYOK 生成需要显式确认',
+  byok_live_provider_path_disabled: 'BYOK live 路径已禁用（CLI key fallback bug）',
+  byok_direct_api_not_verified: 'BYOK direct API relay 尚未完成验证',
   byok_provider_error: 'MiniMax 返回错误，已隐藏敏感信息',
   byok_provider_auth_failed: 'MiniMax 拒绝了该 Key（认证失败）',
   byok_provider_timeout: 'MiniMax 响应超时',

@@ -63,7 +63,9 @@
 
 - Operator-approved BYOK-C live call (only after explicit operator confirmation).
 - Phase Deploy-CF-D Turnstile (before any broad public BYOK launch).
-- Phase BYOK-D public launch (only after live verification + abuse controls).
+- Phase BYOK-D Direct HTTPS API Relay Design (current — design only, no live calls).
+- Phase BYOK-E Official API Schema Validation.
+- Phase Deploy-CF-D Turnstile (before any broad public BYOK launch). launch (only after live verification + abuse controls).
 
 **v0.4.23-alpha** — Library UX polish and timeline clarity release
 
