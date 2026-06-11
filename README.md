@@ -489,6 +489,18 @@ Design documents:
 - **Do NOT claim**: BYOK live 生成已可用 / 用户填 Key 就能真实生成 / 已 broad public launch
 - **Next**: BYOK-C2 direct HTTPS API relay design（per-request `Authorization` header，无 CLI spawn）
 
+### Phase BYOK-E: Official API Schema Validation
+
+- **Status**: **VERIFIED**
+- **What**: Verified official MiniMax music generation API schema from mmx-cli v1.0.16 source code
+- **Verified**:
+  - Endpoint: `POST https://api.minimaxi.com/v1/music_generation`
+  - Auth: `Authorization: Bearer <api_key>`
+  - Models: `music-2.6`, `music-2.5+`, `music-2.5`, `music-cover`
+  - Request/response/error schema fully documented
+- **Decision**: **BYOK-F is UNBLOCKED** — all required fields verified from official source
+- **Next**: BYOK-F Direct API Implementation
+
 ### Phase BYOK-D: Direct HTTPS API Relay Design (v0.4.28-alpha)
 
 - **Status**: **DESIGN ONLY** (no live calls)

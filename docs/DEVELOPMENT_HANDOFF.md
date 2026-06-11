@@ -82,6 +82,16 @@
 - **Current availability**: fake ✅ / dry-run ✅ / live ❌（直到 BYOK-C2 direct API relay）
 - **Next**: BYOK-C2 direct HTTPS API relay（per-request `Authorization`，无 CLI spawn）
 
+### Phase BYOK-E: Official API Schema Validation
+
+- **Status**: **VERIFIED**
+- **Source**: mmx-cli v1.0.16 source code (official MiniMax CLI)
+- **Verified schema**:
+  - `POST /v1/music_generation`
+  - `Authorization: Bearer <key>`
+  - Models, request body, response shape, error shape
+- **Decision**: BYOK-F implementation unblocked
+
 ### Phase BYOK-D: Direct HTTPS API Relay Design (v0.4.28-alpha)
 
 - **Status**: DESIGN ONLY (no live calls)
