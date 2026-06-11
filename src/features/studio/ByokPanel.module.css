@@ -170,3 +170,56 @@
   color: var(--hint-fg, #6a737d);
   font-size: 12px;
 }
+
+/* Phase Deploy-CF-D: Turnstile placeholder styles */
+.turnstilePlaceholder {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-color, #cbd2d9);
+  border-radius: 6px;
+  background: var(--panel-bg, #f8f9fa);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.turnstileLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #52606d);
+}
+
+.turnstileWidget {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #d6dee5);
+  border-radius: 4px;
+  background: var(--input-bg, #ffffff);
+  padding: 8px;
+}
+
+.turnstileHint {
+  font-size: 12px;
+  color: var(--text-tertiary, #7b8794);
+  text-align: center;
+}
+
+.turnstileNotConfigured {
+  font-size: 12px;
+  color: var(--text-tertiary, #7b8794);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Mobile: prevent overflow */
+@media (max-width: 639px) {
+  .turnstilePlaceholder {
+    padding: 8px;
+  }
+  .turnstileWidget {
+    min-height: 40px;
+    padding: 6px;
+  }
+}

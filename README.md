@@ -121,7 +121,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 - Provider returned success (HTTP 200, status_code 0).
 - This is **not** a broad public BYOK launch.
 - Default mode remains disabled / dry-run.
-- Next: Deploy-CF-D Turnstile before public launch.
+- **Phase Deploy-CF-D**: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking).
+- Broad public BYOK launch requires Turnstile configured + operator verification.
 | Real generation in CI | ❌ Disabled | CI uses mock / guards only |
 
 ### Studio and Library

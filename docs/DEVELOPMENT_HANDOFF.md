@@ -152,6 +152,29 @@
 - **Smoke**: BYOK-G smoke 21/21 PASS
 - **Next**: Release v0.4.29-alpha → Deploy-CF-D Turnstile
 
+### Phase Deploy-CF-D: Turnstile protection for BYOK generation
+
+- **Status**: **COMPLETED**
+- **What**: 为 `/api/generate/byok` 增加 server-side Turnstile gate
+- **Files**:
+  - `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` — 设计文档
+  - `server/security/turnstile.ts` — Siteverify helper
+  - `server/types.ts` — Turnstile config fields
+  - `server/index.ts` — Turnstile gate in `/api/generate/byok` + health exposure
+  - `src/features/studio/ByokPanel.tsx` — Turnstile UI skeleton
+  - `src/features/studio/ByokPanel.module.css` — Turnstile placeholder styles
+  - `scripts/deploy-cf-d-turnstile-smoke-test.sh` — 21/21 PASS
+- **Key principles**:
+  - Server-side Siteverify，不是纯前端
+  - `TURNSTILE_BYOK_REQUIRED=false` 默认非阻断
+  - Secret 不记录、不返回、不提交
+  - Token 不持久化到 localStorage / sessionStorage / URL
+  - 不影响 `/api/generate`, `/api/health`, `/api/status`, `/ops`
+- **Default**: disabled / dry-run / non-broad public
+- **No new live call**
+- **No music generation**
+- **Next**: Release v0.4.30-alpha → BYOK-H public launch (only after Turnstile configured + verified)
+
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 
 - **Phase Release v0.4.25-alpha** (Phase Storage-B0 promoted to release) — ✅ closed2026-06-11.
@@ -163,8 +186,15 @@
 
 ### Next recommended phases
 
+- **Phase Deploy-CF-D** — Turnstile protection for BYOK generation ✅ completed 2026-06-12
+  - `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` documents the server-side Siteverify gate
+  - `server/security/turnstile.ts` implements `verifyTurnstileToken()` with timeout + redaction
+  - `/api/generate/byok` requires `turnstileToken` when `TURNSTILE_BYOK_REQUIRED=true`
+  - `/api/health` exposes `turnstileByokRequired`, `turnstileSecretKeyConfigured`, `turnstileSiteKeyConfigured` (never the secret)
+  - Default `TURNSTILE_BYOK_REQUIRED=false` — non-blocking until operator enables
+  - No broad public BYOK launch without Turnstile or equivalent abuse control
+  - `scripts/deploy-cf-d-turnstile-smoke-test.sh` 21/21 PASS
 - **Phase Storage-B1** — operator-confirmed cleanup **only if** real candidates exist AND the operator reviews and approves the Storage-B0 manifest. Current dry-run shows **0 candidates**, so Storage-B1 is **not urgent**.
-- **Phase Deploy-CF-D** — optional Turnstile on `/api/generate` or broader Cloudflare Access coverage.
 - **Phase Product Polish-Q** — optional next round of UI polish.
 - **Phase Deploy-CF-C** (Cloudflare Access for Ops / Status) — ✅ verified2026-06-10.
   - `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` documents the recommended Access application
@@ -185,8 +215,12 @@
 ### Next recommended phases
 
 - **Phase Storage-B operator-confirmed cleanup** — operator-driven dry run + manual confirm cleanup of `storage/tracks/`, `storage/quota/`, `storage/audit/`, `storage/guard/`.
-- **Phase Deploy-CF-D** (optional) — broader Cloudflare Access coverage or Turnstile if desired
- (e.g. Turnstile on `/api/generate`, Access on additional debug endpoints).
+- **Phase Deploy-CF-D** (optional) — Turnstile protection for BYOK generation ✅ completed 2026-06-12
+  - `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` documents the server-side Siteverify gate
+  - Default `TURNSTILE_BYOK_REQUIRED=false` — non-blocking until operator enables
+  - No broad public BYOK launch without Turnstile or equivalent abuse control
+  - `scripts/deploy-cf-d-turnstile-smoke-test.sh` 21/21 PASS
+  - Next: Release v0.4.30-alpha → BYOK-H public launch (only after Turnstile configured + verified)
 
 
 ### Local backup localStorage keys
@@ -228,7 +262,8 @@ git clone git@github.com:conanxin/mmx-music-studio.git
 | 公开运行观测 | ✅ 完成 | Phase Ops-Monitor-A：`/api/status`、job queue/storage 聚合、ops 监控文档 |
 | 存储治理 | ✅ 完成 | Phase Storage-A：inventory/dry-run/backup manifest 脚本，无自动删除，operator-driven |
 | 算子确认清理（仅 dry-run） | ✅ Phase Storage-B0 closed | `storage-b-operator-cleanup-dry-run.sh`（只读，输出 manifest JSON，destructive=false）+ `storage-b-confirmation-guard.sh`（必须 `STORAGE_B_CONFIRMATION=CONFIRM_STORAGE_B_CLEANUP` 才接受）+ `docs/storage/STORAGE_B_OPERATOR_CLEANUP_DESIGN.md`；**B0 不删除任何文件**，未调用 /api/generate，未生成音乐 |
-| Cloudflare Access for Ops/Status | ✅ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 应用 `MMX Music Studio Ops` 已启用，smoke test 12/12 PASS；`/api/generate` 仍由 Launch Guard 守 |
+|| Cloudflare Access for Ops/Status | ✅ Phase Deploy-CF-C | `docs/deploy/CLOUDFLARE_ACCESS_OPS.md` 已写，Dashboard 应用 `MMX Music Studio Ops` 已启用，smoke test 12/12 PASS；`/api/generate` 仍由 Launch Guard 守 |
+|| Turnstile for BYOK generation | ✅ Phase Deploy-CF-D | `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` 已写，server-side Siteverify helper 就位，`TURNSTILE_BYOK_REQUIRED=false` 默认非阻断，smoke test 21/21 PASS；不 broad public launch |
 | 自动 Release 工作流 | ✅ Phase Release-Automation-A | `.github/workflows/release.yml` 已上线：tag push 触发 + `workflow_dispatch` 手动 backfill + zip 安全检查 + 内置 `github.token`；v0.4.18/19/20 backfill 3/3 success |
 | Recent Release History backfilled | ✅ 完成 | v0.4.18-alpha → bd5736c, v0.4.19-alpha → 5c7fec2, v0.4.20-alpha → 7edb764，tag 全部未被移动 |
 | 当前 release line | ✅ v0.4.21-alpha | Phase Release v0.4.21-alpha：Protected Ops and release automation closeout |

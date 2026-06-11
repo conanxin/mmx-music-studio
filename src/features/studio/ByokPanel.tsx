@@ -31,6 +31,11 @@
  * - byok_direct_live_confirmation_required → "BYOK direct live 需要显式确认"
  * - byok_direct_provider_error          → "MiniMax direct API 返回错误，已隐藏敏感信息"
  * - byok_direct_live_ok                 → "BYOK direct API 测试通过"
+ *
+ * Phase Deploy-CF-D added:
+ * - turnstile_required                  → "需要 Turnstile 验证"
+ * - turnstile_invalid                   → "Turnstile 验证失败，请重试"
+ * - turnstile_verification_error        → "Turnstile 验证服务异常"
  */
 import { useState } from 'react';
 import styles from './ByokPanel.module.css';
@@ -59,6 +64,9 @@ type ByokResponseCode =
   | 'byok_direct_provider_error'
   | 'byok_direct_live_ok'
   | 'byok_invalid_input'
+  | 'turnstile_required'
+  | 'turnstile_invalid'
+  | 'turnstile_verification_error'
   | string;
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -80,12 +88,18 @@ const STATUS_MESSAGES: Record<string, string> = {
   byok_provider_not_found: 'MiniMax CLI 不可用',
   byok_provider_unsupported_mode: 'MiniMax 不支持该模式',
   byok_invalid_input: '请求参数无效',
+  turnstile_required: '需要 Turnstile 验证',
+  turnstile_invalid: 'Turnstile 验证失败，请重试',
+  turnstile_verification_error: 'Turnstile 验证服务异常',
 };
 
 interface ByokPanelProps {
   // Optional: parent can pass whether BYOK is currently allowed.
   // Default: treat as disabled (PUBLIC_BYOK_ENABLED=false) for safety.
   publicByokEnabled?: boolean;
+  // Phase Deploy-CF-D: Turnstile site key (safe to expose to frontend).
+  // If not provided, UI shows "Turnstile 尚未配置" placeholder.
+  turnstileSiteKey?: string;
   onStatusChange?: (
     status: 'idle' | 'submitting' | 'ok' | 'disabled' | 'error',
   ) => void;
@@ -137,6 +151,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
+  // Phase Deploy-CF-D: Turnstile token state (not persisted to localStorage)
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  // setTurnstileToken is reserved for future widget callback integration.
+  void setTurnstileToken;
 
   const canSubmit =
     enabled &&
@@ -144,6 +162,9 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     apiKey.length >= 20 &&
     prompt.length > 0 &&
     confirmed;
+
+  // Phase Deploy-CF-D: Turnstile status placeholder
+  const turnstileConfigured = !!props.turnstileSiteKey;
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -165,6 +186,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             model,
             mode: musicMode,
           },
+          // Phase Deploy-CF-D: include Turnstile token when configured
+          turnstileToken: turnstileConfigured ? turnstileToken || undefined : undefined,
           // The body never carries the explicit 'mode' — the route always
           // defaults to 'fake' for safety. A real 'live' request requires
           // a separate operator-only channel that this UI does not expose.
@@ -279,6 +302,29 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           <span>我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。</span>
         </label>
 
+        {/* Phase Deploy-CF-D: Turnstile UI skeleton */}
+        {enabled && (
+          <div className={styles.turnstilePlaceholder} role="status">
+            {turnstileConfigured ? (
+              <>
+                <span className={styles.turnstileLabel}>Turnstile 验证</span>
+                <div className={styles.turnstileWidget}>
+                  {/* Placeholder for Turnstile widget — actual widget integration
+                      requires @cloudflare/react-turnstile or equivalent.
+                      Token will be set here when widget callback fires. */}
+                  <span className={styles.turnstileHint}>
+                    [Turnstile widget placeholder — 配置完成后在此处渲染]
+                  </span>
+                </div>
+              </>
+            ) : (
+              <span className={styles.turnstileNotConfigured}>
+                Turnstile 尚未配置 — 当前为非阻断模式
+              </span>
+            )}
+          </div>
+        )}
+
         {!enabled ? (
           <div className={styles.disabledBanner} role="status">
             {DISABLED_MESSAGE}
@@ -359,7 +405,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
       <footer className={styles.footer}>
         <small>
-          Phase BYOK-F · direct HTTPS API relay 已就绪 · 真实 BYOK 生成仍需显式 live gate · 不代表 broad public launch · Key 不写入 localStorage / IndexedDB / URL query
+          Phase Deploy-CF-D · Turnstile gate skeleton 已就位 · 真实 BYOK 生成仍需显式 live gate + Turnstile 配置 · 不代表 broad public launch · Key 不写入 localStorage / IndexedDB / URL query
         </small>
       </footer>
     </section>

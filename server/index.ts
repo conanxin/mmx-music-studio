@@ -210,6 +210,10 @@ function loadConfig(): ServerConfig {
     // Default false — requires explicit operator confirmation
     byokDirectLiveEnabled: readBoolEnv('BYOK_DIRECT_LIVE_ENABLED', false),
     byokDirectLiveConfirmation: (process.env.BYOK_DIRECT_LIVE_CONFIRMATION ?? '').trim(),
+    // Phase Deploy-CF-D: Turnstile protection for BYOK generation
+    turnstileByokRequired: readBoolEnv('TURNSTILE_BYOK_REQUIRED', false),
+    turnstileSecretKeyConfigured: !!(process.env.TURNSTILE_SECRET_KEY ?? '').trim(),
+    turnstileSiteKey: (process.env.TURNSTILE_SITE_KEY ?? '').trim() || undefined,
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -737,6 +741,10 @@ async function handleHealth(
     byokEnabled: config.byokEnabled,
     serverKeyFallback: config.serverKeyFallback,
     byokKeyStorage: config.byokKeyStorage,
+    // Phase Deploy-CF-D: Turnstile (boolean only, never secret value)
+    turnstileByokRequired: config.turnstileByokRequired,
+    turnstileSecretKeyConfigured: config.turnstileSecretKeyConfigured,
+    turnstileSiteKeyConfigured: !!config.turnstileSiteKey,
     cliRegion: cliDiagnostics?.region ?? undefined,
     // Job queue (Phase 4B)
     jobQueueEnabled: true,
@@ -1726,6 +1734,8 @@ interface ByokGenerateRequest {
   apiKey?: string;
   input?: unknown;
   region?: 'cn' | 'global';
+  /** Phase Deploy-CF-D: Turnstile token for abuse control */
+  turnstileToken?: string;
 }
 
 interface ByokDryRunResponse {
@@ -1764,6 +1774,45 @@ async function handleByokGenerate(
   }
 
   const requestId = `byok_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+
+  // Phase Deploy-CF-D: Turnstile gate (before any live/direct path)
+  if (config.turnstileByokRequired === true) {
+    const turnstileToken = body.turnstileToken;
+    if (!turnstileToken || typeof turnstileToken !== 'string') {
+      sendJson(res, 403, {
+        ok: false,
+        code: 'turnstile_required',
+        message: '需要 Turnstile 验证',
+        hint: '请完成人机验证后重试',
+      });
+      return;
+    }
+    const { verifyTurnstileToken } = await import('./security/turnstile.js');
+    const remoteIp =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
+      (req.socket.remoteAddress ?? undefined);
+    const turnstileResult = await verifyTurnstileToken({
+      token: turnstileToken,
+      secret: process.env.TURNSTILE_SECRET_KEY ?? '',
+      remoteIp,
+      expectedAction: 'byok-generate',
+    });
+    if (!turnstileResult.ok) {
+      const errorCode = turnstileResult.errorCode ?? 'turnstile_verification_error';
+      console.warn(`[byok] turnstile verification failed [${requestId}]:`, turnstileResult.details);
+      sendJson(res, 403, {
+        ok: false,
+        code: errorCode,
+        message:
+          errorCode === 'turnstile_invalid'
+            ? 'Turnstile 验证失败，请重试'
+            : 'Turnstile 验证服务异常',
+        hint: '请刷新页面后重新完成人机验证',
+        requestId,
+      });
+      return;
+    }
+  }
 
   // 3. Validate apiKey — never log the key itself
   const keyShape = validateApiKeyShape(body.apiKey);

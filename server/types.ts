@@ -76,6 +76,20 @@ export interface ServerConfig {
    * Must equal CONFIRM_BYOK_DIRECT_LIVE_TEST.
    */
   byokDirectLiveConfirmation: string;
+  /**
+   * Phase Deploy-CF-D: Turnstile protection for BYOK generation.
+   * Default false — non-blocking until operator explicitly enables.
+   */
+  turnstileByokRequired: boolean;
+  /**
+   * Phase Deploy-CF-D: Whether TURNSTILE_SECRET_KEY is configured.
+   * Exposed in /api/health (boolean only, never the secret value).
+   */
+  turnstileSecretKeyConfigured: boolean;
+  /**
+   * Phase Deploy-CF-D: Turnstile site key (safe to expose to frontend).
+   */
+  turnstileSiteKey?: string;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';

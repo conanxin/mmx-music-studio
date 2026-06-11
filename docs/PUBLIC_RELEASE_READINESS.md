@@ -16,6 +16,48 @@
 
 **Final wording (do not weaken)**: **"BYOK-B 已完成受控 fake/live relay 测试结构，但真实 MiniMax live call 仍未执行。"** No claim that a real MiniMax call has been verified, no claim that BYOK public launch is open, no claim that a user can paste a Key and generate for real today. A true broad public BYOK launch should consider `Phase Deploy-CF-D` Turnstile / abuse control before enabling `BYOK_LIVE_ENABLED=true` for the public route. Design: `docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md`.
 
+### Phase Deploy-CF-D: Turnstile protection for BYOK generation (COMPLETED)
+
+- **Status**: ✅ COMPLETED (2026-06-12)
+- **What**: Server-side Turnstile gate for `/api/generate/byok`
+- **Files**:
+  - `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` — design doc
+  - `server/security/turnstile.ts` — Siteverify helper
+  - `server/index.ts` — gate in `/api/generate/byok` + health exposure
+  - `src/features/studio/ByokPanel.tsx` — UI skeleton
+  - `scripts/deploy-cf-d-turnstile-smoke-test.sh` — 21/21 PASS
+- **Key points**:
+  - Turnstile is server-side validated (not front-end only)
+  - `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking
+  - Secret never logged, never returned, never committed
+  - Token not persisted to localStorage / sessionStorage / URL
+  - Does not affect `/api/generate`, `/api/health`, `/api/status`, `/ops`
+- **Default**: disabled / dry-run / non-broad public
+- **No new live call**
+- **No music generation**
+- **Next**: Release v0.4.30-alpha → BYOK-H public launch (only after Turnstile configured + verified)
+
+### Historical BYOK-F status
+
+- **Phase BYOK-F**: Gated direct HTTPS API relay implementation completed.
+- Uses per-request `Authorization` headers behind explicit live gates (`BYOK_DIRECT_LIVE_ENABLED`, `BYOK_DIRECT_LIVE_CONFIRMATION`).
+- Broad public BYOK launch remains blocked until Turnstile and abuse controls are configured.
+- No broad public BYOK launch.
+
+### Historical BYOK-E status
+
+- **Phase BYOK-E**: Official API schema validation completed.
+- Verified MiniMax music generation API endpoint and request/response schema from official CLI source.
+- Unblocked BYOK-F direct API relay design.
+- No live calls executed during validation.
+
+### Historical BYOK-D status
+
+- **Phase BYOK-D**: Direct HTTPS API relay design skeleton completed.
+- Design document: `docs/security/BYOK_DIRECT_API_RELAY_DESIGN.md`.
+- Key principle: no CLI spawn, no `--api-key` flag, per-request `Authorization` header.
+- No live provider calls during design phase.
+
 ## Release notes
 
 - **v0.4.23-alpha — Library UX polish and timeline clarity release**
@@ -63,14 +105,11 @@
 
 **Next recommended phases**:
 
-- Operator-approved BYOK-C live call (only after explicit operator confirmation).
-- Phase Deploy-CF-D Turnstile (before any broad public BYOK launch).
-- Phase BYOK-D Direct HTTPS API Relay Design (v0.4.28-alpha).
-- Phase BYOK-E Official API Schema Validation (verified).
-- Phase BYOK-F Direct API Implementation (gated, no broad public launch).
-- Phase BYOK-G Single Direct Live Call Verification (live call success, 1 operator-approved call, no broad public launch).
-- Phase Deploy-CF-D Turnstile (before any broad public BYOK launch).
-- Phase Deploy-CF-D Turnstile (before any broad public BYOK launch). launch (only after live verification + abuse controls).
+- Phase Deploy-CF-D Turnstile ✅ COMPLETED (2026-06-12)
+- Release v0.4.30-alpha
+- BYOK-H public launch (only after Turnstile configured + verified + operator-approved)
+- Phase Storage-B1 operator-confirmed cleanup (only if candidates exist)
+- Phase Product Polish-Q (optional)
 
 **v0.4.23-alpha** — Library UX polish and timeline clarity release
 
