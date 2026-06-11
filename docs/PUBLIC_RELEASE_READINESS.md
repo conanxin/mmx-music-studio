@@ -1,33 +1,12 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.25-alpha · 2026-06-11
+> 文档版本：v0.4.30-alpha · 2026-06-12
 >
-> **Current Release: v0.4.25-alpha — Storage-B0 operator cleanup dry-run and safety design release.** Storage-B0 is **dry-run only**: `destructive=false`, no files deleted, no server schema migration, no generation. Current cleanup candidates: **0**. `/ops` and `/api/status` remain protected by Cloudflare Access; `/api/health` remains public; `/api/generate` remains protected by Launch Guard.
+> **Current Release: v0.4.30-alpha — Turnstile gate for BYOK release.** Deploy-CF-D adds a server-side Turnstile gate for BYOK generation. It does not enable broad public BYOK launch by itself. `/api/generate/byok` live/direct path now supports Turnstile verification. `TURNSTILE_BYOK_REQUIRED=false` by default. No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. Next step is configuring real Turnstile site/secret keys outside the repo and verifying them before BYOK-H public launch.
 
-****Phase BYOK-A shipped (commit 42c3ef3).** Public BYOK generation readiness. Server-side relay scaffold only; BYOK is **disabled by default** at `POST /api/generate/byok`. Phase BYOK-A returns `byok_dry_run_only` (does NOT call real MiniMax). User keys are not written to disk / logs / metadata / track object; not put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query. Users pay with their own MiniMax account -- billing responsibility on user. Design: `docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md`.
+**Current release**: v0.4.30-alpha
 
-**Current release**: v0.4.28-alpha
-
-**Phase BYOK-B in progress (commit pending).** Controlled BYOK relay test. Phase BYOK-C: protocol ready (`PROTOCOL_READY_NO_LIVE_CALL`), no live call executed.
-
-**Phase BYOK-C status**: `PROTOCOL_READY_NO_LIVE_CALL` -- 单次 live call 的可审计协议已交付,smoke test 通过,本轮未提供 operator confirmation,因此未执行真实 MiniMax live call。详细报告: [`docs/security/BYOK_SINGLE_LIVE_CALL_TEST_REPORT.md`](security/BYOK_SINGLE_LIVE_CALL_TEST_REPORT.md)。
-
-**关键口径**: BYOK-C 已完成单次 live call 的可审计协议与 smoke test,但本轮未提供 operator confirmation,因此未执行真实 MiniMax live call。 BYOK-B adds a `fake / live` switch to the public endpoint, gated by three env flags: `PUBLIC_BYOK_ENABLED=true`, `BYOK_LIVE_ENABLED=true`, `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST`. The default behavior is `byok_dry_run_only`. The fake mode returns `byok_fake_relay_ok` deterministically with no provider call. Live mode exists but is intentionally unreachable without all three env flags set at process start. The user-supplied `apiKey` is injected into a child `mmx` process environment as `MINIMAX_API_KEY=<userKey>`; the site operator's `MINIMAX_API_KEY` is explicitly stripped. Provider stdout / stderr / error messages go through `redactCliOutput`. UI status codes handled by `ByokPanel.tsx`: `byok_dry_run_only`, `byok_fake_relay_ok`, `byok_live_relay_ok`, `byok_live_not_enabled`, `byok_live_confirmation_required`, `byok_provider_error*`.
-
-**Final wording (do not weaken)**: **"BYOK-B 已完成受控 fake/live relay 测试结构，但真实 MiniMax live call 仍未执行。"** No claim that a real MiniMax call has been verified, no claim that BYOK public launch is open, no claim that a user can paste a Key and generate for real today. A true broad public BYOK launch should consider `Phase Deploy-CF-D` Turnstile / abuse control before enabling `BYOK_LIVE_ENABLED=true` for the public route. Design: `docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md`.
-
-### Phase Deploy-CF-D: Turnstile protection for BYOK generation (COMPLETED)
-
-- **Status**: ✅ COMPLETED (2026-06-12)
-- **What**: Server-side Turnstile gate for `/api/generate/byok`
-- **Files**:
-  - `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` — design doc
-  - `server/security/turnstile.ts` — Siteverify helper
-  - `server/index.ts` — gate in `/api/generate/byok` + health exposure
-  - `src/features/studio/ByokPanel.tsx` — UI skeleton
-  - `scripts/deploy-cf-d-turnstile-smoke-test.sh` — 21/21 PASS
-- **Key points**:
-  - Turnstile is server-side validated (not front-end only)
+**Phase Deploy-CF-D**: Turnstile protection for BYOK generation — ✅ COMPLETED (2026-06-12, commit b3d1095).
   - `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking
   - Secret never logged, never returned, never committed
   - Token not persisted to localStorage / sessionStorage / URL
@@ -59,6 +38,16 @@
 - No live provider calls during design phase.
 
 ## Release notes
+
+- **v0.4.30-alpha — Turnstile gate for BYOK release**
+  - Deploy-CF-D adds a server-side Turnstile gate for BYOK generation
+  - It does not enable broad public BYOK launch by itself
+  - `/api/generate/byok` live/direct path now supports Turnstile verification
+  - `TURNSTILE_BYOK_REQUIRED=false` by default
+  - No new live call was executed
+  - No music was generated
+  - No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed
+  - Next step: configure real Turnstile site/secret keys outside repo → BYOK-H public launch
 
 - **v0.4.23-alpha — Library UX polish and timeline clarity release**
   - Library current view summary improved
@@ -99,14 +88,14 @@
 - 没有提交 key / .env / provider raw response / tsconfig.tsbuildinfo / storage runtime.
 - 不移动旧 tag (v0.4.20-alpha..v0.4.25-alpha 全部 commit 不变).
 
-完整 release notes 见 [`docs/release/RELEASE_NOTES_v0.4.26-alpha.md`](../release/RELEASE_NOTES_v0.4.26-alpha.md).
+完整 release notes 见 [`docs/release/RELEASE_NOTES_v0.4.30-alpha.md`](../release/RELEASE_NOTES_v0.4.30-alpha.md).
 
-**关键口径**: BYOK-C 已完成单次 live call 的可审计协议与 smoke test, 但本轮未提供 operator confirmation, 因此未执行真实 MiniMax live call.
+**关键口径**: Deploy-CF-D adds a server-side Turnstile gate for BYOK generation. It does not enable broad public BYOK launch by itself.
 
 **Next recommended phases**:
 
-- Phase Deploy-CF-D Turnstile ✅ COMPLETED (2026-06-12)
-- Release v0.4.30-alpha
+- Release v0.4.30-alpha ✅ (Turnstile gate for BYOK)
+- Configure real Turnstile site/secret keys outside repo
 - BYOK-H public launch (only after Turnstile configured + verified + operator-approved)
 - Phase Storage-B1 operator-confirmed cleanup (only if candidates exist)
 - Phase Product Polish-Q (optional)

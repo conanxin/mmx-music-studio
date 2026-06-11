@@ -1,23 +1,38 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.24-alpha · 2026-06-11
+> 文档版本：v0.4.30-alpha · 2026-06-12
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
-> 文档版本：v0.4.26-alpha · 2026-06-11
+> 文档版本：v0.4.30-alpha · 2026-06-12
 
-**v0.4.26-alpha** — Phase Release v0.4.26-alpha: BYOK readiness and controlled relay protocol release.
+**v0.4.30-alpha** — Phase Release v0.4.30-alpha: Turnstile gate for BYOK release.
 
-- BYOK-A 已完成 (commit 42c3ef3).
-- BYOK-B 已完成 (commit 8e22680): fake/live relay modes, fake mode 已端到端验证, live mode scaffold + 三把钥匙 gate 已就位.
-- BYOK-C 已完成协议层 (commit 1cde092): `PROTOCOL_READY_NO_LIVE_CALL`, smoke 35/35 PASS, 但本轮未提供 operator confirmation, 因此未执行真实 MiniMax live call.
-- BYOK 默认状态保持 disabled / dry-run.
-- 不 broad public BYOK launch.
-- 没有提交 key / .env / provider raw response / tsconfig.tsbuildinfo / storage runtime.
-- 不移动旧 tag (v0.4.20-alpha..v0.4.25-alpha 全部 commit 不变).
+- Deploy-CF-D 已完成 (commit b3d1095): server-side Turnstile gate for `/api/generate/byok`.
+- Turnstile Siteverify helper 就位，timeout + redaction，不记录 secret。
+- `TURNSTILE_BYOK_REQUIRED=false` 默认非阻断。
+- `/api/health` 只暴露 boolean 配置状态，不暴露 secret。
+- ByokPanel Turnstile placeholder UI 就位，token 不持久化。
+- Deploy-CF-D smoke 21/21 PASS。
+- 不 broad public BYOK launch。
+- 不执行新的 live call。
+- 不生成音乐。
+- 没有提交 secret / key / .env / provider raw response / tsconfig.tsbuildinfo / storage runtime。
+- 旧 tag v0.4.29-alpha 未移动。
+
+**关键口径**: Deploy-CF-D adds a server-side Turnstile gate for BYOK generation. It does not enable broad public BYOK launch by itself.
+
+**v0.4.29-alpha** — Phase Release v0.4.29-alpha: BYOK direct live verification release.
+
+- BYOK-G 已完成 (commit 7d45e12): 一次 operator-approved direct HTTPS live call 成功验证。
+- 确认 direct relay path 可调用 `POST https://api.minimaxi.com/v1/music_generation`。
+- 确认 provider 返回 success (HTTP 200, status_code 0, data.audio base64)。
+- 确认无 CLI 使用、无 site operator key 使用、user key 未持久化、无 raw provider response 记录。
+- 默认值已恢复 disabled / dry-run。
+- BYOK-G smoke 21/21 PASS。
 
 **关键口径**: BYOK-C 已完成单次 live call 的可审计协议与 smoke test, 但本轮未提供 operator confirmation, 因此未执行真实 MiniMax live call.
 
@@ -150,7 +165,22 @@
 - **No broad public BYOK launch**
 - **Report**: `docs/security/BYOK_DIRECT_SINGLE_LIVE_CALL_REPORT.md`
 - **Smoke**: BYOK-G smoke 21/21 PASS
-- **Next**: Release v0.4.29-alpha → Deploy-CF-D Turnstile
+- **Next**: Release v0.4.30-alpha — Turnstile gate for BYOK
+
+### Phase Release v0.4.30-alpha: Turnstile gate for BYOK
+
+- **Status**: **RELEASED**
+- **Commit**: `b3d1095`
+- **What**: Deploy-CF-D adds a server-side Turnstile gate for BYOK generation.
+- **Key points**:
+  - `/api/generate/byok` live/direct path now supports Turnstile verification.
+  - `TURNSTILE_BYOK_REQUIRED=false` by default.
+  - It does not enable broad public BYOK launch by itself.
+  - No new live call was executed.
+  - No music was generated.
+  - No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed.
+- **Smoke**: Deploy-CF-D smoke 21/21 PASS
+- **Next**: Configure real Turnstile site/secret keys outside repo → BYOK-H public launch (only after Turnstile configured + verified)
 
 ### Phase Deploy-CF-D: Turnstile protection for BYOK generation
 
@@ -173,7 +203,8 @@
 - **Default**: disabled / dry-run / non-broad public
 - **No new live call**
 - **No music generation**
-- **Next**: Release v0.4.30-alpha → BYOK-H public launch (only after Turnstile configured + verified)
+- **Status**: Released as v0.4.30-alpha (commit b3d1095)
+- **Next**: Configure real Turnstile site/secret keys outside repo → BYOK-H public launch (only after Turnstile configured + verified)
 
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 

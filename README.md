@@ -115,13 +115,13 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | MMX CLI backend | ✅ **Recommended** | Same route as Telegram |
 | BYOK API Adapter | ✅ Verified once / Experimental | Real `direct_audio` success; not production-ready |
 
-**Current release**: v0.4.29-alpha — BYOK-G direct live verification
+**Current release**: v0.4.30-alpha — Turnstile gate for BYOK
 
-- BYOK-G completed one operator-approved direct HTTPS live call.
-- Provider returned success (HTTP 200, status_code 0).
+- **Phase Deploy-CF-D**: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking).
+- `/api/generate/byok` live/direct path now supports Turnstile verification.
+- `TURNSTILE_BYOK_REQUIRED=false` by default.
 - This is **not** a broad public BYOK launch.
 - Default mode remains disabled / dry-run.
-- **Phase Deploy-CF-D**: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking).
 - Broad public BYOK launch requires Turnstile configured + operator verification.
 | Real generation in CI | ❌ Disabled | CI uses mock / guards only |
 
@@ -562,9 +562,27 @@ Design documents:
 - **Site operator key used**: **no**
 - **Report**: `docs/security/BYOK_DIRECT_SINGLE_LIVE_CALL_REPORT.md`
 - **Safety**: Live env 已恢复默认（disabled / dry-run）
-- **Next**: Deploy-CF-D Turnstile → Release v0.4.29-alpha
+- **Next**: Release v0.4.30-alpha — Turnstile gate for BYOK
 
-### 快速启动
+**v0.4.30-alpha**：Phase Release v0.4.30-alpha — Turnstile gate for BYOK release (commit `b3d1095` + release prep, tag `v0.4.30-alpha`)
+
+- Deploy-CF-D adds a server-side Turnstile gate for BYOK generation.
+- It does not enable broad public BYOK launch by itself.
+- `/api/generate/byok` live/direct path now supports Turnstile verification.
+- `TURNSTILE_BYOK_REQUIRED=false` by default.
+- No new live call was executed.
+- No music was generated.
+- No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed.
+- Next step is configuring real Turnstile site/secret keys outside the repo and verifying them before BYOK-H public launch.
+
+**v0.4.29-alpha**：Phase Release v0.4.29-alpha — BYOK direct live verification release (commit `7d45e12` + release prep, tag `v0.4.29-alpha`)
+
+- BYOK-G completed one operator-approved direct HTTPS live call successfully.
+- Confirmed the direct relay path can call `POST https://api.minimaxi.com/v1/music_generation`.
+- Confirmed provider success response (HTTP 200, status_code 0, data.audio base64).
+- Confirmed no CLI usage, no site operator key usage, user key not persisted, no raw provider response recorded.
+- Defaults restored to disabled / dry-run.
+- Added BYOK-G smoke coverage (21/21 PASS).
 
 ```bash
 # 安全预览（默认）
