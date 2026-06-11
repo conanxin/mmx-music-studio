@@ -1,3 +1,25 @@
+## v0.4.29-alpha
+
+### Highlights
+
+- **BYOK-G direct live verification release.**
+- Completed one operator-approved direct HTTPS BYOK live call.
+- Verified provider success response from MiniMax music generation API.
+- Confirmed no CLI usage.
+- Confirmed no site operator key usage.
+- Confirmed no user key persistence.
+- Confirmed no raw provider response was recorded.
+- Confirmed defaults restored to disabled / dry-run.
+- Added BYOK-G smoke coverage (21/21 PASS).
+
+### Notes
+
+- This is **not** a broad public BYOK launch.
+- No new live call is executed in release prep.
+- No audio files are committed.
+- No keys, Authorization headers, logs, or runtime storage are committed.
+- Deploy-CF-D Turnstile / abuse controls are recommended before public launch.
+
 ## v0.4.28-alpha
 
 ### Highlights

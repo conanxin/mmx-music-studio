@@ -114,6 +114,14 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Mock generation | ✅ PASS | Safe local preview |
 | MMX CLI backend | ✅ **Recommended** | Same route as Telegram |
 | BYOK API Adapter | ✅ Verified once / Experimental | Real `direct_audio` success; not production-ready |
+
+**Current release**: v0.4.29-alpha — BYOK-G direct live verification
+
+- BYOK-G completed one operator-approved direct HTTPS live call.
+- Provider returned success (HTTP 200, status_code 0).
+- This is **not** a broad public BYOK launch.
+- Default mode remains disabled / dry-run.
+- Next: Deploy-CF-D Turnstile before public launch.
 | Real generation in CI | ❌ Disabled | CI uses mock / guards only |
 
 ### Studio and Library
