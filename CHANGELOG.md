@@ -1,3 +1,25 @@
+## v0.4.27-alpha
+
+### Highlights
+
+- **BYOK live path fail-closed hotfix release.**
+- Disabled unsafe CLI-based BYOK live provider path.
+- Documented the CLI key fallback bug.
+- Added `byok_live_provider_path_disabled`.
+- Preserved BYOK dry-run and fake-relay modes.
+- Added BYOK-C hotfix smoke coverage.
+- Documented direct HTTPS API relay as the recommended future path.
+
+### Notes
+
+- No live MiniMax call was executed for this release.
+- No music was generated.
+- BYOK live generation is **not available**.
+- BYOK remains readiness / dry-run / fake-relay only.
+- Broad public BYOK launch remains **blocked**.
+
+---
+
 # CHANGELOG
 
 All notable changes to mmx-music-studio will be documented in this file.

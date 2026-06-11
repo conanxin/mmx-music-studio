@@ -41,7 +41,7 @@
 
 ## Current Release
 
-**v0.4.26-alpha** — BYOK readiness and controlled relay protocol release
+**v0.4.27-alpha** — BYOK readiness and controlled relay protocol release
 
 - BYOK-A 已完成 (commit 42c3ef3): safe BYOK readiness skeleton, `/api/generate/byok` 端点, default disabled, dry-run default, redaction helper.
 - BYOK-B 已完成 (commit 8e22680): controlled fake/live relay modes, fake mode 已端到端验证, live mode scaffold + 三把钥匙 gate + key 隔离 + redaction 已就位.
