@@ -10,8 +10,13 @@
  *
  * Modes:
  * - fake: no network, deterministic fake result. The default test path.
- * - live: spawn mmx with the user key injected into the child env; the
- *        site operator's key is explicitly excluded.
+ * - live: DISABLED (2026-06-11). See `byok_live_provider_path_disabled`.
+ *
+ * CRITICAL BUG (2026-06-11):
+ * mmx CLI ignores MINIMAX_API_KEY env var for `music generate` and falls
+ * back to `~/.mmx/config.json`, which uses the site operator's key.
+ * This means BYOK "user key" was never actually used. Live path is now
+ * fail-closed until BYOK-C2 (direct HTTPS API relay) is designed.
  *
  * Security guarantees:
  * - The apiKey is held in a local const; never written to disk / log /
@@ -24,7 +29,6 @@
  * - This module does NOT call the existing /api/generate path.
  */
 
-import { spawn } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import path from 'node:path';
 
@@ -79,6 +83,7 @@ export interface ByokRelayResultOk {
 export interface ByokRelayResultErr {
   ok: false;
   code:
+    | 'byok_live_provider_path_disabled'
     | 'byok_provider_error'
     | 'byok_provider_auth_failed'
     | 'byok_provider_timeout'
@@ -139,175 +144,30 @@ export async function generateByokMusic(input: ByokRelayInput): Promise<ByokRela
     };
   }
 
-  // ── Live mode: spawn mmx with user key injected ──
-  const outputDir = input.outputDir ?? '/tmp';
-  const timeoutMs = input.timeoutMs ?? 180_000;
-  const fileName = safeFileName(input.musicMode ?? 'auto', input.prompt) || `byok-live-${requestId}.mp3`;
-  const outputPath = path.resolve(outputDir, fileName);
-
-  // Build clean child env: only the user's key. Site operator's
-  // MINIMAX_API_KEY is explicitly NOT propagated. We also strip proxy
-  // vars to avoid "Invalid URL protocol" issues (matches mmx-cli pattern).
-  const childEnv: Record<string, string> = {
-    MINIMAX_API_KEY: input.apiKey,
-    LANG: 'en_US.UTF-8',
-    LC_ALL: 'en_US.UTF-8',
-  };
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k === 'MINIMAX_API_KEY') continue; // never propagate site operator key
-    if (k.toLowerCase().includes('proxy')) continue;
-    childEnv[k] = v ?? '';
-  }
-
-  const args: string[] = ['music', 'generate', '--prompt', input.prompt];
-  if (input.musicMode === 'instrumental') {
-    args.push('--instrumental');
-  } else if (input.musicMode === 'lyrics' && input.lyrics) {
-    args.push('--lyrics', input.lyrics);
-  } else {
-    // auto: ask mmx to optimize lyrics
-    args.push('--lyrics-optimizer');
-  }
-  args.push('--out', outputPath);
-
-  const { code, stdout, stderr } = await runMmxChild(args, childEnv, timeoutMs);
-  const stderrRedacted = redactCliOutput(stderr);
-  const stdoutRedacted = redactCliOutput(stdout);
-
-  if (code === 124 /* SIGTERM from our timeout */) {
-    return {
-      ok: false,
-      code: 'byok_provider_timeout',
-      message: `provider timed out after ${Math.round(timeoutMs / 1000)}s`,
-      generationSource: 'byok-live',
-      durationMs: Date.now() - start,
-      stderrPreview: stderrRedacted.slice(0, 2000),
-    };
-  }
-
-  if (code !== 0) {
-    const lower = (stdout + stderr).toLowerCase();
-    if (lower.includes('not found') || lower.includes('command not found')) {
-      return {
-        ok: false,
-        code: 'byok_provider_not_found',
-        message: 'mmx CLI not found in PATH',
-        generationSource: 'byok-live',
-        durationMs: Date.now() - start,
-        stderrPreview: stderrRedacted.slice(0, 2000),
-      };
-    }
-    if (lower.includes('auth') || lower.includes('login') || lower.includes('invalid') || lower.includes('unauthorized')) {
-      return {
-        ok: false,
-        code: 'byok_provider_auth_failed',
-        message: 'provider rejected the supplied apiKey (auth)',
-        generationSource: 'byok-live',
-        durationMs: Date.now() - start,
-        stderrPreview: stderrRedacted.slice(0, 2000),
-      };
-    }
-    if (lower.includes('unsupported') || lower.includes('not supported')) {
-      return {
-        ok: false,
-        code: 'byok_provider_unsupported_mode',
-        message: 'provider does not support the requested mode',
-        generationSource: 'byok-live',
-        durationMs: Date.now() - start,
-        stderrPreview: stderrRedacted.slice(0, 2000),
-      };
-    }
-    return {
-      ok: false,
-      code: 'byok_provider_error',
-      message: `provider exit ${code} (redacted)`,
-      generationSource: 'byok-live',
-      durationMs: Date.now() - start,
-      stderrPreview: stderrRedacted.slice(0, 2000),
-    };
-  }
-
-  // Verify file size via stat (no file content read)
-  let sizeBytes: number | undefined;
-  try {
-    const fs = await import('node:fs/promises');
-    const stat = await fs.stat(outputPath);
-    sizeBytes = stat.size;
-    if (sizeBytes === 0) {
-      return {
-        ok: false,
-        code: 'byok_provider_error',
-        message: 'provider returned empty file',
-        generationSource: 'byok-live',
-        durationMs: Date.now() - start,
-        stderrPreview: stderrRedacted.slice(0, 2000),
-      };
-    }
-  } catch (statErr) {
-    return {
-      ok: false,
-      code: 'byok_provider_error',
-      message: 'provider succeeded but output file missing',
-      generationSource: 'byok-live',
-      durationMs: Date.now() - start,
-      stderrPreview: (stderrRedacted + ' ' + (statErr as Error).message).slice(0, 2000),
-    };
-  }
-
-  // No need to keep stdout; do not echo it. Use a single line.
-  void stdoutRedacted;
-
+  // ── Live mode: DISABLED ──
+  //
+  // CRITICAL SAFETY BUG (2026-06-11): mmx CLI does NOT read MINIMAX_API_KEY
+  // from child env for `music generate`. It reads `~/.mmx/config.json` directly.
+  // When we passed a placeholder apiKey via env, mmx CLI ignored it and fell
+  // back to the operator config key, generating a real MP3 with the operator's
+  // quota. This means the BYOK "user key" was never actually used.
+  //
+  // The `--api-key` flag exists but would expose the key in process argv
+  // (visible via `ps` / `/proc`). The correct long-term fix is a direct HTTPS
+  // provider call with per-request `Authorization` header, not CLI wrapping.
+  //
+  // Until BYOK-C2 (direct API relay) is designed and validated, live mode
+  // remains fail-closed.
   return {
-    ok: true,
-    code: 'byok_live_relay_ok',
-    message: 'live relay ok',
-    audioFileName: fileName,
-    audioFilePath: outputPath,
-    sizeBytes,
+    ok: false,
+    code: 'byok_live_provider_path_disabled',
+    message: 'BYOK live provider path is disabled pending direct API relay validation.',
     generationSource: 'byok-live',
     durationMs: Date.now() - start,
   };
 }
 
-/**
- * Spawn mmx with the given child env and return {code, stdout, stderr}.
- * Uses SIGTERM timeout (returns code 124). NEVER includes the apiKey in
- * any error path.
- */
-function runMmxChild(
-  args: string[],
-  childEnv: Record<string, string>,
-  timeoutMs: number,
-): Promise<{ code: number; stdout: string; stderr: string }> {
-  return new Promise((resolve) => {
-    const stderrChunks: Buffer[] = [];
-    const stdoutChunks: Buffer[] = [];
-    let proc: ReturnType<typeof spawn>;
-    try {
-      proc = spawn('mmx', args, { env: childEnv });
-    } catch (err) {
-      resolve({ code: 127, stdout: '', stderr: `spawn error: ${(err as Error).message}` });
-      return;
-    }
-    const timer = setTimeout(() => {
-      try { proc.kill('SIGTERM'); } catch { /* ignore */ }
-    }, timeoutMs);
-    proc.stderr?.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
-    proc.stdout?.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
-    proc.on('close', (code) => {
-      clearTimeout(timer);
-      resolve({
-        code: code ?? -1,
-        stdout: Buffer.concat(stdoutChunks).toString('utf-8'),
-        stderr: Buffer.concat(stderrChunks).toString('utf-8'),
-      });
-    });
-    proc.on('error', (err) => {
-      clearTimeout(timer);
-      resolve({ code: -1, stdout: '', stderr: `spawn error: ${err.message}` });
-    });
-  });
-}
+
 
 /**
  * Convenience: whether the live gate is fully open. The route layer

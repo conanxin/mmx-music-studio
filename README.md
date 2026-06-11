@@ -473,6 +473,23 @@ Design documents:
 
 详见 [docs/RUNTIME_MODES.md](docs/RUNTIME_MODES.md)。
 
+### Phase BYOK-C-Hotfix: Disable unsafe CLI live path
+
+- **Status**: **LIVE PATH DISABLED**
+- **What**: BYOK live preflight 尝试中发现关键安全 bug — mmx CLI 忽略 `MINIMAX_API_KEY` env var，fallback 到 `~/.mmx/config.json` 使用站点运营者 key。placeholder key 测试时意外生成了真实 MP3（已删除）。
+- **Action taken**:
+  - BYOK live path 已 fail-closed（返回 `byok_live_provider_path_disabled`）
+  - 删除 `runMmxChild` / `spawn` import / env injection 代码
+  - BYOK-C report 和 BYOK-B design doc 已记录 bug 和根因
+  - 未使用真实 user key，未泄露 operator key
+- **Current availability**:
+  - ✅ fake mode: 可用（确定性测试路径）
+  - ✅ dry-run mode: 可用（安全默认）
+  - ❌ live mode: **不可用**，直到 BYOK-C2（direct HTTPS API relay）完成
+- **Do NOT claim**: BYOK live 生成已可用 / 用户填 Key 就能真实生成 / 已 broad public launch
+- **Next**: BYOK-C2 direct HTTPS API relay design（per-request `Authorization` header，无 CLI spawn）
+
+
 ### 快速启动
 
 ```bash

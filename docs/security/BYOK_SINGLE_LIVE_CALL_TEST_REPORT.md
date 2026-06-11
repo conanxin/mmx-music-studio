@@ -224,4 +224,75 @@ key material will ever appear in that log entry.
 - Turnstile / CAPTCHA on `/api/generate/byok`
 - Audit log persistence with redaction rules
 - WebAuthn / OAuth for operator-gated live toggle
-- Public-facing launch (BYOK-D) only after abuse controls
+- Public-facing launch (BYOK-D) only after abuse control
+## Critical finding: CLI key fallback bug (2026-06-11)
+
+**Phase**: BYOK-C live preflight execution attempt
+**Date**: 2026-06-11
+**Status**: Live call **STOPPED** — bug found before real user key was used
+
+### What happened
+
+1. Operator confirmed `CONFIRM_BYOK_C_SINGLE_LIVE_CALL`.
+2. A temporary server was started with `PUBLIC_BYOK_ENABLED=true`, `BYOK_DRY_RUN_ONLY=false`, `BYOK_LIVE_ENABLED=true`, `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST`.
+3. A **placeholder** apiKey (`placeholder-placeholder-placeholder-placeholder`) was sent to `/api/generate/byok` with `mode: 'live'`.
+4. The adapter set `MINIMAX_API_KEY: input.apiKey` in the child process env and spawned `mmx music generate`.
+5. **Unexpected result**: mmx CLI **ignored** the placeholder and used the **site operator's key** from `~/.mmx/config.json`, generating a **real 5.3 MB MP3**.
+6. The temporary artifact was immediately deleted. No real user key was ever used.
+
+### Root cause
+
+mmx CLI's `music generate` command does **not** read `MINIMAX_API_KEY` from environment. Its credential priority is:
+
+1. `--api-key <key>` flag (explicit)
+2. `~/.mmx/config.json` → `api_key` (config file fallback)
+3. `MINIMAX_API_KEY` env var is **only checked during `mmx auth login`**, not during generation.
+
+The BYOK adapter's design assumed env injection would work. It does not.
+
+### Why `--api-key` flag is also not a safe immediate fix
+
+Passing `--api-key <userKey>` in `spawn()` argv would expose the key in:
+- `ps aux` output
+- `/proc/<pid>/cmdline`
+- system process listings
+
+This is a **key leakage vector** that violates BYOK's "key never leaves the request context" guarantee.
+
+### Correct long-term fix
+
+**BYOK-C2**: Replace CLI wrapping with a **direct HTTPS API call** to MiniMax's music generation endpoint:
+
+- Per-request `Authorization: Bearer <userKey>` header
+- No child process spawn
+- No env var or argv exposure
+- Response streaming with redaction
+- Full control over timeout, retry, and error handling
+
+This requires:
+- MiniMax music generation HTTP API documentation
+- Request/response schema mapping
+- Audio file download + storage integration
+- Regression smoke tests for the new path
+
+### Immediate action taken
+
+| Action | Status |
+|---|---|
+| Live call stopped | ✅ Before real user key was used |
+| Temp server killed | ✅ |
+| Generated MP3 deleted | ✅ `/tmp/auto-sanity-test` removed |
+| Temp logs deleted | ✅ |
+| BYOK live path disabled in code | ✅ Returns `byok_live_provider_path_disabled` |
+| `runMmxChild` removed | ✅ No live spawn remains |
+| `spawn` import removed | ✅ |
+| Code comments document bug | ✅ |
+
+### What this means for users
+
+- **BYOK fake mode** remains fully functional (deterministic test path).
+- **BYOK dry-run mode** remains fully functional (returns disabled safely).
+- **BYOK live generation** is **not available** and will remain unavailable until BYOK-C2 (direct API relay) is designed, implemented, and validated.
+- Do **not** tell users they can paste a key and generate real music.
+
+s

@@ -136,6 +136,18 @@ The public deployment includes lightweight generation guardrails (Phase Launch G
 
 These guardrails are intended for public alpha protection. They are not a replacement for accounts, billing, or full abuse-prevention infrastructure.
 
+### Phase BYOK-C-Hotfix: disable unsafe CLI live path
+
+- **Status**: **LIVE PATH DISABLED**
+- **What**: BYOK live preflight 中发现 mmx CLI key fallback bug。CLI 忽略 `MINIMAX_API_KEY` env，fallback 到 `~/.mmx/config.json` operator key。placeholder 测试意外生成真实 MP3（已删除）。
+- **Current state**:
+  - fake mode: ✅ 可用
+  - dry-run mode: ✅ 可用（默认）
+  - live mode: ❌ **不可用**
+- **Public claim**: BYOK live 生成**不可用**。不要声称用户填 Key 就能真实生成。
+- **Next**: BYOK-C2 direct HTTPS API relay design
+
+
 ### /api/health Guard Fields
 
 ```json

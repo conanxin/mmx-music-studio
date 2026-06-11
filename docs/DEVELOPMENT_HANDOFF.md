@@ -68,6 +68,21 @@
 - **No server upload.**
 - **No generation is performed for this release.**
 
+### Phase BYOK-C-Hotfix: disable unsafe CLI live path
+
+- **Status**: **LIVE PATH DISABLED**
+- **What**: BYOK live preflight 中发现 mmx CLI key fallback bug — CLI 忽略 `MINIMAX_API_KEY` env，fallback 到 `~/.mmx/config.json` operator key。placeholder 测试意外生成真实 MP3（已删除）。
+- **Code changes**:
+  - `server/adapters/minimax-api/byok.ts`: live path fail-closed（`byok_live_provider_path_disabled`）
+  - 删除 `runMmxChild`、`spawn` import、env injection
+  - 新增 `byok_live_provider_path_disabled` 到 type union
+- **Docs updated**:
+  - `docs/security/BYOK_SINGLE_LIVE_CALL_TEST_REPORT.md`: Critical finding 章节
+  - `docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md`: Known issue / Superseded 章节
+- **Current availability**: fake ✅ / dry-run ✅ / live ❌（直到 BYOK-C2 direct API relay）
+- **Next**: BYOK-C2 direct HTTPS API relay（per-request `Authorization`，无 CLI spawn）
+
+
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 
 - **Phase Release v0.4.25-alpha** (Phase Storage-B0 promoted to release) — ✅ closed2026-06-11.

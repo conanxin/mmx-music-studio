@@ -231,3 +231,42 @@ Unacceptable wording (do NOT use):
 
 No release tag is created in BYOK-B. v0.4.26-alpha may be released
 **only after** BYOK-B CI is green and a deliberate release commit is made.
+
+## Known issue / Superseded (2026-06-11)
+
+**The CLI env-injection live path described in this document is unsafe and has been disabled.**
+
+### What was wrong
+
+The design assumed that setting `MINIMAX_API_KEY=<userKey>` in the child process environment would cause `mmx music generate` to use the user's key. This assumption was incorrect.
+
+mmx CLI's actual credential priority for `music generate`:
+1. `--api-key <key>` flag
+2. `~/.mmx/config.json` → `api_key`
+3. `MINIMAX_API_KEY` env var is **not checked** during generation
+
+When a placeholder key was tested, mmx CLI ignored it and fell back to the site operator's config key, generating a real MP3 unintentionally.
+
+### Why `--api-key` is not an immediate fix
+
+Passing the user key via `--api-key` in `spawn()` argv exposes it in:
+- `ps aux` / `/proc/<pid>/cmdline`
+- process monitoring tools
+- shell history (if not careful)
+
+This violates BYOK's "key never leaves request context" guarantee.
+
+### Current state
+
+- **Live mode** in `server/adapters/minimax-api/byok.ts` now returns `byok_live_provider_path_disabled`.
+- **Fake mode** remains fully operational for testing.
+- **Dry-run mode** remains the safe default.
+
+### Future path (BYOK-C2)
+
+Replace CLI wrapping with a **direct HTTPS call** to MiniMax's music generation API:
+- Per-request `Authorization: Bearer <userKey>`
+- No child process, no env/argv exposure
+- Controlled timeout, retry, and error redaction
+- Requires MiniMax HTTP API docs + schema mapping
+
