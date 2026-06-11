@@ -186,6 +186,25 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
+## Latest Release: v0.4.26-alpha
+
+- **BYOK-A readiness**: PASS
+- **BYOK-B fake/live relay modes**: PASS
+- **BYOK-C protocol**: `PROTOCOL_READY_NO_LIVE_CALL`
+- **Real MiniMax live call**: **not executed**
+- **BYOK default**: disabled / dry-run
+- **Broad public BYOK launch**: not enabled
+- **Redaction**: PASS
+- **ByokPanel UI**: PASS
+- **BYOK-A/B/C smoke**: PASS
+- **Cloudflare Access for Ops**: PASS
+
+完整 release notes 见 [`docs/release/RELEASE_NOTES_v0.4.26-alpha.md`](docs/release/RELEASE_NOTES_v0.4.26-alpha.md).
+
+**关键口径**:
+
+> v0.4.26-alpha 发布 BYOK readiness / controlled relay / single-live-call protocol，但真实 MiniMax live call 尚未执行，BYOK 未 broad public launch。
+
 ## Release
 
 **v0.4.23-alpha**：Phase Release v0.4.23-alpha — Library UX polish and timeline clarity release (commit `bde4cff` + release prep, tag `v0.4.23-alpha`)

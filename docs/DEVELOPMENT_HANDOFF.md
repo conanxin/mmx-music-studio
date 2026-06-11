@@ -7,7 +7,19 @@
 
 ## Current release line
 
-> 文档版本：v0.4.25-alpha · 2026-06-11
+> 文档版本：v0.4.26-alpha · 2026-06-11
+
+**v0.4.26-alpha** — Phase Release v0.4.26-alpha: BYOK readiness and controlled relay protocol release.
+
+- BYOK-A 已完成 (commit 42c3ef3).
+- BYOK-B 已完成 (commit 8e22680): fake/live relay modes, fake mode 已端到端验证, live mode scaffold + 三把钥匙 gate 已就位.
+- BYOK-C 已完成协议层 (commit 1cde092): `PROTOCOL_READY_NO_LIVE_CALL`, smoke 35/35 PASS, 但本轮未提供 operator confirmation, 因此未执行真实 MiniMax live call.
+- BYOK 默认状态保持 disabled / dry-run.
+- 不 broad public BYOK launch.
+- 没有提交 key / .env / provider raw response / tsconfig.tsbuildinfo / storage runtime.
+- 不移动旧 tag (v0.4.20-alpha..v0.4.25-alpha 全部 commit 不变).
+
+**关键口径**: BYOK-C 已完成单次 live call 的可审计协议与 smoke test, 但本轮未提供 operator confirmation, 因此未执行真实 MiniMax live call.
 
 **v0.4.25-alpha** — Phase Release v0.4.25-alpha: Storage-B0 operator cleanup dry-run and safety design release.
 

@@ -3,6 +3,30 @@
 All notable changes to mmx-music-studio will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+## [v0.4.26-alpha] — 2026-06-11
+
+### Highlights
+
+- BYOK readiness and controlled relay protocol release.
+- Added safe BYOK server-side relay foundation.
+- Added `/api/generate/byok` endpoint.
+- Added default-disabled BYOK kill switch (`PUBLIC_BYOK_ENABLED=false`).
+- Added dry-run default (`BYOK_DRY_RUN_ONLY=true`).
+- Added fake / live relay mode structure.
+- Added BYOK live gate with explicit confirmation phrase.
+- Added BYOK Studio panel (`ByokPanel`).
+- Added redaction helper for sensitive BYOK material.
+- Added BYOK-A / BYOK-B / BYOK-C smoke tests.
+- Added single-live-call audit protocol.
+
+### Notes
+
+- No real MiniMax live call was executed.
+- No music was generated in this release.
+- BYOK is not broadly public-launched yet.
+- Users cannot be told that pasting a Key already guarantees real generation.
+- BYOK remains disabled / dry-run by default.
+
 
 ## [v0.4.25-alpha] — 2026-06-11
 
