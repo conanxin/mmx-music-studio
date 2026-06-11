@@ -477,6 +477,20 @@ the public route.
   disabled. Live requires a triple env flag and is intended only for
   one-off operator-confirmed tests.
 
+## Phase BYOK-C: Single Live Call Verification Protocol (delivered)
+
+- **Status**: `PROTOCOL_READY_NO_LIVE_CALL`
+- **Operator confirmation**: not provided in this run
+- **Live call executed**: **no**
+- **Music generated**: **no**
+- **User key used**: **no**
+- **Site operator key used**: **no**
+- **broad public BYOK launch**: **no**
+- 详细报告见 `docs/security/BYOK_SINGLE_LIVE_CALL_TEST_REPORT.md`
+- 协议验证通过 `scripts/byok-c-smoke-test.sh`
+
+**关键口径**: BYOK-C 已完成单次 live call 的可审计协议与 smoke test,但本轮未提供 operator confirmation,因此未执行真实 MiniMax live call。下一次 operator 给出 `CONFIRM_BYOK_C_SINGLE_LIVE_CALL` 短语后,才能执行真实 live call。
+
 Distinction from Phase 5A (admin BYOK):
 
 - Phase 5A is admin/server-operator level, configured via env at startup
