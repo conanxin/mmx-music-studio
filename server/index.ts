@@ -4,6 +4,9 @@
   // endpoint /api/generate/byok. Distinct from BYOK_ENABLED (admin internal).
   // Default false.
   publicByokEnabled: readBoolEnv('PUBLIC_BYOK_ENABLED', false),
+ byokDryRunOnly: readBoolEnv('BYOK_DRY_RUN_ONLY', true),
+ byokLiveEnabled: readBoolEnv('BYOK_LIVE_ENABLED', false),
+ byokLiveConfirmation: (process.env.BYOK_LIVE_CONFIRMATION ?? '').trim(),
 }
 
 /**
@@ -107,6 +110,12 @@ import {
   redactSensitive,
   validateApiKeyShape,
 } from './security/redaction.js';
+import {
+  generateByokMusic,
+  isLiveGateOpen,
+  BYOK_LIVE_CONFIRMATION_PHRASE,
+  type ByokModel,
+} from './adapters/minimax-api/byok.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -190,6 +199,9 @@ function loadConfig(): ServerConfig {
     // endpoint /api/generate/byok. Distinct from BYOK_ENABLED (admin internal).
     // Default false.
     publicByokEnabled: readBoolEnv('PUBLIC_BYOK_ENABLED', false),
+ byokDryRunOnly: readBoolEnv('BYOK_DRY_RUN_ONLY', true),
+ byokLiveEnabled: readBoolEnv('BYOK_LIVE_ENABLED', false),
+ byokLiveConfirmation: (process.env.BYOK_LIVE_CONFIRMATION ?? '').trim(),
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -1798,16 +1810,96 @@ async function handleByokGenerate(
     return;
   }
 
-  // 6. Dry-run response — no real provider call. apiKey is NOT included.
-  const dryRun: ByokDryRunResponse = {
-    ok: true,
-    dryRun: true,
-    code: 'byok_dry_run_only',
-    message: 'BYOK 接通验证成功。真实 provider 调用将在 Phase BYOK-B 显式开启。',
-    receivedKeyLengthBucket: keyShape.bucket ?? 'normal',
-    requestId,
-  };
-  sendJson(res, 200, dryRun);
+  // 6. Phase BYOK-B mode machine.
+ // 6a. dry-run: PUBLIC_BYOK_ENABLED=true && BYOK_DRY_RUN_ONLY=true.
+ if (config.byokDryRunOnly !== false) {
+   const dryRun: ByokDryRunResponse = {
+     ok: true,
+     dryRun: true,
+     code: 'byok_dry_run_only',
+     message: 'BYOK 接通验证成功。当前为 dry-run，未触发真实 provider 调用。',
+     receivedKeyLengthBucket: keyShape.bucket ?? 'normal',
+     requestId,
+   };
+   sendJson(res, 200, dryRun);
+   return;
+ }
+
+ // 6b. live gate check: requires BYOK_LIVE_ENABLED && confirmation phrase.
+ if (config.byokLiveEnabled !== true) {
+   sendJson(res, 403, {
+     ok: false,
+     code: 'byok_live_not_enabled',
+     message: '真实 BYOK 生成尚未启用',
+     hint: '需要 BYOK_LIVE_ENABLED=true 才会触发 live relay',
+   });
+   return;
+ }
+ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
+   console.warn(
+     `[byok] live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokLiveConfirmation.length}`,
+   );
+   sendJson(res, 403, {
+     ok: false,
+     code: 'byok_live_confirmation_required',
+     message: '真实 BYOK 生成需要显式确认',
+     hint: `需要 BYOK_LIVE_CONFIRMATION=${BYOK_LIVE_CONFIRMATION_PHRASE}`,
+   });
+   return;
+ }
+
+ // 6c. Decide adapter mode: 'fake' for the default test path; 'live' for
+ // the operator-only test path. We default to 'fake' for any caller that
+ // does not explicitly pass mode: 'live' in the body. The smoke tests in
+ // scripts/byok-b-smoke-test.sh only run the fake path.
+ const requestedMode: 'fake' | 'live' =
+   (body as { mode?: 'fake' | 'live' } | undefined)?.mode === 'live' ? 'live' : 'fake';
+ const liveAllowed = isLiveGateOpen({
+   publicByokEnabled: config.publicByokEnabled,
+   byokDryRunOnly: config.byokDryRunOnly,
+   byokLiveEnabled: config.byokLiveEnabled,
+   byokLiveConfirmation: config.byokLiveConfirmation,
+ });
+ const adapterMode: 'fake' | 'live' = requestedMode === 'live' && liveAllowed ? 'live' : 'fake';
+
+ // body.input is `unknown`; narrow with a local alias.
+ const byokInput = (body.input ?? {}) as {
+   prompt?: string;
+   lyrics?: string;
+   model?: string;
+   mode?: 'instrumental' | 'lyrics' | 'auto';
+ };
+ const adapterResult = await generateByokMusic({
+   apiKey: body.apiKey ?? '',
+   prompt: byokInput.prompt ?? '',
+   lyrics: byokInput.lyrics,
+   model: (byokInput.model as ByokModel) ?? 'music-2.6-free',
+   mode: adapterMode,
+   requestId,
+   musicMode: byokInput.mode ?? 'auto',
+ });
+
+ if (!adapterResult.ok) {
+   sendJson(res, 502, {
+     ok: false,
+     code: adapterResult.code,
+     message: redactSensitive(adapterResult.message),
+     requestId,
+   });
+   return;
+ }
+
+ // 6e. Success. Return the relay result code. apiKey is never echoed.
+ sendJson(res, 200, {
+   ok: true,
+   code: adapterResult.code,
+   message: adapterResult.message,
+   audioFileName: adapterResult.audioFileName,
+   audioFilePath: adapterResult.audioFilePath,
+   sizeBytes: adapterResult.sizeBytes,
+   generationSource: adapterResult.generationSource,
+   requestId,
+ });
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────

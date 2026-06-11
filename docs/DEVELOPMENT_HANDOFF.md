@@ -385,30 +385,97 @@ DOMAIN=your.domain.com bash scripts/weapp-domain-readiness-check.sh
 ---
 
 
-## Phase BYOK-A: Public BYOK generation readiness (in progress)
+## Phase BYOK-A: Public BYOK generation readiness (shipped, commit 42c3ef3)
 
-> Server-side relay scaffold only. BYOK is **disabled by default** for the
-> public endpoint until Phase BYOK-B runs an explicit live relay test.
+Server-side relay scaffold only. BYOK is **disabled by default** for the
+public endpoint. Phase BYOK-A returns a `byok_dry_run_only` response and
+does NOT call real MiniMax.
 
-- Public endpoint candidate: `POST /api/generate/byok`
-- Kill switch: `PUBLIC_BYOK_ENABLED=false` returns 403 `byok_generation_disabled`
-- Phase BYOK-A returns a `byok_dry_run_only` response (does NOT call real MiniMax)
-- Server-side relay only -- no browser-side MiniMax calls
-- User key never written to disk / logs / metadata / track object
-- User key never put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query
-- User pays with their own MiniMax account -- billing responsibility on user
-- Real BYOK generation requires explicit later Phase BYOK-B (live relay test)
-
-Key files added/modified:
+Key files added/modified in BYOK-A:
 
 - `docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md` (new, full design)
-- `server/security/redaction.ts` (new, redactSensitive / redactObject / validateApiKeyShape)
-- `server/index.ts` (added route + handleByokGenerate dry-run, imported redaction helpers, publicByokEnabled config flag)
-- `server/types.ts` (ServerConfig.publicByokEnabled field)
+- `server/security/redaction.ts` (new, `redactSensitive` / `redactObject` / `validateApiKeyShape`)
+- `server/index.ts` (added `/api/generate/byok` route + `handleByokGenerate` dry-run, imported redaction helpers, `publicByokEnabled` config flag)
+- `server/types.ts` (`ServerConfig.publicByokEnabled` field)
 - `src/features/studio/ByokPanel.tsx` (new UI block, password input + model select + confirmation + disabled-by-default)
 - `src/features/studio/ByokPanel.module.css` (new)
-- `src/features/studio/Studio.tsx` (mounts <ByokPanel />)
+- `src/features/studio/Studio.tsx` (mounts `<ByokPanel />`)
 - `scripts/byok-a-smoke-test.sh` (new, 50+ assertions)
+
+User key is never written to disk / logs / metadata / track object, and
+never put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query.
+Users pay with their own MiniMax account -- billing responsibility is
+on the user.
+
+## Phase BYOK-B: Controlled BYOK relay test (in progress)
+
+> **BYOK-B 已完成受控 fake/live relay 测试结构，但真实 MiniMax live call 仍未执行。**
+
+Phase BYOK-B builds on BYOK-A by adding a `fake / live` switch under
+three gating env flags and a dedicated provider adapter.
+
+### Mode matrix
+
+| Mode | Response | Provider call |
+| --- | --- | --- |
+| disabled (`PUBLIC_BYOK_ENABLED=false`) | `403 byok_generation_disabled` | none |
+| dry-run (`BYOK_DRY_RUN_ONLY=true`) | `200 byok_dry_run_only` | none |
+| fake relay | `200 byok_fake_relay_ok` | none (deterministic) |
+| live not enabled | `403 byok_live_not_enabled` | none |
+| live confirmation missing | `403 byok_live_confirmation_required` | none |
+| live enabled (all 3 keys) | `200 byok_live_relay_ok` | mmx spawn with user key |
+| provider error | `502 byok_provider_error*` (redacted) | mmx spawn attempt, redacted |
+
+### Live mode env (must be set together at process start)
+
+- `PUBLIC_BYOK_ENABLED=true`
+- `BYOK_LIVE_ENABLED=true`
+- `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST`
+
+The confirmation phrase `CONFIRM_BYOK_LIVE_RELAY_TEST` is a **public
+constant**, not a secret. It exists so an operator must opt-in at
+process start, not to authenticate the user.
+
+### Live mode safety
+
+- User-supplied `apiKey` is injected into the child `mmx` process
+  environment as `MINIMAX_API_KEY=<userKey>`. The site operator's
+  `MINIMAX_API_KEY` is explicitly stripped from the child env.
+- Provider stdout, stderr, and error messages are passed through
+  `redactCliOutput` before being surfaced to the route layer.
+- The live env is read once at `loadConfig()` time. A request cannot
+  flip live mode mid-flight.
+
+### Final wording (do not weaken)
+
+- Do not claim "user can paste a Key and generate for real today".
+- Do not claim "BYOK public launch is open".
+- Do not claim "a live MiniMax call has been verified".
+- Strongest correct claim: **"BYOK-B 已完成受控 fake/live relay 测试结构，但真实 MiniMax live call 仍未执行。"**
+
+A true broad public BYOK launch should consider `Phase Deploy-CF-D`
+Turnstile / abuse control before enabling `BYOK_LIVE_ENABLED=true` for
+the public route.
+
+### Key files added/modified in BYOK-B
+
+- `docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md` (new)
+- `server/adapters/minimax-api/byok.ts` (new -- `generateByokMusic` + `isLiveGateOpen` + per-request `MINIMAX_API_KEY` injection + site-operator key stripping)
+- `server/index.ts` (extended `handleByokGenerate` with 4-mode state machine: disabled / dry-run / fake / live, plus `byok_live_not_enabled` / `byok_live_confirmation_required` guards)
+- `server/types.ts` (+3 fields: `byokDryRunOnly` / `byokLiveEnabled` / `byokLiveConfirmation`)
+- `src/features/studio/ByokPanel.tsx` (rewritten -- 12 status code mappings, prompt + musicMode inputs, post-submit clear key)
+- `src/features/studio/ByokPanel.module.css` (+ `.textarea` / `.resultHint`)
+- `scripts/byok-b-smoke-test.sh` (new, 50+ assertions, `BYOK_B_SMOKE_PASS`)
+
+### Distinction from Phase 5A (admin BYOK)
+
+- Phase 5A operator-BYOK path: site admin sets the operator key in
+  `.env` once, the server uses it for all generations. Static,
+  privileged, audit-tracked.
+- Phase BYOK-B public BYOK path: each request carries a user-supplied
+  `apiKey`, used in memory for one request, never persisted. Default
+  disabled. Live requires a triple env flag and is intended only for
+  one-off operator-confirmed tests.
 
 Distinction from Phase 5A (admin BYOK):
 

@@ -126,3 +126,62 @@ A smoke test `scripts/byok-a-smoke-test.sh` proves:
 - No music is generated in this phase
 - No real BYOK call is performed in this phase
 - Phase BYOK-B is required for any live provider relay
+
+
+# Phase BYOK-B: Controlled BYOK relay test (in progress)
+
+Phase BYOK-B builds on Phase BYOK-A by adding a controlled `fake / live`
+switch to the public endpoint, gated by three env flags and a public
+confirmation phrase.
+
+## Mode matrix
+
+| Mode | Response | Provider call |
+| --- | --- | --- |
+| `PUBLIC_BYOK_ENABLED=false` | `403 byok_generation_disabled` | none |
+| enabled + `BYOK_DRY_RUN_ONLY=true` | `200 byok_dry_run_only` | none |
+| enabled + dry-run=false + fake mode | `200 byok_fake_relay_ok` | none (deterministic) |
+| enabled + dry-run=false + live gate closed | `403 byok_live_not_enabled` | none |
+| live gate open + wrong confirmation | `403 byok_live_confirmation_required` | none |
+| live gate open + valid | `200 byok_live_relay_ok` | mmx spawn with user key |
+| live attempt, provider error | `502 byok_provider_error*` (redacted) | mmx spawn attempt, redacted |
+
+## Live mode env (must all be set at process start)
+
+- `PUBLIC_BYOK_ENABLED=true`
+- `BYOK_LIVE_ENABLED=true`
+- `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST`
+
+The confirmation phrase is a **public constant**, defined in
+`server/adapters/minimax-api/byok.ts`. It is **not** a secret. Its
+purpose is to force the operator to opt-in at process start, not to
+authenticate the user.
+
+## Live mode safety
+
+- The user-supplied `apiKey` is injected into the child `mmx` process
+  environment as `MINIMAX_API_KEY=<userKey>`. The site operator's
+  `MINIMAX_API_KEY` is explicitly stripped from the child env.
+- Provider stdout, stderr, and error messages are passed through
+  `redactCliOutput` before being surfaced to the route layer.
+- The live env is read once at `loadConfig()` time. A request cannot
+  flip live mode mid-flight.
+- The fake mode short-circuits before any spawn, so a default
+  configuration is fully offline.
+
+## Final wording (do not weaken)
+
+> **BYOK-B 已完成受控 fake/live relay 测试结构，但真实 MiniMax live call 仍未执行。**
+
+- Do not claim "user can paste a Key and generate for real today".
+- Do not claim "BYOK public launch is open".
+- Do not claim "a live MiniMax call has been verified".
+
+A true broad public BYOK launch should consider `Phase Deploy-CF-D`
+Turnstile / abuse control before enabling `BYOK_LIVE_ENABLED=true` for
+the public route.
+
+## Companion design doc
+
+- `docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md` (new in BYOK-B) --
+  controlled live relay test rules and confirmation phrase.

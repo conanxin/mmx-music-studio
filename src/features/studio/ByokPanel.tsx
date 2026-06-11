@@ -1,5 +1,5 @@
 /**
- * ByokPanel — Phase BYOK-A: Public BYOK generation readiness
+ * ByokPanel — Phase BYOK-B: Controlled BYOK relay test modes.
  *
  * 安全约束 (DO NOT CHANGE without review):
  * - Password input is never persisted to localStorage / sessionStorage / IndexedDB
@@ -10,9 +10,17 @@
  *   "BYOK 暂未开放" disabled state.
  * - The endpoint default response is `byok_dry_run_only` (no real generation).
  * - The UI never calls the existing /api/generate.
+ * - The UI surfaces server-side status codes but never displays the apiKey
+ *   or any Authorization / Bearer / X-Api-Key header.
  *
- * No browser-side calls to MiniMax. No key is ever echoed back to the DOM
- * after submission (only a length bucket).
+ * Phase BYOK-B added response codes:
+ * - byok_dry_run_only        → "BYOK 安全链路已就绪，但当前仍为 dry-run"
+ * - byok_fake_relay_ok       → "BYOK relay 测试通过（fake 模式）"
+ * - byok_live_relay_ok       → "BYOK relay 测试通过（live 模式）"
+ * - byok_live_not_enabled    → "真实 BYOK 生成尚未启用"
+ * - byok_live_confirmation_required → "真实 BYOK 生成需要显式确认"
+ * - byok_provider_error*     → "MiniMax 返回错误，已隐藏敏感信息"
+ * - byok_generation_disabled → "BYOK 暂未开放"
  */
 import { useState } from 'react';
 import styles from './ByokPanel.module.css';
@@ -20,27 +28,75 @@ import styles from './ByokPanel.module.css';
 const BYOK_ENDPOINT = '/api/generate/byok';
 const DISABLED_MESSAGE = 'BYOK 暂未开放';
 
+// All server-side response codes the UI is allowed to surface.
+// Keep this list in sync with server/index.ts handleByokGenerate.
+type ByokResponseCode =
+  | 'byok_generation_disabled'
+  | 'byok_dry_run_only'
+  | 'byok_fake_relay_ok'
+  | 'byok_live_relay_ok'
+  | 'byok_live_not_enabled'
+  | 'byok_live_confirmation_required'
+  | 'byok_provider_error'
+  | 'byok_provider_auth_failed'
+  | 'byok_provider_timeout'
+  | 'byok_provider_not_found'
+  | 'byok_provider_unsupported_mode'
+  | 'byok_invalid_input'
+  | string;
+
+const STATUS_MESSAGES: Record<string, string> = {
+  byok_generation_disabled: 'BYOK 暂未开放',
+  byok_dry_run_only: 'BYOK 安全链路已就绪，但当前仍为 dry-run',
+  byok_fake_relay_ok: 'BYOK relay 测试通过（fake 模式）',
+  byok_live_relay_ok: 'BYOK relay 测试通过（live 模式）',
+  byok_live_not_enabled: '真实 BYOK 生成尚未启用',
+  byok_live_confirmation_required: '真实 BYOK 生成需要显式确认',
+  byok_provider_error: 'MiniMax 返回错误，已隐藏敏感信息',
+  byok_provider_auth_failed: 'MiniMax 拒绝了该 Key（认证失败）',
+  byok_provider_timeout: 'MiniMax 响应超时',
+  byok_provider_not_found: 'MiniMax CLI 不可用',
+  byok_provider_unsupported_mode: 'MiniMax 不支持该模式',
+  byok_invalid_input: '请求参数无效',
+};
+
 interface ByokPanelProps {
   // Optional: parent can pass whether BYOK is currently allowed.
   // Default: treat as disabled (PUBLIC_BYOK_ENABLED=false) for safety.
   publicByokEnabled?: boolean;
-  onStatusChange?: (status: 'idle' | 'submitting' | 'ok' | 'disabled' | 'error') => void;
+  onStatusChange?: (
+    status: 'idle' | 'submitting' | 'ok' | 'disabled' | 'error',
+  ) => void;
 }
 
-interface ByokDryRunResponse {
+interface ByokOkResponse {
   ok: true;
-  dryRun: true;
-  code: 'byok_dry_run_only';
+  code: ByokResponseCode;
   message: string;
+  audioFileName?: string;
+  sizeBytes?: number;
+  generationSource?: 'byok-fake' | 'byok-live';
+  requestId?: string;
+}
+
+interface ByokDryRunResponse extends ByokOkResponse {
+  dryRun: true;
   receivedKeyLengthBucket: 'tiny' | 'short' | 'normal' | 'long' | 'absurd';
-  requestId: string;
 }
 
 interface ByokErrorResponse {
   ok: false;
-  code?: string;
+  code?: ByokResponseCode;
   message?: string;
   hint?: string;
+  requestId?: string;
+}
+
+type ByokResponse = ByokDryRunResponse | ByokOkResponse | ByokErrorResponse;
+
+function statusMessage(code: ByokResponseCode | undefined): string {
+  if (!code) return '请求未通过';
+  return STATUS_MESSAGES[code] ?? `请求未通过（${code}）`;
 }
 
 export default function ByokPanel(props: ByokPanelProps): JSX.Element {
@@ -49,12 +105,23 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const enabled = props.publicByokEnabled === true;
 
   const [apiKey, setApiKey] = useState<string>('');
-  const [model, setModel] = useState<'music-2.6-free' | 'music-2.6'>('music-2.6-free');
+  const [model, setModel] = useState<'music-2.6-free' | 'music-2.6'>(
+    'music-2.6-free',
+  );
+  const [musicMode, setMusicMode] = useState<'auto' | 'instrumental' | 'lyrics'>(
+    'auto',
+  );
+  const [prompt, setPrompt] = useState<string>('');
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [lastResult, setLastResult] = useState<ByokDryRunResponse | ByokErrorResponse | null>(null);
+  const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
 
-  const canSubmit = enabled && !submitting && apiKey.length >= 20 && confirmed;
+  const canSubmit =
+    enabled &&
+    !submitting &&
+    apiKey.length >= 20 &&
+    prompt.length > 0 &&
+    confirmed;
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -69,17 +136,23 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
         credentials: 'same-origin',
         body: JSON.stringify({
           apiKey,
-          model,
-          // Phase BYOK-A: only the apiKey + minimal model is sent.
-          // No prompt / lyrics here — BYOK-A is dry-run readiness only.
+          // Phase BYOK-B: include prompt + musicMode so the fake / live
+          // adapter can produce a deterministic / real response.
+          input: {
+            prompt,
+            model,
+            mode: musicMode,
+          },
+          // The body never carries the explicit 'mode' — the route always
+          // defaults to 'fake' for safety. A real 'live' request requires
+          // a separate operator-only channel that this UI does not expose.
         }),
       });
-      const data = (await r.json()) as ByokDryRunResponse | ByokErrorResponse;
+      const data = (await r.json()) as ByokResponse;
+      setLastResult(data);
       if (!r.ok || data.ok === false) {
-        setLastResult(data);
         props.onStatusChange?.(r.status === 403 ? 'disabled' : 'error');
       } else {
-        setLastResult(data);
         props.onStatusChange?.('ok');
       }
     } catch (err) {
@@ -91,9 +164,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       props.onStatusChange?.('error');
     } finally {
       setSubmitting(false);
-      // SECURITY: clear local key reference immediately after submit
-      // so it doesn't linger in component state if the parent re-renders.
-      // We keep it only if the user wants to retry.
+      // SECURITY: clear local key reference immediately after submit so
+      // it doesn't linger in component state if the parent re-renders.
       setApiKey('');
     }
   }
@@ -133,12 +205,46 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           id="byok-model"
           className={styles.select}
           value={model}
-          onChange={(e) => setModel(e.target.value as 'music-2.6-free' | 'music-2.6')}
+          onChange={(e) =>
+            setModel(e.target.value as 'music-2.6-free' | 'music-2.6')
+          }
           disabled={!enabled || submitting}
         >
           <option value="music-2.6-free">music-2.6-free</option>
           <option value="music-2.6">music-2.6</option>
         </select>
+
+        <label className={styles.label} htmlFor="byok-music-mode">
+          模式
+        </label>
+        <select
+          id="byok-music-mode"
+          className={styles.select}
+          value={musicMode}
+          onChange={(e) =>
+            setMusicMode(e.target.value as 'auto' | 'instrumental' | 'lyrics')
+          }
+          disabled={!enabled || submitting}
+        >
+          <option value="auto">auto（自动选择）</option>
+          <option value="instrumental">instrumental（纯音乐）</option>
+          <option value="lyrics">lyrics（带歌词）</option>
+        </select>
+
+        <label className={styles.label} htmlFor="byok-prompt">
+          Prompt
+        </label>
+        <textarea
+          id="byok-prompt"
+          className={styles.textarea}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="例如：深夜编程，lo-fi 钢琴，节奏缓慢"
+          rows={2}
+          maxLength={500}
+          required
+          disabled={!enabled || submitting}
+        />
 
         <label className={styles.checkboxLabel}>
           <input
@@ -161,7 +267,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             className={styles.submit}
             disabled={!canSubmit}
           >
-            {submitting ? '提交中…' : '使用我的 Key 试调一次（dry-run）'}
+            {submitting ? '提交中…' : '使用我的 Key 试调一次（默认 fake）'}
           </button>
         )}
       </form>
@@ -175,19 +281,37 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
         >
           {lastResult.ok ? (
             <>
-              <strong>dry-run 成功</strong>（{lastResult.code}）
+              <strong>{statusMessage(lastResult.code)}</strong>
+              <br />
+              <code>{lastResult.code}</code>
               <br />
               <span className={styles.resultMsg}>{lastResult.message}</span>
-              <br />
-              <small>
-                receivedKeyLengthBucket:{' '}
-                <code>{lastResult.receivedKeyLengthBucket}</code> · requestId:{' '}
-                <code>{lastResult.requestId}</code>
-              </small>
+              {lastResult.audioFileName && (
+                <>
+                  <br />
+                  <small>
+                    audioFileName: <code>{lastResult.audioFileName}</code>
+                    {typeof lastResult.sizeBytes === 'number' && (
+                      <> · sizeBytes: <code>{lastResult.sizeBytes}</code></>
+                    )}
+                    {lastResult.generationSource && (
+                      <> · source: <code>{lastResult.generationSource}</code></>
+                    )}
+                  </small>
+                </>
+              )}
+              {lastResult.requestId && (
+                <>
+                  <br />
+                  <small>
+                    requestId: <code>{lastResult.requestId}</code>
+                  </small>
+                </>
+              )}
             </>
           ) : (
             <>
-              <strong>请求未通过</strong>
+              <strong>{statusMessage(lastResult.code)}</strong>
               {lastResult.code && (
                 <>
                   <br />
@@ -200,6 +324,12 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                   <span className={styles.resultMsg}>{lastResult.message}</span>
                 </>
               )}
+              {lastResult.hint && (
+                <>
+                  <br />
+                  <small className={styles.resultHint}>{lastResult.hint}</small>
+                </>
+              )}
             </>
           )}
         </div>
@@ -207,7 +337,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
       <footer className={styles.footer}>
         <small>
-          Phase BYOK-A · 服务端 relay 草稿 · 不替换现有生成路径 · Key 不写入 localStorage /
+          Phase BYOK-B · fake/live 模式由服务端控制 · 不替换现有生成路径 · Key 不写入 localStorage /
           IndexedDB / URL query
         </small>
       </footer>

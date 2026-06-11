@@ -46,6 +46,26 @@ export interface ServerConfig {
    * 403 byok_generation_disabled.
    */
   publicByokEnabled: boolean;
+ /**
+ * BYOK_DRY_RUN_ONLY — when true, /api/generate/byok returns
+ * 200 byok_dry_run_only instead of calling the provider. Default true
+ * so that even if PUBLIC_BYOK_ENABLED is on, the public endpoint does
+ * not call the provider unless an operator explicitly turns dry-run
+ * off.
+ */
+ byokDryRunOnly: boolean;
+ /**
+ * BYOK_LIVE_ENABLED — must be true to even consider live relay.
+ * Default false. Independent from publicByokEnabled.
+ */
+ byokLiveEnabled: boolean;
+ /**
+ * BYOK_LIVE_CONFIRMATION — exact-match confirmation phrase that must
+ * equal BYOK_LIVE_CONFIRMATION_PHRASE for live mode to be allowed.
+ * Default empty string. The route layer refuses to call the live
+ * adapter unless this matches exactly.
+ */
+ byokLiveConfirmation: string;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';

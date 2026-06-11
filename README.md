@@ -349,21 +349,80 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 ---
 
-## Phase BYOK-A: Public BYOK generation readiness (in progress)
+## Phase BYOK-B: Controlled BYOK relay test (in progress)
 
-> Server-side relay scaffold only. BYOK is **disabled by default** for the
-> public endpoint until Phase BYOK-B runs an explicit live relay test.
+> **BYOK-B 已完成受控 fake/live relay 测试结构,但真实 MiniMax live call 仍未执行。**
 
-- Public endpoint candidate: `POST /api/generate/byok`
-- Kill switch: `PUBLIC_BYOK_ENABLED=false` returns 403 `byok_generation_disabled`
-- Phase BYOK-A returns a `byok_dry_run_only` response (does NOT call real MiniMax)
-- Server-side relay only -- no browser-side MiniMax calls
-- User key never written to disk / logs / metadata / track object
-- User key never put in `localStorage` / `sessionStorage` / `IndexedDB` / URL query
-- User pays with their own MiniMax account -- billing responsibility on user
-- Real BYOK generation requires explicit later Phase BYOK-B (live relay test)
+BYOK-B builds on BYOK-A by adding a `fake / live` switch under three
+gating env flags and a dedicated provider adapter. The endpoint
+`POST /api/generate/byok` now responds to a richer mode matrix:
 
-Design document: [`docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md`](docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md)
+| Mode | Response | Provider call |
+| --- | --- | --- |
+| disabled (`PUBLIC_BYOK_ENABLED=false`) | `403 byok_generation_disabled` | none |
+| dry-run (`BYOK_DRY_RUN_ONLY=true`) | `200 byok_dry_run_only` | none |
+| fake relay | `200 byok_fake_relay_ok` | none (deterministic) |
+| live not enabled | `403 byok_live_not_enabled` | none |
+| live confirmation missing | `403 byok_live_confirmation_required` | none |
+| live enabled (all 3 keys) | `200 byok_live_relay_ok` | mmx spawn with user key |
+| provider error | `502 byok_provider_error*` (redacted) | mmx spawn attempt, redacted |
+
+Live mode requires **all three** env flags to be set at config load:
+
+- `PUBLIC_BYOK_ENABLED=true`
+- `BYOK_LIVE_ENABLED=true`
+- `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST`
+
+The confirmation phrase is the public constant
+`CONFIRM_BYOK_LIVE_RELAY_TEST`. It is **not** a secret. Its purpose is
+to force the operator to opt-in at process start, not to authenticate
+the user.
+
+In live mode the user-supplied `apiKey` is injected into the child
+`mmx` process environment as `MINIMAX_API_KEY=<userKey>`. The site
+operator's `MINIMAX_API_KEY` is explicitly stripped from the child env
+in `server/adapters/minimax-api/byok.ts`. Provider stdout, stderr, and
+error messages are run through `redactCliOutput` before being surfaced
+to the route layer.
+
+UI status codes handled by `ByokPanel.tsx`:
+
+- `byok_dry_run_only` -- "BYOK 安全链路已就绪，但当前仍为 dry-run"
+- `byok_fake_relay_ok` -- "BYOK relay 测试通过（fake 模式）"
+- `byok_live_relay_ok` -- "BYOK relay 测试通过（live 模式）"
+- `byok_live_not_enabled` -- "真实 BYOK 生成尚未启用"
+- `byok_live_confirmation_required` -- "真实 BYOK 生成需要显式确认"
+- `byok_provider_error*` -- "MiniMax 返回错误，已隐藏敏感信息"
+
+The password input is cleared from component state immediately after
+submit, and is never written to `localStorage` / `sessionStorage` /
+`IndexedDB` / URL query.
+
+### What BYOK-B does **not** do
+
+- It does **not** call the real MiniMax provider automatically. The
+  default behavior of the endpoint is `byok_dry_run_only`.
+- It does **not** launch a public live BYOK generation flow. There is
+  no automatic "user enters Key, gets music" path. A real live call
+  requires an operator to set the three env flags above.
+- It does **not** replace Phase 5A's admin BYOK path. It only adds a
+  separate public route at `/api/generate/byok` that does not touch
+  the existing `/api/generate` handler.
+
+### Final wording (do not weaken)
+
+- Do not claim "user can paste a Key and generate for real today".
+- Do not claim "BYOK public launch is open".
+- Do not claim "a live MiniMax call has been verified".
+- The strongest correct claim is: **"BYOK-B 已完成受控 fake/live relay 测试结构，但真实 MiniMax live call 仍未执行。"**
+
+A true broad public BYOK launch should consider `Phase Deploy-CF-D`
+Turnstile / abuse control before enabling `BYOK_LIVE_ENABLED=true` for
+the public route.
+
+Design documents:
+[`docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md`](docs/security/BYOK_PUBLIC_GENERATION_DESIGN.md),
+[`docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md`](docs/security/BYOK_LIVE_RELAY_TEST_DESIGN.md).
 
 
 
