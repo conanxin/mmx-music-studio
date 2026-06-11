@@ -66,6 +66,16 @@ export interface ServerConfig {
  * adapter unless this matches exactly.
  */
  byokLiveConfirmation: string;
+  /**
+   * Phase BYOK-F: Direct HTTPS API relay live gate.
+   * Default false. Requires explicit operator confirmation.
+   */
+  byokDirectLiveEnabled: boolean;
+  /**
+   * Phase BYOK-F: Exact-match confirmation phrase for direct live mode.
+   * Must equal CONFIRM_BYOK_DIRECT_LIVE_TEST.
+   */
+  byokDirectLiveConfirmation: string;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';

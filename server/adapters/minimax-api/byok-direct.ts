@@ -1,21 +1,20 @@
 /**
- * BYOK-D Direct HTTPS API Relay Adapter Skeleton
- * Status: BYOK-E VERIFIED — schema confirmed from official mmx-cli v1.0.16
+ * BYOK-F Direct HTTPS API Relay Adapter
+ * Status: IMPLEMENTED — live path behind explicit env gates
  *
- * This module scaffolds the intended architecture for a direct HTTPS provider
- * call to replace the unsafe CLI-based BYOK live path. No live provider call
- * is implemented because the official MiniMax music generation API endpoint
- * and schema have not yet been verified from official documentation.
+ * This module implements a direct HTTPS provider call to the official
+ * MiniMax music generation API. No CLI spawn. No env injection.
  *
  * Safety constraints:
  * - No CLI spawn
  * - No MINIMAX_API_KEY env injection
  * - No --api-key flag
  * - No operator key usage
- * - User key only in per-request Authorization header (future)
+ * - User key only in per-request Authorization header
  * - No key persistence
  * - No key logging
  * - All errors redacted
+ * - Live path disabled by default (requires explicit env gates)
  */
 
 import { redactObject, redactSensitive } from "../../security/redaction";
@@ -103,7 +102,7 @@ export interface ByokDirectErrorResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Types (design-only — will be refined after official schema verification)
+// BYOK-F Adapter Types
 // ---------------------------------------------------------------------------
 
 export interface ByokDirectRequestOptions {
@@ -113,23 +112,28 @@ export interface ByokDirectRequestOptions {
   prompt: string;
   /** Optional lyrics */
   lyrics?: string;
-  /** Model identifier — e.g. "music-01" (TBD after official docs verification) */
-  model?: string;
+  /** Model identifier — verified models from BYOK-E */
+  model?: MinimaxMusicModel;
   /** Optional voice/style parameters */
   voiceId?: string;
-  /** Request timeout in ms */
+  /** Request timeout in ms (default: 120000) */
   timeoutMs?: number;
+  /** Output format — 'url' recommended for browser playback */
+  outputFormat?: MinimaxOutputFormat;
+  /** Whether to generate instrumental music */
+  isInstrumental?: boolean;
 }
 
 export interface ByokDirectSuccessResult {
   ok: true;
-  /** Normalized audio URL or base64 content */
+  code: 'byok_direct_live_ok';
+  /** Audio URL from provider (24h expiry) or base64 hex content */
   audioUrl?: string;
-  /** Provider task ID for polling (if async) */
+  /** Provider task ID */
   taskId?: string;
   /** Provider model used */
   model: string;
-  /** Generation metadata (redacted) */
+  /** Generation metadata (redacted, safe fields only) */
   meta: Record<string, unknown>;
 }
 
@@ -150,6 +154,7 @@ export type ByokDirectErrorCode =
   | "byok_direct_timeout"
   | "byok_direct_network_error"
   | "byok_direct_rate_limited"
+  | "byok_direct_auth_failed"
   | "byok_direct_unexpected";
 
 // ---------------------------------------------------------------------------
@@ -161,61 +166,128 @@ export type ByokDirectErrorCode =
  * Never allows apiKey, Authorization, or token-like values to pass through.
  */
 function redactProviderPayload(payload: unknown): unknown {
-  // redactObject recursively redacts sensitive fields
   return redactObject(payload);
 }
 
 // ---------------------------------------------------------------------------
-// Request builder (design-only)
+// Request builder
 // ---------------------------------------------------------------------------
 
 /**
  * Build the HTTPS request payload for the direct provider call.
  *
- * TODO(BYOK-F): Implement live request builder after BYOK-E schema verification.
- * Current endpoint placeholder will be replaced with verified URL in BYOK-F.
+ * Constructs Authorization header with the user key. The header is built
+ * inside this function and never stored, logged, or returned.
  */
 export function buildByokDirectRequest(
-  _options: ByokDirectRequestOptions
-): { url: string; method: string; headers: Record<string, string>; body: unknown } {
-  // DESIGN ONLY — endpoint verified in BYOK-E, live builder in BYOK-F
-  const url = "https://api.minimaxi.com/v1/music_generation"; // VERIFIED in BYOK-E
+  options: ByokDirectRequestOptions
+): { url: string; method: string; headers: Record<string, string>; body: ByokDirectRequest } {
+  const url = "https://api.minimaxi.com/v1/music_generation";
   const method = "POST";
 
   // Authorization header is the only place the user key appears.
   // It is constructed here and never stored or logged.
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    // Authorization will be added at call time in BYOK-F, not in this skeleton
+    "Authorization": `Bearer ${options.apiKey}`,
   };
 
-  const body = {
-    // TODO(BYOK-F): Populate with verified request schema from BYOK-E types
-    model: "music-2.6", // VERIFIED model from BYOK-E
-    prompt: "", // PLACEHOLDER
+  const body: ByokDirectRequest = {
+    model: options.model ?? "music-2.6",
+    prompt: options.prompt,
+  };
+
+  if (options.lyrics) {
+    body.lyrics = options.lyrics;
+  }
+
+  if (options.isInstrumental !== undefined) {
+    body.is_instrumental = options.isInstrumental;
+  }
+
+  if (options.outputFormat) {
+    body.output_format = options.outputFormat;
+  }
+
+  // Default audio settings for quality
+  body.audio_setting = {
+    format: "mp3",
+    sample_rate: 44100,
+    bitrate: 256000,
   };
 
   return { url, method, headers, body };
 }
 
 // ---------------------------------------------------------------------------
-// Response normalizer (design-only)
+// Response normalizer
 // ---------------------------------------------------------------------------
 
 /**
- * Normalize a provider response into our internal result shape.
+ * Normalize a provider success response into our internal result shape.
  *
- * TODO(BYOK-F): Implement live response normalizer after BYOK-E schema verification.
+ * Extracts audio URL or hex content, task ID, and safe metadata.
+ * Never includes the apiKey or Authorization header.
  */
 export function normalizeByokDirectResponse(
-  _providerResponse: unknown
+  providerResponse: unknown
 ): ByokDirectResult {
-  // DESIGN ONLY — response schema verified in BYOK-E, live normalizer in BYOK-F
+  const redacted = redactProviderPayload(providerResponse);
+
+  // Type guard for the verified response shape
+  const resp = providerResponse as Record<string, unknown> | undefined;
+  if (!resp || typeof resp !== "object") {
+    return {
+      ok: false,
+      code: "byok_direct_unexpected",
+      message: "Provider returned an unexpected response format.",
+      detail: typeof redacted === "object" && redacted !== null
+        ? (redacted as Record<string, unknown>)
+        : undefined,
+    };
+  }
+
+  // Check base_resp.status_code for success (0 = success per BYOK-E)
+  const baseResp = resp.base_resp as Record<string, unknown> | undefined;
+  const statusCode = baseResp?.status_code;
+  if (statusCode !== 0) {
+    // Provider returned an error wrapped in success HTTP status
+    return {
+      ok: false,
+      code: "byok_direct_provider_error",
+      message: String(baseResp?.status_msg ?? "Provider returned an error."),
+      detail: typeof redacted === "object" && redacted !== null
+        ? (redacted as Record<string, unknown>)
+        : undefined,
+    };
+  }
+
+  // Extract data fields
+  const data = resp.data as Record<string, unknown> | undefined;
+  const audioUrl = data?.audio_url as string | undefined;
+  const audioHex = data?.audio as string | undefined;
+  const taskId = data?.task_id as string | undefined;
+
+  // Extract safe extra_info fields
+  const extraInfo = resp.extra_info as Record<string, unknown> | undefined;
+  const safeMeta: Record<string, unknown> = {};
+  if (extraInfo?.audio_length !== undefined) {
+    safeMeta.audioLength = extraInfo.audio_length;
+  }
+  if (extraInfo?.audio_size !== undefined) {
+    safeMeta.audioSize = extraInfo.audio_size;
+  }
+  if (extraInfo?.audio_sample_rate !== undefined) {
+    safeMeta.audioSampleRate = extraInfo.audio_sample_rate;
+  }
+
   return {
-    ok: false,
-    code: "byok_direct_api_not_verified",
-    message:
-      "BYOK direct API relay is not enabled until provider endpoint/schema validation is complete.",
+    ok: true,
+    code: "byok_direct_live_ok",
+    audioUrl: audioUrl || audioHex,
+    taskId,
+    model: "music-2.6", // Will be overridden by caller if needed
+    meta: safeMeta,
   };
 }
 
@@ -244,6 +316,33 @@ export function normalizeByokDirectError(
     };
   }
 
+  // Handle provider structured error responses
+  const errObj = error as Record<string, unknown> | undefined;
+  if (errObj && typeof errObj === "object") {
+    const errorType = (errObj.error as Record<string, unknown> | undefined)?.type as string | undefined;
+    const errorMessage = (errObj.error as Record<string, unknown> | undefined)?.message as string | undefined;
+    const httpCode = (errObj.error as Record<string, unknown> | undefined)?.http_code as string | undefined;
+
+    // Map known error types to codes
+    let code: ByokDirectErrorCode = fallbackCode;
+    if (errorType === "authorized_error" || httpCode === "401") {
+      code = "byok_direct_auth_failed";
+    } else if (httpCode === "429") {
+      code = "byok_direct_rate_limited";
+    } else if (errorType) {
+      code = "byok_direct_provider_error";
+    }
+
+    return {
+      ok: false,
+      code,
+      message: redactSensitive(errorMessage ?? "Provider returned an error."),
+      detail: typeof redacted === "object" && redacted !== null
+        ? (redacted as Record<string, unknown>)
+        : undefined,
+    };
+  }
+
   return {
     ok: false,
     code: fallbackCode,
@@ -255,17 +354,23 @@ export function normalizeByokDirectError(
 }
 
 // ---------------------------------------------------------------------------
-// Main entry point (design-only — always returns not_verified)
+// Main entry point — live direct API call
 // ---------------------------------------------------------------------------
 
 /**
  * Generate music via direct HTTPS API relay.
  *
- * CURRENT BEHAVIOR: Always returns `byok_direct_api_not_verified`.
- * This is intentional — the live provider path is disabled until:
- *   1. Official endpoint/schema is verified (BYOK-E) ✅ DONE
- *   2. Live implementation completed (BYOK-F) — NEXT
- *   3. Abuse controls are in place (Deploy-CF-D)
+ * BEHAVIOR:
+ * - Validates the user key format
+ * - Builds the request with per-request Authorization header
+ * - Calls the official MiniMax API endpoint
+ * - Normalizes the response
+ * - All errors are redacted
+ *
+ * SAFETY:
+ * - The apiKey only exists in the local Authorization header variable
+ * - Never logged, never stored, never returned
+ * - Provider errors are redacted before returning
  */
 export async function generateByokDirectMusic(
   options: ByokDirectRequestOptions
@@ -279,39 +384,44 @@ export async function generateByokDirectMusic(
     };
   }
 
-  // DESIGN ONLY — live call disabled until BYOK-F
-  return {
-    ok: false,
-    code: "byok_direct_api_not_verified",
-    message:
-      "BYOK direct API relay is not enabled until provider endpoint/schema validation is complete.",
-  };
-
-  /*
-  // TODO(BYOK-F): Implement live direct API call after schema verification
   const { url, method, headers, body } = buildByokDirectRequest(options);
-  headers["Authorization"] = `Bearer ${options.apiKey}`;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      options.timeoutMs ?? 120000
+    );
+
     const response = await fetch(url, {
       method,
       headers,
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(options.timeoutMs ?? 60000),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
+      // HTTP error (4xx, 5xx)
       const errorBody = await response.json().catch(() => ({}));
-      return normalizeByokDirectError(errorBody, "byok_direct_provider_error");
+      let errorCode: ByokDirectErrorCode = "byok_direct_provider_error";
+      if (response.status === 401) {
+        errorCode = "byok_direct_auth_failed";
+      } else if (response.status === 429) {
+        errorCode = "byok_direct_rate_limited";
+      }
+      return normalizeByokDirectError(errorBody, errorCode);
     }
 
     const data = await response.json();
     return normalizeByokDirectResponse(data);
   } catch (err) {
-    if (err instanceof Error && err.name === "TimeoutError") {
-      return normalizeByokDirectError(err, "byok_direct_timeout");
+    if (err instanceof Error) {
+      if (err.name === "AbortError") {
+        return normalizeByokDirectError(err, "byok_direct_timeout");
+      }
     }
     return normalizeByokDirectError(err, "byok_direct_network_error");
   }
-  */
 }

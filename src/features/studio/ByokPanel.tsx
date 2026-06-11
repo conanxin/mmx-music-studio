@@ -25,6 +25,12 @@
  * Phase BYOK-D added:
  * - byok_live_provider_path_disabled → "BYOK live 路径已禁用（CLI key fallback bug）"
  * - byok_direct_api_not_verified     → "BYOK direct API relay 尚未完成验证"
+ *
+ * Phase BYOK-F added:
+ * - byok_direct_live_not_enabled        → "BYOK direct live 尚未启用"
+ * - byok_direct_live_confirmation_required → "BYOK direct live 需要显式确认"
+ * - byok_direct_provider_error          → "MiniMax direct API 返回错误，已隐藏敏感信息"
+ * - byok_direct_live_ok                 → "BYOK direct API 测试通过"
  */
 import { useState } from 'react';
 import styles from './ByokPanel.module.css';
@@ -48,6 +54,10 @@ type ByokResponseCode =
   | 'byok_provider_unsupported_mode'
   | 'byok_live_provider_path_disabled'
   | 'byok_direct_api_not_verified'
+  | 'byok_direct_live_not_enabled'
+  | 'byok_direct_live_confirmation_required'
+  | 'byok_direct_provider_error'
+  | 'byok_direct_live_ok'
   | 'byok_invalid_input'
   | string;
 
@@ -60,6 +70,10 @@ const STATUS_MESSAGES: Record<string, string> = {
   byok_live_confirmation_required: '真实 BYOK 生成需要显式确认',
   byok_live_provider_path_disabled: 'BYOK live 路径已禁用（CLI key fallback bug）',
   byok_direct_api_not_verified: 'BYOK direct API relay 尚未完成验证',
+  byok_direct_live_not_enabled: 'BYOK direct live 尚未启用',
+  byok_direct_live_confirmation_required: 'BYOK direct live 需要显式确认',
+  byok_direct_provider_error: 'MiniMax direct API 返回错误，已隐藏敏感信息',
+  byok_direct_live_ok: 'BYOK direct API 测试通过',
   byok_provider_error: 'MiniMax 返回错误，已隐藏敏感信息',
   byok_provider_auth_failed: 'MiniMax 拒绝了该 Key（认证失败）',
   byok_provider_timeout: 'MiniMax 响应超时',
@@ -345,8 +359,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
       <footer className={styles.footer}>
         <small>
-          Phase BYOK-B · fake/live 模式由服务端控制 · 不替换现有生成路径 · Key 不写入 localStorage /
-          IndexedDB / URL query
+          Phase BYOK-F · direct HTTPS API relay 已就绪 · 真实 BYOK 生成仍需显式 live gate · 不代表 broad public launch · Key 不写入 localStorage / IndexedDB / URL query
         </small>
       </footer>
     </section>

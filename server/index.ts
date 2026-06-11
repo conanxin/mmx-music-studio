@@ -116,6 +116,10 @@ import {
   BYOK_LIVE_CONFIRMATION_PHRASE,
   type ByokModel,
 } from './adapters/minimax-api/byok.js';
+import {
+  generateByokDirectMusic,
+  type ByokDirectRequestOptions,
+} from './adapters/minimax-api/byok-direct.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -199,9 +203,13 @@ function loadConfig(): ServerConfig {
     // endpoint /api/generate/byok. Distinct from BYOK_ENABLED (admin internal).
     // Default false.
     publicByokEnabled: readBoolEnv('PUBLIC_BYOK_ENABLED', false),
- byokDryRunOnly: readBoolEnv('BYOK_DRY_RUN_ONLY', true),
- byokLiveEnabled: readBoolEnv('BYOK_LIVE_ENABLED', false),
- byokLiveConfirmation: (process.env.BYOK_LIVE_CONFIRMATION ?? '').trim(),
+    byokDryRunOnly: readBoolEnv('BYOK_DRY_RUN_ONLY', true),
+    byokLiveEnabled: readBoolEnv('BYOK_LIVE_ENABLED', false),
+    byokLiveConfirmation: (process.env.BYOK_LIVE_CONFIRMATION ?? '').trim(),
+    // Phase BYOK-F: Direct HTTPS API relay live gate
+    // Default false — requires explicit operator confirmation
+    byokDirectLiveEnabled: readBoolEnv('BYOK_DIRECT_LIVE_ENABLED', false),
+    byokDirectLiveConfirmation: (process.env.BYOK_DIRECT_LIVE_CONFIRMATION ?? '').trim(),
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -1848,19 +1856,15 @@ async function handleByokGenerate(
    return;
  }
 
- // 6c. Decide adapter mode: 'fake' for the default test path; 'live' for
- // the operator-only test path. We default to 'fake' for any caller that
- // does not explicitly pass mode: 'live' in the body. The smoke tests in
- // scripts/byok-b-smoke-test.sh only run the fake path.
- const requestedMode: 'fake' | 'live' =
-   (body as { mode?: 'fake' | 'live' } | undefined)?.mode === 'live' ? 'live' : 'fake';
+ // 6c. Decide adapter mode: 'fake' | 'live' (CLI — DISABLED) | 'direct-live' (BYOK-F)
+ // Default to 'fake' for any caller that does not explicitly pass a live mode.
+ const requestedMode = (body as { mode?: 'fake' | 'live' | 'direct-live' } | undefined)?.mode ?? 'fake';
  const liveAllowed = isLiveGateOpen({
    publicByokEnabled: config.publicByokEnabled,
    byokDryRunOnly: config.byokDryRunOnly,
    byokLiveEnabled: config.byokLiveEnabled,
    byokLiveConfirmation: config.byokLiveConfirmation,
  });
- const adapterMode: 'fake' | 'live' = requestedMode === 'live' && liveAllowed ? 'live' : 'fake';
 
  // body.input is `unknown`; narrow with a local alias.
  const byokInput = (body.input ?? {}) as {
@@ -1869,6 +1873,71 @@ async function handleByokGenerate(
    model?: string;
    mode?: 'instrumental' | 'lyrics' | 'auto';
  };
+
+ // ── BYOK-F: Direct HTTPS API relay path ──
+ if (requestedMode === 'direct-live') {
+   // 6f. Direct live gate check
+   if (config.byokDirectLiveEnabled !== true) {
+     sendJson(res, 403, {
+       ok: false,
+       code: 'byok_direct_live_not_enabled',
+       message: 'BYOK direct live 尚未启用',
+       hint: '需要 BYOK_DIRECT_LIVE_ENABLED=true',
+     });
+     return;
+   }
+   if (config.byokDirectLiveConfirmation !== 'CONFIRM_BYOK_DIRECT_LIVE_TEST') {
+     console.warn(
+       `[byok] direct live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokDirectLiveConfirmation.length}`,
+     );
+     sendJson(res, 403, {
+       ok: false,
+       code: 'byok_direct_live_confirmation_required',
+       message: 'BYOK direct live 需要显式确认',
+       hint: `需要 BYOK_DIRECT_LIVE_CONFIRMATION=CONFIRM_BYOK_DIRECT_LIVE_TEST`,
+     });
+     return;
+   }
+
+   // Direct live gates passed — call the HTTPS adapter
+   const directResult = await generateByokDirectMusic({
+     apiKey: body.apiKey ?? '',
+     prompt: byokInput.prompt ?? '',
+     lyrics: byokInput.lyrics,
+     model: (byokInput.model as 'music-2.6' | 'music-2.5+' | 'music-2.5' | 'music-cover') ?? 'music-2.6',
+     outputFormat: 'url',
+     isInstrumental: byokInput.mode === 'instrumental',
+     timeoutMs: 120_000,
+   });
+
+   if (!directResult.ok) {
+     sendJson(res, 502, {
+       ok: false,
+       code: directResult.code,
+       message: redactSensitive(directResult.message),
+       requestId,
+     });
+     return;
+   }
+
+   // Success — return normalized direct result
+   sendJson(res, 200, {
+     ok: true,
+     code: 'byok_direct_live_ok',
+     message: 'BYOK direct API 测试通过',
+     audioUrl: directResult.audioUrl,
+     taskId: directResult.taskId,
+     model: directResult.model,
+     meta: directResult.meta,
+     requestId,
+   });
+   return;
+ }
+
+ // ── BYOK-B/C: CLI-based paths (fake / live) ──
+ // CLI live is fail-closed; fake is the default safe path.
+ const adapterMode: 'fake' | 'live' = requestedMode === 'live' && liveAllowed ? 'live' : 'fake';
+
  const adapterResult = await generateByokMusic({
    apiKey: body.apiKey ?? '',
    prompt: byokInput.prompt ?? '',
