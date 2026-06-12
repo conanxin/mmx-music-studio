@@ -130,6 +130,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Phase BYOK-H2D: dry-run UX/copy polish (no env change, no live, no music). |
 | Phase BYOK-H3A: controlled live pilot planning (no env change, no live, no music, no public launch). H3B execution is a separate phase requiring explicit operator approval. |
 | Phase BYOK-H3B-PREFLIGHT: controlled live pilot pre-flight runbook (no env change, no live, no music, no public launch). H3B execution is still NOT authorised; approval phrase `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` required. See [`docs/launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md`](docs/launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md). |
+| Phase BYOK-H3B-DRILL: dry-run rollback drill recorded (safe-default rewrite only; no live, no music, no public launch; `/api/generate/byok` returns `byok_generation_disabled`; `/ops` and `/api/status` still Cloudflare Access protected). Evidence: [`docs/launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md`](docs/launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md). H3B execution still requires `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`. |
 -- `/api/generate/byok` live/direct path now supports Turnstile verification.
 - `TURNSTILE_BYOK_REQUIRED=true` (post-H1 closeout — production-safe default; was `false` pre-H1).
 - This is **not** a broad public BYOK launch.

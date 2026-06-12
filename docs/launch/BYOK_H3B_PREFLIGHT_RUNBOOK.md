@@ -363,3 +363,27 @@ Until all four are true, H3B live execution must NOT begin.
 ---
 
 **Final口径**: BYOK-H3B-PREFLIGHT prepares the controlled live pilot runbook. It does not execute BYOK live generation or broad public launch.
+
+
+---
+
+## 16. Companion: H3B Dry-Run Rollback Drill Evidence
+
+A real dry-run rollback drill was performed on **2026-06-13** and the evidence is recorded at:
+
+**`docs/launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md`**
+
+The drill satisfies the **Section 8 Rollback Drill** requirement: a dry-run (no real generation) was completed within the prior 7 days, with all 4 pass criteria met:
+
+1. `/api/health` returns 200 with `publicByokEnabled=false`, `byokEnabled=false`
+2. `/api/generate/byok` returns `code: "byok_generation_disabled"` (refusal before any provider call)
+3. Cloudflare Access still protects `/ops` and `/api/status` (302 to `cloudflareaccess.com` login + `www-authenticate: Cloudflare-Access`)
+4. 6/6 leak patterns absent in `/api/health` response (`TURNSTILE_SECRET_KEY`, `Authorization`, `Bearer `, `userApiKey`, `apiKey`, `token`)
+
+**Drill start**: `2026-06-13T00:30:12+08:00`
+**Service**: `mmx-music-studio.service` (MainPID 441936 → 503163)
+**Operator**: hermes (CLI)
+**Status**: **PASS**
+
+The drill does **not** itself grant H3B execution approval. Operator still must send `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` and the Go/No-Go checklist must be fully satisfied before `BYOK_H3B_EXECUTION_INSTRUCTIONS.md` may be written.
+

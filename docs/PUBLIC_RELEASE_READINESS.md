@@ -104,7 +104,20 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 - **H3B execution is still NOT authorised.** A separate `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` will be written only after explicit operator approval + Go/No-Go fully satisfied. That file does NOT exist yet; its absence is the default state.
 - **Smoke test**: `scripts/byok-h3b-preflight-runbook-smoke-test.sh` (26/26 PASS, `BYOK_H3B_PREFLIGHT_RUNBOOK_SMOKE_PASS`).
 
-**关键口径**: BYOK-H3B-PREFLIGHT prepares the controlled live pilot runbook. It does not enable BYOK live generation or broad public launch.
+**Phase BYOK-H3B-DRILL**: Dry-Run Rollback Drill Evidence — ✅ DRILL RECORDED.
+
+- **Status**: DRY-RUN DRILL EVIDENCE ONLY. H3B-DRILL does not execute BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience.
+- **未启用 BYOK live · 未发起 broad public launch** — H3B-DRILL only records drill evidence; no live path is enabled at any point in the drill.
+- **Drill date**: 2026-06-13 (DRILL_DATE=20260613, drill start `2026-06-13T00:30:12+08:00`).
+- **Env change**: Safe-default rewrite only (idempotent; no posture change). `byok-test.conf` re-written to `PUBLIC_BYOK_ENABLED=false` / `BYOK_DRY_RUN_ONLY=true` / `BYOK_DIRECT_LIVE_ENABLED=false`. Prior `turnstile-debug.conf` and `byok-h2c-dry-run.conf` drop-ins removed. Real Turnstile secret drop-in (`turnstile-real.conf`, mode 600) NOT touched.
+- **MainPID before**: 441936 → after restart: 503163.
+- **Evidence doc**: [`docs/launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md`](../launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md) (10 sections, ~239 lines, 10 KB).
+- **Verifications**: `/api/health` shows `publicByokEnabled=false`, `byokEnabled=false`, `hasServerKey=false`, `byokKeyStorage=memory`, `dailyGenerationUsed=0`, `realApiAttemptsUsed=0`. `/api/generate/byok` with fake key returns `code: "byok_generation_disabled"` (server did not enter Turnstile / MiniMax / music). `/ops` and `/api/status` return `HTTP/2 302` redirect to Cloudflare Access login.
+- **Leak audit**: 6/6 patterns absent in `/api/health` response (`TURNSTILE_SECRET_KEY`, `Authorization`, `Bearer `, `userApiKey`, `apiKey`, `token`).
+- **Smoke test**: `scripts/byok-h3b-rollback-drill-smoke-test.sh` (PASS).
+- **Approval phrase**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` — still required; this drill does NOT grant that approval.
+
+**关键口径**: BYOK-H3B-DRILL records dry-run rollback evidence for a future controlled live pilot. It does not execute BYOK live generation or broad public launch.
 
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
