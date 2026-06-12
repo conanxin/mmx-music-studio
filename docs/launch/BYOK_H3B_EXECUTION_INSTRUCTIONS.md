@@ -61,6 +61,16 @@ Environment="TURNSTILE_BYOK_REQUIRED=true"
 > `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_20260613.md` was blocked
 > exactly by this missing env.
 
+> **Third live gate (2026-06-13 follow-up):** a second live gate in
+> `server/index.ts` also requires `BYOK_LIVE_CONFIRMATION` to match
+> the request-side phrase exactly. When this gate fails the runtime
+> logs `live confirmation mismatch` and the provider call never
+> happens. The 2026-06-13 T1 micropilot retry documented in
+> `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY_20260613.md` was
+> blocked exactly by this third gate. The confirmation phrase is
+> operator-side and **must never be committed** to the public drop-in
+> override; it is decided per-attempt outside the repository.
+
 Reload + restart:
 
 ```bash
