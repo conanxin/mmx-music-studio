@@ -114,6 +114,11 @@ import {
   generateByokMusic,
   isLiveGateOpen,
   BYOK_LIVE_CONFIRMATION_PHRASE,
+  buildByokLiveAttemptConfig,
+  getByokLiveAttemptStats,
+  checkByokLiveAttemptLimit,
+  consumeByokLiveAttempt,
+  isByokLiveConfirmationConfigured,
   type ByokModel,
 } from './adapters/minimax-api/byok.js';
 import {
@@ -697,6 +702,11 @@ async function handleHealth(
   // Phase 5B-C: Real API Attempt Guard
   const attemptStats = getRealApiAttemptStats(config.realApiAttempt);
 
+  // Phase BYOK-H3B-CODE-FOLLOWUP: live attempt guard (in-memory).
+  const liveAttemptStats = getByokLiveAttemptStats(
+    buildByokLiveAttemptConfig(),
+  );
+
   sendJson(res, 200, {
     ok: true,
     service: 'mmx-music-studio',
@@ -744,6 +754,17 @@ async function handleHealth(
     publicByokEnabled: config.publicByokEnabled,
     serverKeyFallback: config.serverKeyFallback,
     byokKeyStorage: config.byokKeyStorage,
+    // Phase BYOK-H3B-CODE-FOLLOWUP: live gate runtime introspection.
+    // All fields are non-sensitive booleans/numbers/ids; never the
+    // confirmation phrase value, never the user key, never the token.
+    byokLiveEnabled: config.byokLiveEnabled,
+    byokLiveConfirmationConfigured: isByokLiveConfirmationConfigured({
+      byokLiveConfirmation: config.byokLiveConfirmation,
+    }),
+    byokLiveAttemptLimitEnabled: liveAttemptStats.enabled,
+    byokLiveMaxAttemptsPerWindow: liveAttemptStats.maxAttempts,
+    byokLiveAttemptsUsed: liveAttemptStats.attemptsUsed,
+    byokLiveAttemptsRemaining: liveAttemptStats.remaining,
     // Phase Deploy-CF-D: Turnstile (boolean only, never secret value)
     turnstileByokRequired: config.turnstileByokRequired,
     turnstileSecretKeyConfigured: config.turnstileSecretKeyConfigured,
@@ -1928,18 +1949,35 @@ async function handleByokGenerate(
    });
    return;
  }
- if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
-   console.warn(
-     `[byok] live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokLiveConfirmation.length}`,
-   );
-   sendJson(res, 403, {
-     ok: false,
-     code: 'byok_live_confirmation_required',
-     message: '真实 BYOK 生成需要显式确认',
-     hint: `需要 BYOK_LIVE_CONFIRMATION=${BYOK_LIVE_CONFIRMATION_PHRASE}`,
-   });
-   return;
- }
+if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
+  console.warn(
+    `[byok] live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokLiveConfirmation.length}`,
+  );
+  sendJson(res, 403, {
+    ok: false,
+    code: 'byok_live_confirmation_required',
+    message: '真实 BYOK 生成需要显式确认',
+    hint: `需要 BYOK_LIVE_CONFIRMATION=${BYOK_LIVE_CONFIRMATION_PHRASE}`,
+  });
+  return;
+}
+
+// Phase BYOK-H3B-CODE-FOLLOWUP: server-side one-shot guard.
+// Check first (read-only) so a blocked attempt does NOT consume a slot.
+const liveAttemptConfig = buildByokLiveAttemptConfig();
+const liveAttemptCheck = checkByokLiveAttemptLimit(liveAttemptConfig);
+if (!liveAttemptCheck.allowed) {
+  console.warn(
+    `[byok] live attempt limit reached [${requestId}]: window=${liveAttemptCheck.stats.windowId} used=${liveAttemptCheck.stats.attemptsUsed}/${liveAttemptCheck.stats.maxAttempts}`,
+  );
+  sendJson(res, 403, {
+    ok: false,
+    code: 'byok_live_attempt_limit_reached',
+    message: '受控 live 测试窗口已达到提交次数上限',
+    hint: `需要轮换 BYOK_LIVE_WINDOW_ID 或提高 BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW`,
+  });
+  return;
+}
 
  // 6c. Decide adapter mode: 'fake' | 'live' (CLI — DISABLED) | 'direct-live' (BYOK-F)
  // Default to 'fake' for any caller that does not explicitly pass a live mode.

@@ -187,3 +187,121 @@ export function isLiveGateOpen(env: {
     env.byokLiveConfirmation === BYOK_LIVE_CONFIRMATION_PHRASE
   );
 }
+
+// ── Live attempt guard (Phase BYOK-H3B-CODE-FOLLOWUP) ─────────────────────────
+//
+// Server-side one-shot guard for the controlled live window. In-memory only.
+// NEVER persists user key, token, prompt, or raw provider response. Resets
+// when the window id changes (operator can rotate the window to invalidate).
+
+export interface ByokLiveAttemptConfig {
+  enabled: boolean;
+  maxAttemptsPerWindow: number;
+  windowId: string;
+}
+
+export interface ByokLiveAttemptStats {
+  enabled: boolean;
+  windowId: string;
+  maxAttempts: number;
+  attemptsUsed: number;
+  remaining: number;
+  reachedLimit: boolean;
+}
+
+/** Build live attempt config from env. Pure read; no side effects. */
+export function buildByokLiveAttemptConfig(): ByokLiveAttemptConfig {
+  const envEnabled = process.env.BYOK_LIVE_ATTEMPT_LIMIT_ENABLED;
+  // Default true — defensive: if envs are not set but the live gate is
+  // somehow open, the guard still caps attempts at 1.
+  const enabled = envEnabled === undefined ? true : envEnabled === 'true';
+  const max = Number(process.env.BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW || 1);
+  const maxAttemptsPerWindow = Number.isFinite(max) && max > 0 ? Math.floor(max) : 1;
+  const windowId = (process.env.BYOK_LIVE_WINDOW_ID ?? '').trim() ||
+    `boot_${process.pid}_${Math.floor(Date.now() / 1000)}`;
+  return { enabled, maxAttemptsPerWindow, windowId };
+}
+
+/** Whether the live confirmation env matches the canonical phrase. */
+export function isByokLiveConfirmationConfigured(env: {
+  byokLiveConfirmation: string;
+}): boolean {
+  return env.byokLiveConfirmation === BYOK_LIVE_CONFIRMATION_PHRASE;
+}
+
+let liveAttemptState: { windowId: string; attempts: number } = {
+  windowId: '',
+  attempts: 0,
+};
+
+/** Reset the in-memory counter; called when window id changes or on boot. */
+function resetIfWindowChanged(windowId: string): void {
+  if (liveAttemptState.windowId !== windowId) {
+    liveAttemptState = { windowId, attempts: 0 };
+  }
+}
+
+/**
+ * Read-only stats for /api/health. Pure function. Does NOT mutate state.
+ */
+export function getByokLiveAttemptStats(
+  config: ByokLiveAttemptConfig,
+): ByokLiveAttemptStats {
+  resetIfWindowChanged(config.windowId);
+  const used = liveAttemptState.attempts;
+  const remaining = Math.max(0, config.maxAttemptsPerWindow - used);
+  return {
+    enabled: config.enabled,
+    windowId: config.windowId,
+    maxAttempts: config.maxAttemptsPerWindow,
+    attemptsUsed: used,
+    remaining,
+    reachedLimit: used >= config.maxAttemptsPerWindow,
+  };
+}
+
+export interface ByokLiveAttemptCheck {
+  allowed: boolean;
+  reason?:
+    | 'attempt_limit_disabled'
+    | 'attempt_limit_reached'
+    | 'attempt_limit_not_configured';
+  stats: ByokLiveAttemptStats;
+}
+
+/**
+ * Read-only check. Returns whether a live attempt is allowed WITHOUT
+ * consuming a slot. The route layer should call this first; only if
+ * allowed should it perform work and then call `consumeByokLiveAttempt`.
+ */
+export function checkByokLiveAttemptLimit(
+  config: ByokLiveAttemptConfig,
+): ByokLiveAttemptCheck {
+  const stats = getByokLiveAttemptStats(config);
+  if (!config.enabled) {
+    return { allowed: true, reason: 'attempt_limit_disabled', stats };
+  }
+  if (stats.reachedLimit) {
+    return { allowed: false, reason: 'attempt_limit_reached', stats };
+  }
+  return { allowed: true, stats };
+}
+
+/**
+ * Consume one live attempt slot. Returns the new stats. Idempotent in the
+ * sense that calling it after reaching the limit does not increase the
+ * counter. The route layer MUST call this only AFTER the work is done so
+ * failed upstream calls do not consume the one-shot slot.
+ */
+export function consumeByokLiveAttempt(
+  config: ByokLiveAttemptConfig,
+): ByokLiveAttemptStats {
+  resetIfWindowChanged(config.windowId);
+  if (
+    config.enabled &&
+    liveAttemptState.attempts < config.maxAttemptsPerWindow
+  ) {
+    liveAttemptState.attempts += 1;
+  }
+  return getByokLiveAttemptStats(config);
+}

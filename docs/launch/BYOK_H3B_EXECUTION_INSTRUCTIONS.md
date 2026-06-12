@@ -49,6 +49,9 @@ Environment="BYOK_DRY_RUN_ONLY=false"
 Environment="BYOK_DIRECT_LIVE_ENABLED=true"
 Environment="BYOK_LIVE_ENABLED=true"
 Environment="BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST"
+Environment="BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW=1"
+Environment="BYOK_LIVE_WINDOW_ID=h3b-<window-id>"
+Environment="BYOK_LIVE_ATTEMPT_LIMIT_ENABLED=true"
 Environment="TURNSTILE_BYOK_REQUIRED=true"
 ```
 
@@ -109,6 +112,21 @@ Per-tester rules:
 - stop after first provider error;
 - tester does not share key with anyone, including the operator.
 
+> **Server-side one-shot guard (2026-06-13 follow-up, Phase
+> BYOK-H3B-CODE-FOLLOWUP):** the runtime enforces a per-window
+> attempt cap independently of what the client does. The cap is
+> controlled by `BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW` (default `1`)
+> and is scoped to `BYOK_LIVE_WINDOW_ID`. Even if T1 double-clicks
+> the submit button (as observed in
+> `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY_20260613.md`),
+> the second hit returns `code: byok_live_attempt_limit_reached`
+> **before** any MiniMax call is made and **before** any quota
+> counter is incremented. The counter is in-memory only; no
+> user key, token, prompt, or raw provider response is stored.
+> The cap resets whenever the operator rotates
+> `BYOK_LIVE_WINDOW_ID` (e.g. from `h3b-20260613-t1` to
+> `h3b-20260613-t2`).
+
 ## 5. Monitoring checklist (operator runs every ~5 min during the window)
 
 - [ ] request count vs planned;
@@ -163,9 +181,13 @@ After restart, verify:
 - `BYOK_DIRECT_LIVE_ENABLED=false`
 - `BYOK_LIVE_ENABLED=false`
 - `BYOK_LIVE_CONFIRMATION=` (empty or unset)
+- `BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW=1`
+- `BYOK_LIVE_WINDOW_ID=` (empty or unset)
+- `BYOK_LIVE_ATTEMPT_LIMIT_ENABLED=true` (or unset, defaults true)
 - `TURNSTILE_BYOK_REQUIRED=true`
 - `/api/generate/byok` returns `code: byok_generation_disabled`
 - `/api/health` has no leak pattern
+- `/api/health` shows `byokLiveEnabled=false`, `byokLiveConfirmationConfigured=false`, `byokLiveAttemptLimitEnabled=true`, `byokLiveMaxAttemptsPerWindow=1`, `byokLiveAttemptsUsed=0`, `byokLiveAttemptsRemaining=1`
 - `/ops` and `/api/status` are still Cloudflare-Access protected (302 → `cloudflareaccess.com`)
 
 ## 8. Stop conditions
