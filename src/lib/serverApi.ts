@@ -79,6 +79,8 @@ export interface HealthInfo {
   authGuard?: Record<string, unknown>;
   // Phase 5A: BYOK
   byokEnabled?: boolean;
+  // Phase H1: public BYOK kill-switch (boolean only).
+  publicByokEnabled?: boolean;
   serverKeyFallback?: boolean;
   byokKeyStorage?: string;
   // Phase 5B-C: Real API Attempt Guard

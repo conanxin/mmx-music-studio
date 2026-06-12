@@ -739,6 +739,9 @@ async function handleHealth(
     availableBackends: ['mock', 'api', 'cli'] as string[],
     // Phase 5A: BYOK
     byokEnabled: config.byokEnabled,
+    // Phase H1: public BYOK kill-switch (mirrors PUBLIC_BYOK_ENABLED env var).
+    // Boolean only — never carries secrets, tokens, or keys.
+    publicByokEnabled: config.publicByokEnabled,
     serverKeyFallback: config.serverKeyFallback,
     byokKeyStorage: config.byokKeyStorage,
     // Phase Deploy-CF-D: Turnstile (boolean only, never secret value)

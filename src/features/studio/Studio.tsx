@@ -443,6 +443,8 @@ export default function Studio({
     previewAccessEnabled?: boolean;
     // Phase 5A: BYOK
     byokEnabled?: boolean;
+    // Phase H1: public BYOK kill-switch (boolean only).
+    publicByokEnabled?: boolean;
     // Phase 5B-C: Real API Attempt Guard
     realApiAttemptLimitEnabled?: boolean;
     realApiDailyAttemptLimit?: number;
@@ -555,6 +557,8 @@ export default function Studio({
         mockGenerationEnabled: h.mockGenerationEnabled,
         previewAccessEnabled: h.previewAccessEnabled,
         byokEnabled: h.byokEnabled,
+        // Phase H1: public BYOK kill-switch (boolean only).
+        publicByokEnabled: h.publicByokEnabled,
         realApiAttemptLimitEnabled: h.realApiAttemptLimitEnabled,
         realApiDailyAttemptLimit: h.realApiDailyAttemptLimit,
         remainingRealApiAttempts: h.remainingRealApiAttempts,
@@ -918,9 +922,11 @@ export default function Studio({
           {/* Phase BYOK-A: Public BYOK readiness panel (default disabled)
               Phase Deploy-CF-E: Pass Turnstile props from /api/health.
               turnstileSiteKey is a public key designed to be exposed in HTML/JS;
-              the secret key is NEVER sent to the client. */}
+              the secret key is NEVER sent to the client.
+              Phase H1: Wire publicByokEnabled from the matching /api/health field
+              (boolean only, mirrors server config PUBLIC_BYOK_ENABLED). */}
           <ByokPanel
-            publicByokEnabled={healthInfo?.publicGenerationEnabled}
+            publicByokEnabled={healthInfo?.publicByokEnabled}
             turnstileSiteKey={healthInfo?.turnstileSiteKey}
             turnstileByokRequired={healthInfo?.turnstileByokRequired}
           />
