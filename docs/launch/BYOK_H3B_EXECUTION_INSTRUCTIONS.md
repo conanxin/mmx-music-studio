@@ -47,8 +47,19 @@ The idempotent live-enabling drop-in (in `/etc/systemd/system/mmx-music-studio.s
 Environment="PUBLIC_BYOK_ENABLED=true"
 Environment="BYOK_DRY_RUN_ONLY=false"
 Environment="BYOK_DIRECT_LIVE_ENABLED=true"
+Environment="BYOK_LIVE_ENABLED=true"
 Environment="TURNSTILE_BYOK_REQUIRED=true"
 ```
+
+> **Live gate reminder (2026-06-13 update):** the runtime in
+> `server/index.ts` requires `BYOK_LIVE_ENABLED=true` (in addition to
+> `PUBLIC_BYOK_ENABLED=true` and `BYOK_DRY_RUN_ONLY=false`) before the
+> BYOK live relay will forward to MiniMax. When `BYOK_LIVE_ENABLED` is
+> unset, the gate responds with `code: byok_live_not_enabled` and the
+> provider call never happens. The 2026-06-13 T1 micropilot attempt
+> documented in
+> `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_20260613.md` was blocked
+> exactly by this missing env.
 
 Reload + restart:
 
@@ -109,6 +120,7 @@ sudo tee /etc/systemd/system/mmx-music-studio.service.d/byok-test.conf >/dev/nul
 Environment="PUBLIC_BYOK_ENABLED=false"
 Environment="BYOK_DRY_RUN_ONLY=true"
 Environment="BYOK_DIRECT_LIVE_ENABLED=false"
+Environment="BYOK_LIVE_ENABLED=false"
 EOF
 sudo systemctl daemon-reload
 sudo systemctl restart mmx-music-studio
@@ -129,6 +141,7 @@ After restart, verify:
 - `PUBLIC_BYOK_ENABLED=false`
 - `BYOK_DRY_RUN_ONLY=true`
 - `BYOK_DIRECT_LIVE_ENABLED=false`
+- `BYOK_LIVE_ENABLED=false`
 - `TURNSTILE_BYOK_REQUIRED=true`
 - `/api/generate/byok` returns `code: byok_generation_disabled`
 - `/api/health` has no leak pattern
