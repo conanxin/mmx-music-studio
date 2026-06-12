@@ -56,6 +56,12 @@ assert_grep "$EVIDENCE_DOC" "No MiniMax call and no music generation" "evidence 
 assert_grep "$EVIDENCE_DOC" "live confirmation mismatch" "evidence doc third live gate marker"
 assert_grep "$EVIDENCE_DOC" "byok_c055ae3e4571" "evidence doc submission 1 requestId"
 assert_grep "$EVIDENCE_DOC" "byok_4126cc24e4bb" "evidence doc submission 2 requestId"
+assert_grep "$EVIDENCE_DOC" "byok_live_confirmation_required" "evidence doc UI error code byok_live_confirmation_required"
+assert_grep "$EVIDENCE_DOC" "T1 submitted twice | yes" "evidence doc T1 submitted twice yes"
+assert_grep "$EVIDENCE_DOC" "repeated_submission" "evidence doc policy violation repeated_submission"
+assert_grep "$EVIDENCE_DOC" "blocked_by_confirmation_gate" "evidence doc provider result blocked_by_confirmation_gate"
+assert_grep "$EVIDENCE_DOC" "BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST" "evidence doc required env"
+assert_grep "$EVIDENCE_DOC" "no quota consumed" "evidence doc no quota consumed"
 
 echo "[4/6] patched override + third live gate + health gate verified"
 assert_grep "$EVIDENCE_DOC" "BYOK_LIVE_ENABLED=true" "evidence doc patched override includes BYOK_LIVE_ENABLED=true"
@@ -98,6 +104,14 @@ neg '\.env"' "no .env reference in evidence"
 echo "[6/6] no broad public launch marker"
 assert_grep "$EVIDENCE_DOC" "does not enable any broad public launch" "evidence doc no broad public launch claim"
 neg 'broad public launch (in|on|enables)' "no broad launch enable claim"
+
+echo "[7/7] rollback verified and post-rollback byok_generation_disabled"
+assert_grep "$EVIDENCE_DOC" "Rollback verified: yes" "evidence doc rollback verified yes"
+assert_grep "$EVIDENCE_DOC" "Post-rollback byok_generation_disabled verified: yes" "evidence doc post-rollback byok_generation_disabled verified yes"
+assert_grep "$EVIDENCE_DOC" "byok_generation_disabled" "evidence doc byok_generation_disabled present (post-rollback)"
+assert_grep "$EVIDENCE_DOC" "byokLiveEnabled" "evidence doc byokLiveEnabled mentioned"
+assert_grep "$EVIDENCE_DOC" "No raw key" "evidence doc no raw key claim"
+assert_grep "$EVIDENCE_DOC" "no tester PII" "evidence doc no tester PII claim"
 
 echo
 echo "RESULT: pass=$pass fail=$fail"

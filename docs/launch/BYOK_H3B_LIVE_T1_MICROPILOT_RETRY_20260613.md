@@ -2,14 +2,18 @@
 
 ## 0. Final口径
 
-> BYOK-H3B-LIVE-T1-MICROPILOT-RETRY records the controlled live attempt
-> for the T1 slot using the patched live gate (with
-> `BYOK_LIVE_ENABLED=true`). **No MiniMax call and no music generation
-> occurred** during this retry: the live gate in `server/index.ts`
-> requires an additional `BYOK_LIVE_CONFIRMATION` env (or header) that
-> was not supplied, so all submissions were short-circuited with
-> `live confirmation mismatch`. Production was restored to safe default
-> unconditionally. This document does not enable any broad public launch.
+> **BYOK-H3B-LIVE-T1-MICROPILOT-RETRY was blocked by the explicit
+> BYOK live confirmation gate before any MiniMax call.** T1 submitted
+> twice, so the window was stopped and production was rolled back to
+> safe default. The runtime required
+> `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST` (env or
+> header) to match the request-side phrase exactly; the env was unset
+> during this attempt, so the gate logged `live confirmation mismatch`
+> for both submissions and the provider call never happened. No
+> MiniMax call, no music generation, and no quota consumption
+> occurred. **No raw key, no raw token, no Authorization header, no
+> raw provider response, and no tester PII was committed.** This
+> document does not enable any broad public launch.
 
 ## 1. Window
 
@@ -98,21 +102,35 @@ Environment="BYOK_LIVE_ENABLED=false"
 | --- | --- |
 | T1 attempted | yes |
 | T1 reached provider (MiniMax) | **no** |
-| T1 submission count observed | 2 (exceeds the 1-submission rule) |
+| T1 submitted twice | yes |
+| Policy violation | repeated_submission |
+| Provider result | blocked_by_confirmation_gate |
+| Error code (UI) | `byok_live_confirmation_required` |
+| Error log (server) | `live confirmation mismatch: expected exact phrase, got length 0` |
+| Required env | `BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST` |
 | T1 submission 1 | `byok_c055ae3e4571` at 2026-06-13T05:56:34+08:00 (about 80s after READY) |
 | T1 submission 2 | `byok_4126cc24e4bb` at 2026-06-13T06:00:18+08:00 (about 4m 3s after READY) |
-| Provider result | `live confirmation mismatch` (live gate) |
-| requestId from MiniMax | n/a (no upstream call) |
+| Provider result (MiniMax) | n/a (no upstream call) |
 | Generated audio count | **0** |
-| Daily generation used | 0 / 50 |
-| Real API attempts used | 0 / 1 |
+| Daily generation used | 0 / 50 (no quota consumed) |
+| Real API attempts used | 0 / 1 (no quota consumed) |
 
-The block happens at the `server/index.ts:1921` "live gate check"
-which requires `config.byokLiveEnabled === true` AND a matching
-`BYOK_LIVE_CONFIRMATION` phrase (the request-side header was empty;
-the env-side phrase was unset). Both submissions were short-circuited
-before the BYOK relay adapter was invoked; no MiniMax HTTPS call was
-made and no audio was produced.
+The block happens at the `server/index.ts` "live gate check" (line
+~1921) which requires `config.byokLiveEnabled === true` AND a
+matching confirmation phrase (the `BYOK_LIVE_CONFIRMATION` env must
+equal the request-side phrase `CONFIRM_BYOK_LIVE_RELAY_TEST`).
+The env was unset during this attempt so its length was 0 and the
+gate responded with `live confirmation mismatch`. Both submissions
+were short-circuited **before** the BYOK relay adapter was invoked;
+no MiniMax HTTPS call was made and no audio was produced. T2 / T3 /
+T4 / T5 were **not** executed.
+
+The repeated submission itself is a **separate policy violation**:
+the one-tester-at-a-time rules in
+`docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` Section 4 require
+T1 to submit at most 1 prompt per window. T1 hit the live gate
+twice, which is enough to stop the window unconditionally even
+though both attempts were server-side blocked.
 
 ## 7. Post-rollback verification
 
@@ -139,7 +157,12 @@ Post-rollback POST to `/api/generate/byok` with a fake key returned:
 ```
 
 `code` is `byok_generation_disabled`. The public BYOK live relay is
-verified closed.
+verified closed. **Post-rollback byok_generation_disabled verified: yes.**
+**Rollback verified: yes** (proc env: `PUBLIC_BYOK_ENABLED=false`,
+`BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`,
+`BYOK_LIVE_ENABLED=false`, `BYOK_LIVE_CONFIRMATION=<unset>`,
+`TURNSTILE_BYOK_REQUIRED=true`; public API rejects with
+`byok_generation_disabled`).
 
 Post-rollback `/api/health` snapshot:
 

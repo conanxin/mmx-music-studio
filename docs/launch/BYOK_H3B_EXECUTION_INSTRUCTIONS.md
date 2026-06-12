@@ -48,6 +48,7 @@ Environment="PUBLIC_BYOK_ENABLED=true"
 Environment="BYOK_DRY_RUN_ONLY=false"
 Environment="BYOK_DIRECT_LIVE_ENABLED=true"
 Environment="BYOK_LIVE_ENABLED=true"
+Environment="BYOK_LIVE_CONFIRMATION=CONFIRM_BYOK_LIVE_RELAY_TEST"
 Environment="TURNSTILE_BYOK_REQUIRED=true"
 ```
 
@@ -61,15 +62,23 @@ Environment="TURNSTILE_BYOK_REQUIRED=true"
 > `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_20260613.md` was blocked
 > exactly by this missing env.
 
-> **Third live gate (2026-06-13 follow-up):** a second live gate in
-> `server/index.ts` also requires `BYOK_LIVE_CONFIRMATION` to match
-> the request-side phrase exactly. When this gate fails the runtime
-> logs `live confirmation mismatch` and the provider call never
-> happens. The 2026-06-13 T1 micropilot retry documented in
+> **Third live gate (2026-06-13 follow-up):** a third live gate in
+> `server/index.ts` also requires the `BYOK_LIVE_CONFIRMATION` env
+> to equal the request-side phrase `CONFIRM_BYOK_LIVE_RELAY_TEST`
+> exactly. When this gate fails the runtime logs
+> `live confirmation mismatch` and the UI surface returns
+> `byok_live_confirmation_required`; the provider call never happens.
+> The 2026-06-13 T1 micropilot retry documented in
 > `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY_20260613.md` was
-> blocked exactly by this third gate. The confirmation phrase is
-> operator-side and **must never be committed** to the public drop-in
-> override; it is decided per-attempt outside the repository.
+> blocked exactly by this third gate. The phrase is recorded in this
+> public drop-in only because (a) the runtime already references it
+> in `server/adapters/minimax-api/byok.ts` as the canonical value,
+> and (b) it is **not** a credential, key, or secret — it is a
+> coordination phrase that gates a single live relay test path and
+> can be rotated in source if a future pilot needs to invalidate it.
+> Operators must treat the live-enabling drop-in as a unit and
+> either set the phrase or leave it empty consistently with the
+> rollback drop-in below.
 
 Reload + restart:
 
@@ -131,6 +140,7 @@ Environment="PUBLIC_BYOK_ENABLED=false"
 Environment="BYOK_DRY_RUN_ONLY=true"
 Environment="BYOK_DIRECT_LIVE_ENABLED=false"
 Environment="BYOK_LIVE_ENABLED=false"
+Environment="BYOK_LIVE_CONFIRMATION="
 EOF
 sudo systemctl daemon-reload
 sudo systemctl restart mmx-music-studio
@@ -152,6 +162,7 @@ After restart, verify:
 - `BYOK_DRY_RUN_ONLY=true`
 - `BYOK_DIRECT_LIVE_ENABLED=false`
 - `BYOK_LIVE_ENABLED=false`
+- `BYOK_LIVE_CONFIRMATION=` (empty or unset)
 - `TURNSTILE_BYOK_REQUIRED=true`
 - `/api/generate/byok` returns `code: byok_generation_disabled`
 - `/api/health` has no leak pattern
