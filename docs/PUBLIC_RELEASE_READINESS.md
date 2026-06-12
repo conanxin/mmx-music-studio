@@ -119,6 +119,27 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 
 **关键口径**: BYOK-H3B-DRILL records dry-run rollback evidence for a future controlled live pilot. It does not execute BYOK live generation or broad public launch.
 
+**Phase BYOK-H3B-GONO**: Controlled Live Pilot Go/No-Go Review — ✅ REVIEW RECORDED.
+
+- **Status**: GO/NO-GO REVIEW ONLY. H3B-GONO is a review, not a live execution authorization. It does not execute BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience.
+- **Review date**: 2026-06-13 (DRILL_DATE=20260613).
+- **Env change in this review**: None. Production safe default verified via runtime `/proc` env read. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`, `TURNSTILE_DEBUG_REDACTED=<unset>`. Turnstile site/secret boolean configured; secret value NOT printed.
+- **MainPID**: 503163 (unchanged during this review; post-H3B-DRILL restart).
+- **Review doc**: [`docs/launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md`](../launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md) (10 sections + Appendix A/B, ~182 lines).
+- **Evidence reviewed**: H3A plan, H3B pre-flight runbook, H3B rollback drill evidence (20260613), H2C evidence report, H2 dry-run pilot plan.
+- **Go/No-Go checklist (22 gates)**:
+  - Gates 1-18 (evidence-based, H1/H2C/H2D/H3A/H3B-PREFLIGHT/H3B-DRILL/safe-default/Turnstile/Access/cost ceiling/circuit breaker/rollback recency/key isolation/provider boundary/monitoring/incident/tester instructions): all `YES (PASS)` where evidence exists.
+  - Gate 19 (tester cohort confirmed): `NO (PENDING)`.
+  - Gate 20 (explicit operator approval phrase received): `NO (NOT RECEIVED)` — **the only hard gate**.
+  - Gate 21 (no unresolved P0/P1): `YES (PASS)`.
+  - Gate 22 (operator available during full pilot window): `PENDING` (no window scheduled).
+- **Decision recorded**: **`NO-GO for H3B live execution`**. Final live decision is determined by Gate 20 alone.
+- **H3B execution instructions**: NOT yet authorized to be written. `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` does not exist; its absence is the default state.
+- **Smoke test**: `scripts/byok-h3b-go-no-go-review-smoke-test.sh` (PASS, see doc for assertion count).
+- **Approval phrase**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` — still NOT RECEIVED. This review does NOT grant that approval.
+
+**关键口径**: BYOK-H3B-GONO reviews the controlled live pilot gates and records a No-Go decision until explicit operator approval is received. It does not execute BYOK live generation or broad public launch.
+
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

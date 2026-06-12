@@ -401,6 +401,20 @@ Recommended H2C pilot flow (operator checklist):
 - **Smoke test**: `bash scripts/byok-h3b-rollback-drill-smoke-test.sh` (PASS, see doc for assertion count).
 - **Approval gate remains**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`. This drill does NOT grant that approval.
 
+### In-flight phase: Phase BYOK-H3B-GONO — Go/No-Go Review (current focus)
+
+- **Status**: GO/NO-GO REVIEW ONLY. This is a review, not a live execution authorization. H3B-GONO does not execute BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience.
+- **Env change in this review**: None. Production safe default verified. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`, `TURNSTILE_DEBUG_REDACTED=<unset>`.
+- **Review date**: 20260613. MainPID: 503163 (post-H3B-DRILL restart, unchanged during this review).
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **Review doc**: [docs/launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md](launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md) (10 sections + Appendix A/B, ~182 lines).
+- **Decision recorded**: `NO-GO for H3B live execution`. Reason: explicit operator approval phrase `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` has not been received. Gate 20 is the only hard gate; it is `NOT RECEIVED` as of this review. Tester cohort and pilot window are also not finalized.
+- **Go/No-Go checklist (22 gates)**: 1-18 evidence-based (mostly YES/PASS where evidence exists); 19 (tester cohort) = NO/PENDING; 20 (approval phrase) = NO/NOT RECEIVED; 21 (no P0/P1) = YES; 22 (operator availability) = PENDING. Final live decision is determined by Gate 20 alone.
+- **H3B execution instructions**: NOT yet authorized to be written. `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` does not exist; its absence is the default state.
+- **Approval gate remains**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`. This review does NOT grant that approval.
+
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

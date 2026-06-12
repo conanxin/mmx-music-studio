@@ -387,3 +387,17 @@ The drill satisfies the **Section 8 Rollback Drill** requirement: a dry-run (no 
 
 The drill does **not** itself grant H3B execution approval. Operator still must send `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` and the Go/No-Go checklist must be fully satisfied before `BYOK_H3B_EXECUTION_INSTRUCTIONS.md` may be written.
 
+
+---
+
+## 17. Companion: H3B Go/No-Go Review
+
+The Phase BYOK-H3B-GONO review companion to this runbook records the Go/No-Go decision for H3B live execution:
+
+- **Doc**: `docs/launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md`
+- **Status**: REVIEW ONLY — this is a review, not live execution authorization.
+- **Decision recorded**: `NO-GO for H3B live execution` until explicit operator approval phrase `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` is received.
+- **22-gate checklist**: 1-18 evidence-based (mostly YES/PASS where evidence exists); 19 (tester cohort) NO/PENDING; 20 (approval phrase) NO/NOT RECEIVED; 21 (no P0/P1) YES; 22 (operator availability) PENDING. Final live decision is determined by Gate 20 alone.
+- **H3B execution instructions**: NOT yet authorized to be written. `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` does not exist; its absence is the default state.
+- **This runbook is not approval.** Approval must come from the operator as an independent message in the review channel.
+
