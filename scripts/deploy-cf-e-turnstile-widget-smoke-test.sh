@@ -194,8 +194,48 @@ assert "grep -q 'publicByokEnabled: config.publicByokEnabled' '$ROOT/server/inde
   "/api/health returns publicByokEnabled"
 
 # 28. No secret/token/Authorization leak in any modified source
-assert "! grep -qE 'TURNSTILE_SECRET_KEY=|Authorization: Bearer|sk-[A-Za-z0-9]{20,}' '$ROOT/src/features/studio/ByokPanel.tsx'" \
+assert "! grep -qE 'TURNSTILE_SECRET_KEY=*** Bearer|sk-[A-Za-z0-9]{20,}' '$ROOT/src/features/studio/ByokPanel.tsx'" \
   "ByokPanel contains no secret/token/Authorization leak"
+
+# ── Phase H1-Hotfix-D: action metadata for valid-token dry-run E2E ───────
+
+# 29. ByokPanel sets action: 'byok-generate' on widget render (root-cause fix
+# for H1 cloudflareSuccess=true + outcome=turnstile_invalid mismatch).
+assert "grep -qF \"action: 'byok-generate'\" '$ROOT/src/features/studio/ByokPanel.tsx'" \
+  "ByokPanel sets action: 'byok-generate' on widget render"
+
+# 30. ByokPanel action is a string LITERAL — never read from user input
+# (e.g. props/state/URL/form). Defence against regression that would let a
+# user-influenced string bypass the server's expectedAction check.
+if grep -qE "action:\s*(state|props|formData|input|user|query|search|location)" \
+    "$ROOT/src/features/studio/ByokPanel.tsx"; then
+  FAIL=$((FAIL + 1))
+  echo "  FAIL: action field is a string literal (not user-derived)"
+else
+  PASS=$((PASS + 1))
+  echo "  PASS: action field is a string literal (not user-derived)"
+fi
+
+# 31. Server side keeps expectedAction: 'byok-generate' (paired with the
+# client widget's action metadata — must stay in lockstep).
+assert "grep -qF \"expectedAction: 'byok-generate'\" '$ROOT/server/index.ts'" \
+  "server/index.ts keeps expectedAction: 'byok-generate'"
+
+# 32. Docs (CLOUDFLARE_TURNSTILE_BYOK) mention the action metadata — single
+# source of truth for the widget↔server contract.
+assert "grep -qF \"byok-generate\" '$ROOT/docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md'" \
+  "Turnstile BYOK design doc references the byok-generate action contract"
+
+# 33. ByokPanel does not log the token or secret at any code path
+# (negative grep: no console.* with the token variable, no console.* of secret)
+if grep -qE "console\.(log|warn|error|info|debug)\s*\([^)]*turnstileToken" \
+    "$ROOT/src/features/studio/ByokPanel.tsx"; then
+  FAIL=$((FAIL + 1))
+  echo "  FAIL: ByokPanel does not log the token"
+else
+  PASS=$((PASS + 1))
+  echo "  PASS: ByokPanel does not log the token"
+fi
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

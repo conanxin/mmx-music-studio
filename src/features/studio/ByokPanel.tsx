@@ -160,6 +160,18 @@ function statusMessage(code: ByokResponseCode | undefined): string {
 
 type TurnstileRenderOptions = {
   sitekey: string;
+  /**
+   * Phase H1-Hotfix-D: Cloudflare `action` metadata.
+   *
+   * Client-set constant string. The server validates the same constant
+   * via expectedAction='byok-generate'. Without this, Siteverify returns
+   * action=null and the server rejects an otherwise-valid token as
+   * turnstile_invalid.
+   *
+   * MUST be a string literal at the call site — never derived from user
+   * input (props/state/form/URL). See deploy-cf-e smoke test #30.
+   */
+  action?: string;
   callback: (token: string) => void;
   'expired-callback'?: () => void;
   'error-callback'?: () => void;
@@ -302,6 +314,12 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           // receives a clean string even if the server response has stray
           // whitespace.
           sitekey: normalizedTurnstileSiteKey,
+          // Phase H1-Hotfix-D: Cloudflare requires `action` to be a client-set
+          // constant string. The server validates the same constant via
+          // expectedAction='byok-generate'. Without this, Siteverify returns
+          // action=null and the server rejects an otherwise-valid token as
+          // turnstile_invalid. MUST stay a string literal, not user input.
+          action: 'byok-generate',
           callback: (token: string) => {
             setTurnstileToken(token);
             setTurnstileUiState('verified');
