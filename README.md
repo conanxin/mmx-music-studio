@@ -117,12 +117,13 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 
 **Current release**: v0.4.30-alpha — Turnstile gate for BYOK
 
-- **Phase Deploy-CF-D**: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking).
+| Phase Deploy-CF-D: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking). |
+| Phase Deploy-CF-E: Front-end Turnstile widget runtime integration. `turnstileSiteKey` exposed by `/api/health`; secret never returned. Token not persisted, not logged, not displayed. |
 - `/api/generate/byok` live/direct path now supports Turnstile verification.
 - `TURNSTILE_BYOK_REQUIRED=false` by default.
 - This is **not** a broad public BYOK launch.
 - Default mode remains disabled / dry-run.
-- Broad public BYOK launch requires Turnstile configured + operator verification.
+- Broad public BYOK launch requires Turnstile configured + operator verification + valid-token E2E PASS on production.
 | Real generation in CI | ❌ Disabled | CI uses mock / guards only |
 
 ### Studio and Library

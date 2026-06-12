@@ -91,6 +91,13 @@ export interface HealthInfo {
   publicGenerationEnabled?: boolean;
   perSourceDailyLimit?: number;
   generationCooldownSeconds?: number;
+  // Phase Deploy-CF-D: Turnstile (boolean config flags)
+  turnstileByokRequired?: boolean;
+  turnstileSecretKeyConfigured?: boolean;
+  turnstileSiteKeyConfigured?: boolean;
+  // Phase Deploy-CF-E: Site key is a PUBLIC key (designed to be exposed).
+  // Never persists, never logs, never displays raw.
+  turnstileSiteKey?: string;
 }
 
 export interface CheckKeyResult {

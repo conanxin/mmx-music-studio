@@ -206,6 +206,38 @@
 - **Status**: Released as v0.4.30-alpha (commit b3d1095)
 - **Next**: Configure real Turnstile site/secret keys outside repo → BYOK-H public launch (only after Turnstile configured + verified)
 
+### Phase Deploy-CF-E: Frontend Turnstile widget runtime integration for BYOK
+
+- **Status**: **COMPLETED** (2026-06-12, in progress for this session)
+- **What**: Add the front-end half of the Turnstile integration so the browser can obtain a verification token and submit it with `POST /api/generate/byok`. The server-side gate from Deploy-CF-D already exists in `server/security/turnstile.ts` and inside the `/api/generate/byok` live/direct path.
+- **Files**:
+  - `server/index.ts` — `/api/health` now also returns the public `turnstileSiteKey` (booleans `turnstileByokRequired` / `turnstileSecretKeyConfigured` / `turnstileSiteKeyConfigured` already existed from Deploy-CF-D). Never returns `TURNSTILE_SECRET_KEY`.
+  - `src/lib/serverApi.ts` — `HealthInfo` type extended with `turnstileSiteKey?: string` and the three boolean flags.
+  - `src/features/studio/Studio.tsx` — passes `turnstileSiteKey` / `turnstileByokRequired` / `turnstileSecretKeyConfigured` into `<ByokPanel />`.
+  - `src/features/studio/ByokPanel.tsx` — full rewrite (671 lines) with:
+    - Idempotent dynamic loader for `https://challenges.cloudflare.com/turnstile/v0/api.js` (no double injection under React strict mode / re-mount).
+    - `window.turnstile.render(...)` with explicit `callback` (sets `turnstileToken`, status → `verified`), `expired-callback` (clears token, status → `expired`), `error-callback` (clears token, status → `error`).
+    - Submit-time guard: if `turnstileByokRequired === true` and no token, submit is blocked with a "complete Turnstile first" message.
+    - After submit: widget is reset and token cleared — token is single-use.
+    - UI states: `not_configured` / `loading` / `ready` / `verified` / `expired` / `error`.
+  - `src/features/studio/ByokPanel.module.css` — widget container, state badge, mobile-overflow protection (≤639px), `size: 'flexible'` padding.
+  - `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` — 23 assertions: script URL, callback names, state machine, single-use reset, token not in localStorage / sessionStorage / IndexedDB / URL query, raw token not displayed, no `TURNSTILE_SECRET_KEY` reference in front-end, `serverApi.ts` exposes `turnstileSiteKey` type, `Studio.tsx` passes it, `/api/health` returns it, no broad public BYOK launch, no MiniMax live call, no music generation. Emits `DEPLOY_CF_E_TURNSTILE_WIDGET_SMOKE_PASS`.
+  - `docs/deploy/CLOUDFLARE_TURNSTILE_BYOK.md` — Deploy-CF-E section + explicit "Valid-token E2E verification requires production deploy" note.
+  - `README.md` — Deploy-CF-E row added to current release table.
+- **Key principles**:
+  - Server-side Siteverify remains the source of truth (Deploy-CF-D unchanged).
+  - `TURNSTILE_BYOK_REQUIRED` still defaults to `false` (non-blocking).
+  - Site key is public by design; secret key never crosses `/api/health`.
+  - Token is never written to `localStorage` / `sessionStorage` / IndexedDB / URL query.
+  - Token is never rendered in the DOM, never `console.log`'d, never sent to a logging endpoint.
+  - Front-end does not import or reference `TURNSTILE_SECRET_KEY` (the smoke test grep-verifies this).
+- **Default**: disabled / dry-run / non-broad public
+- **No new live call**
+- **No music generation**
+- **E2E gate**: a real valid-token E2E pass requires a production deploy of this phase (local smoke cannot exercise a real Cloudflare widget without a real key + recognised origin). BYOK-H is gated on this E2E pass.
+- **Status**: Released as v0.4.31-alpha (commit pending this session)
+- **Next**: Release v0.4.31-alpha → deploy to production → valid-token E2E verification → BYOK-H small public launch planning only after E2E PASS.
+
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 
 - **Phase Release v0.4.25-alpha** (Phase Storage-B0 promoted to release) — ✅ closed2026-06-11.

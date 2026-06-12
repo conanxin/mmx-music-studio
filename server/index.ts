@@ -745,6 +745,11 @@ async function handleHealth(
     turnstileByokRequired: config.turnstileByokRequired,
     turnstileSecretKeyConfigured: config.turnstileSecretKeyConfigured,
     turnstileSiteKeyConfigured: !!config.turnstileSiteKey,
+    // Phase Deploy-CF-E: Frontend widget runtime integration.
+    // Site key is a PUBLIC key (designed to be exposed in HTML/JS). It is NOT
+    // the secret. The secret (TURNSTILE_SECRET_KEY) is NEVER returned here.
+    // If site key is not configured, this field is undefined.
+    turnstileSiteKey: config.turnstileSiteKey,
     cliRegion: cliDiagnostics?.region ?? undefined,
     // Job queue (Phase 4B)
     jobQueueEnabled: true,

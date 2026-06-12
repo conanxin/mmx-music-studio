@@ -36,12 +36,26 @@
  * - turnstile_required                  → "需要 Turnstile 验证"
  * - turnstile_invalid                   → "Turnstile 验证失败，请重试"
  * - turnstile_verification_error        → "Turnstile 验证服务异常"
+ *
+ * Phase Deploy-CF-E added:
+ * - Frontend Turnstile widget runtime integration.
+ * - Dynamic load of https://challenges.cloudflare.com/turnstile/v0/api.js
+ * - window.turnstile.render(...) in a per-instance widget container
+ * - Success / expired / error callbacks that drive turnstileToken state
+ * - After-submit reset of widget + token to avoid single-use token reuse
+ * - Guard: when turnstileSiteKey is set AND turnstileByokRequired=true, the
+ *   submit button is blocked until a fresh token is present.
+ * - Token is NEVER written to localStorage / sessionStorage / IndexedDB /
+ *   URL query / console.log / UI text. Raw token is never displayed.
+ *
+ * Deploy-CF-E: Turnstile widget runtime integration for BYOK；不代表 broad public launch。
  */
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './ByokPanel.module.css';
 
 const BYOK_ENDPOINT = '/api/generate/byok';
 const DISABLED_MESSAGE = 'BYOK 暂未开放';
+const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
 
 // All server-side response codes the UI is allowed to surface.
 // Keep this list in sync with server/index.ts handleByokGenerate.
@@ -97,9 +111,12 @@ interface ByokPanelProps {
   // Optional: parent can pass whether BYOK is currently allowed.
   // Default: treat as disabled (PUBLIC_BYOK_ENABLED=false) for safety.
   publicByokEnabled?: boolean;
-  // Phase Deploy-CF-D: Turnstile site key (safe to expose to frontend).
+  // Phase Deploy-CF-D / Deploy-CF-E: Turnstile site key (safe to expose to frontend).
   // If not provided, UI shows "Turnstile 尚未配置" placeholder.
   turnstileSiteKey?: string;
+  // Phase Deploy-CF-E: when true AND a site key is configured, the submit
+  // button is blocked until a fresh Turnstile token is present.
+  turnstileByokRequired?: boolean;
   onStatusChange?: (
     status: 'idle' | 'submitting' | 'ok' | 'disabled' | 'error',
   ) => void;
@@ -135,6 +152,94 @@ function statusMessage(code: ByokResponseCode | undefined): string {
   return STATUS_MESSAGES[code] ?? `请求未通过（${code}）`;
 }
 
+// ── Turnstile widget runtime ──────────────────────────────────────────────────
+// Cloudflare Turnstile script loader: idempotent, only inserts the <script> tag
+// once per page lifetime, and resolves a Promise once window.turnstile is ready.
+// This avoids the <script>-already-loaded race and the duplicate-injection
+// warning browser dev tools would otherwise show.
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+  callback: (token: string) => void;
+  'expired-callback'?: () => void;
+  'error-callback'?: () => void;
+  theme?: 'light' | 'dark' | 'auto';
+  size?: 'normal' | 'flexible' | 'compact';
+};
+
+type TurnstileWidget = {
+  render: (el: HTMLElement, options: TurnstileRenderOptions) => string;
+  reset: (widgetId?: string) => void;
+  remove: (widgetId?: string) => void;
+};
+
+type TurnstileGlobal = {
+  render: TurnstileWidget['render'];
+  reset?: TurnstileWidget['reset'];
+  remove?: TurnstileWidget['remove'];
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileGlobal;
+  }
+}
+
+let turnstileScriptLoadPromise: Promise<void> | null = null;
+
+function loadTurnstileScript(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('window not available'));
+  }
+  if (window.turnstile) {
+    return Promise.resolve();
+  }
+  if (turnstileScriptLoadPromise) {
+    return turnstileScriptLoadPromise;
+  }
+  turnstileScriptLoadPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(
+      `script[src="${TURNSTILE_SCRIPT_SRC}"]`,
+    );
+    const onReady = () => resolve();
+    const onError = () =>
+      reject(new Error('failed to load Turnstile script'));
+    if (existing) {
+      // Script tag already inserted; wait for window.turnstile.
+      if (window.turnstile) return resolve();
+      const start = Date.now();
+      const poll = window.setInterval(() => {
+        if (window.turnstile) {
+          window.clearInterval(poll);
+          resolve();
+        } else if (Date.now() - start > 15_000) {
+          window.clearInterval(poll);
+          reject(new Error('Turnstile script load timeout'));
+        }
+      }, 100);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = TURNSTILE_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.onload = onReady;
+    script.onerror = onError;
+    document.head.appendChild(script);
+  });
+  return turnstileScriptLoadPromise;
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
+type TurnstileUiState =
+  | 'not_configured'
+  | 'loading'
+  | 'ready'
+  | 'verified'
+  | 'expired'
+  | 'error';
+
 export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // Default to DISABLED. Only enabled if parent explicitly says so.
   // This matches server's PUBLIC_BYOK_ENABLED=false default.
@@ -151,20 +256,125 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
-  // Phase Deploy-CF-D: Turnstile token state (not persisted to localStorage)
+
+  // Phase Deploy-CF-E: Turnstile widget runtime state.
+  // Token lives ONLY in React state and a ref — never persisted.
   const [turnstileToken, setTurnstileToken] = useState<string>('');
-  // setTurnstileToken is reserved for future widget callback integration.
-  void setTurnstileToken;
+  const [turnstileUiState, setTurnstileUiState] =
+    useState<TurnstileUiState>('not_configured');
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  // Avoid double-initialisation under React 18 StrictMode dev double-render.
+  const widgetInitInFlightRef = useRef<boolean>(false);
+
+  const turnstileConfigured = !!props.turnstileSiteKey;
+  const turnstileEnforced =
+    turnstileConfigured && props.turnstileByokRequired === true;
+
+  // ── Mount / unmount: load Turnstile script + render widget ────────────────
+  useEffect(() => {
+    // If the BYOK panel is disabled OR no site key is configured, do not load
+    // the Turnstile script at all. The UI shows a "not configured" placeholder.
+    if (!enabled || !turnstileConfigured) {
+      setTurnstileUiState('not_configured');
+      return;
+    }
+
+    let cancelled = false;
+    setTurnstileUiState('loading');
+
+    loadTurnstileScript()
+      .then(() => {
+        if (cancelled) return;
+        if (
+          widgetInitInFlightRef.current ||
+          !widgetContainerRef.current ||
+          !window.turnstile
+        ) {
+          return;
+        }
+        widgetInitInFlightRef.current = true;
+        const id = window.turnstile.render(widgetContainerRef.current, {
+          sitekey: props.turnstileSiteKey as string,
+          callback: (token: string) => {
+            setTurnstileToken(token);
+            setTurnstileUiState('verified');
+          },
+          'expired-callback': () => {
+            setTurnstileToken('');
+            setTurnstileUiState('expired');
+          },
+          'error-callback': () => {
+            setTurnstileToken('');
+            setTurnstileUiState('error');
+          },
+          theme: 'auto',
+          size: 'flexible',
+        });
+        widgetIdRef.current = id;
+        setTurnstileUiState('ready');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTurnstileUiState('error');
+        setTurnstileToken('');
+      });
+
+    return () => {
+      cancelled = true;
+      // Best-effort cleanup of the widget instance.
+      const id = widgetIdRef.current;
+      if (id && window.turnstile?.remove) {
+        try {
+          window.turnstile.remove(id);
+        } catch {
+          /* noop */
+        }
+      }
+      widgetIdRef.current = null;
+      widgetInitInFlightRef.current = false;
+      setTurnstileToken('');
+    };
+  }, [enabled, turnstileConfigured, props.turnstileSiteKey]);
+
+  // Clear token when the panel is disabled so stale tokens don't linger.
+  useEffect(() => {
+    if (!enabled) {
+      setTurnstileToken('');
+      const id = widgetIdRef.current;
+      if (id && window.turnstile?.reset) {
+        try {
+          window.turnstile.reset(id);
+        } catch {
+          /* noop */
+        }
+      }
+    }
+  }, [enabled]);
 
   const canSubmit =
     enabled &&
     !submitting &&
     apiKey.length >= 20 &&
     prompt.length > 0 &&
-    confirmed;
+    confirmed &&
+    // If Turnstile is enforced, the user must have a fresh verified token.
+    (!turnstileEnforced || (turnstileUiState === 'verified' && turnstileToken.length > 0));
 
-  // Phase Deploy-CF-D: Turnstile status placeholder
-  const turnstileConfigured = !!props.turnstileSiteKey;
+  // Helper to reset the widget + clear the token. Used after every submit so
+  // a single-use token is never reused (Cloudflare tokens are one-shot).
+  const resetTurnstileWidget = useCallback(() => {
+    setTurnstileToken('');
+    const id = widgetIdRef.current;
+    if (id && window.turnstile?.reset) {
+      try {
+        window.turnstile.reset(id);
+      } catch {
+        /* noop */
+      }
+    }
+    setTurnstileUiState('ready');
+  }, []);
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -186,8 +396,12 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             model,
             mode: musicMode,
           },
-          // Phase Deploy-CF-D: include Turnstile token when configured
-          turnstileToken: turnstileConfigured ? turnstileToken || undefined : undefined,
+          // Phase Deploy-CF-E: include Turnstile token when configured.
+          // The token is single-use; after the request we reset the widget.
+          turnstileToken:
+            turnstileConfigured && turnstileToken
+              ? turnstileToken
+              : undefined,
           // The body never carries the explicit 'mode' — the route always
           // defaults to 'fake' for safety. A real 'live' request requires
           // a separate operator-only channel that this UI does not expose.
@@ -212,6 +426,11 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       // SECURITY: clear local key reference immediately after submit so
       // it doesn't linger in component state if the parent re-renders.
       setApiKey('');
+      // SECURITY: reset the Turnstile widget + clear the token so a single-use
+      // token cannot be replayed. The user must re-verify before next submit.
+      if (turnstileConfigured) {
+        resetTurnstileWidget();
+      }
     }
   }
 
@@ -302,20 +521,60 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           <span>我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。</span>
         </label>
 
-        {/* Phase Deploy-CF-D: Turnstile UI skeleton */}
+        {/* Phase Deploy-CF-E: Real Turnstile widget runtime integration.
+            - When site key is configured: load the CF script once, render the
+              widget into widgetContainerRef, wire success/expired/error
+              callbacks to update turnstileToken + turnstileUiState.
+            - When site key is NOT configured: show a "not configured" hint.
+            - Raw token is NEVER displayed. Token never persisted. */}
         {enabled && (
-          <div className={styles.turnstilePlaceholder} role="status">
+          <div className={styles.turnstileBlock} role="status">
             {turnstileConfigured ? (
               <>
-                <span className={styles.turnstileLabel}>Turnstile 验证</span>
-                <div className={styles.turnstileWidget}>
-                  {/* Placeholder for Turnstile widget — actual widget integration
-                      requires @cloudflare/react-turnstile or equivalent.
-                      Token will be set here when widget callback fires. */}
+                <span className={styles.turnstileLabel}>
+                  Turnstile 验证
+                  {turnstileEnforced && (
+                    <span className={styles.turnstileRequired}>（必填）</span>
+                  )}
+                </span>
+                <div
+                  ref={widgetContainerRef}
+                  className={`${styles.turnstileWidget} ${
+                    turnstileUiState === 'verified'
+                      ? styles.turnstileWidgetVerified
+                      : turnstileUiState === 'expired'
+                      ? styles.turnstileWidgetExpired
+                      : turnstileUiState === 'error'
+                      ? styles.turnstileWidgetError
+                      : ''
+                  }`}
+                  data-turnstile-state={turnstileUiState}
+                />
+                {turnstileUiState === 'loading' && (
                   <span className={styles.turnstileHint}>
-                    [Turnstile widget placeholder — 配置完成后在此处渲染]
+                    正在加载 Turnstile…
                   </span>
-                </div>
+                )}
+                {turnstileUiState === 'ready' && (
+                  <span className={styles.turnstileHint}>
+                    请完成下方人机验证。
+                  </span>
+                )}
+                {turnstileUiState === 'verified' && (
+                  <span className={styles.turnstileHintOk}>
+                    ✓ Turnstile 已验证
+                  </span>
+                )}
+                {turnstileUiState === 'expired' && (
+                  <span className={styles.turnstileHintWarn}>
+                    ⚠ 验证已过期，请重新验证
+                  </span>
+                )}
+                {turnstileUiState === 'error' && (
+                  <span className={styles.turnstileHintErr}>
+                    ✗ 验证加载失败，请刷新页面重试
+                  </span>
+                )}
               </>
             ) : (
               <span className={styles.turnstileNotConfigured}>
@@ -405,7 +664,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
       <footer className={styles.footer}>
         <small>
-          Phase Deploy-CF-D · Turnstile gate skeleton 已就位 · 真实 BYOK 生成仍需显式 live gate + Turnstile 配置 · 不代表 broad public launch · Key 不写入 localStorage / IndexedDB / URL query
+          Phase Deploy-CF-E · Turnstile widget runtime 已就位 · 服务端 Siteverify 仍为最终判断 · Token 不写入 localStorage / sessionStorage / IndexedDB / URL query · 不代表 broad public BYOK launch
         </small>
       </footer>
     </section>

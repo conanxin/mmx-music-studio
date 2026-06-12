@@ -456,6 +456,11 @@ export default function Studio({
     publicGenerationEnabled?: boolean;
     perSourceDailyLimit?: number;
     generationCooldownSeconds?: number;
+    // Phase Deploy-CF-E: Frontend Turnstile widget runtime integration
+    turnstileByokRequired?: boolean;
+    turnstileSecretKeyConfigured?: boolean;
+    turnstileSiteKeyConfigured?: boolean;
+    turnstileSiteKey?: string;
   } | null>(null);
 
   // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
@@ -910,8 +915,15 @@ export default function Studio({
             <h1 className={styles.pageTitle}>今天想创作什么音乐？</h1>
           </div>
 
-          {/* Phase BYOK-A: Public BYOK readiness panel (default disabled) */}
-          <ByokPanel />
+          {/* Phase BYOK-A: Public BYOK readiness panel (default disabled)
+              Phase Deploy-CF-E: Pass Turnstile props from /api/health.
+              turnstileSiteKey is a public key designed to be exposed in HTML/JS;
+              the secret key is NEVER sent to the client. */}
+          <ByokPanel
+            publicByokEnabled={healthInfo?.publicGenerationEnabled}
+            turnstileSiteKey={healthInfo?.turnstileSiteKey}
+            turnstileByokRequired={healthInfo?.turnstileByokRequired}
+          />
 
           {/* Mode tabs */}
           <div className={styles.modeTabs}>

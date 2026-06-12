@@ -1,10 +1,28 @@
 # Public Release Readiness — mmx-music-studio
 
-> 文档版本：v0.4.30-alpha · 2026-06-12
+> 文档版本：v0.4.31-alpha · 2026-06-12
 >
-> **Current Release: v0.4.30-alpha — Turnstile gate for BYOK release.** Deploy-CF-D adds a server-side Turnstile gate for BYOK generation. It does not enable broad public BYOK launch by itself. `/api/generate/byok` live/direct path now supports Turnstile verification. `TURNSTILE_BYOK_REQUIRED=false` by default. No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. Next step is configuring real Turnstile site/secret keys outside the repo and verifying them before BYOK-H public launch.
+> **Current Release: v0.4.31-alpha — Frontend Turnstile widget runtime integration for BYOK.** Deploy-CF-E adds the front-end half of the Cloudflare Turnstile integration: the browser can now obtain a verification token and submit it with `POST /api/generate/byok`. The server-side gate from Deploy-CF-D is unchanged. It does not enable broad public BYOK launch by itself. `TURNSTILE_BYOK_REQUIRED=false` by default. No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. The front-end does not import or reference `TURNSTILE_SECRET_KEY`. The token is never written to localStorage / sessionStorage / IndexedDB / URL query, and is never displayed in the DOM or console.log'd. Valid-token E2E verification requires a production deploy of this phase (local smoke cannot exercise a real Cloudflare widget without a real key + recognised origin); BYOK-H is gated on that E2E pass.
 
-**Current release**: v0.4.30-alpha
+**Current release**: v0.4.31-alpha
+
+**Phase Deploy-CF-E**: Frontend Turnstile widget runtime integration for BYOK — ✅ COMPLETED (2026-06-12, commit pending this session).
+  - `/api/health` now also returns the public `turnstileSiteKey` (the secret key is never exposed)
+  - `src/lib/serverApi.ts` `HealthInfo` type extended with `turnstileSiteKey?: string` + boolean flags
+  - `Studio.tsx` passes Turnstile props into `<ByokPanel />`
+  - `ByokPanel.tsx` rewritten with idempotent dynamic script loader, `window.turnstile.render(...)`, `callback` / `expired-callback` / `error-callback` lifecycle, single-use token reset after submit
+  - `ByokPanel.module.css` adds widget container, state badge (loading/ready/verified/expired/error), mobile overflow protection (≤639px)
+  - New smoke test: `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` — 23/23 assertions
+  - `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking
+  - Server-side Siteverify remains the source of truth (Deploy-CF-D unchanged)
+  - Token not persisted to localStorage / sessionStorage / IndexedDB / URL query
+  - Token not displayed, not logged
+  - Secret never logged, never returned, never committed
+  - Does not affect `/api/generate`, `/api/health` (boolean only, no secret), `/api/status`, `/ops`
+- **Default**: disabled / dry-run / non-broad public
+- **No new live call**
+- **No music generation**
+- **Next**: Release v0.4.31-alpha → deploy to production → valid-token E2E verification → BYOK-H small public launch planning only after E2E PASS
 
 **Phase Deploy-CF-D**: Turnstile protection for BYOK generation — ✅ COMPLETED (2026-06-12, commit b3d1095).
   - `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking
@@ -38,6 +56,24 @@
 - No live provider calls during design phase.
 
 ## Release notes
+
+- **v0.4.31-alpha — Frontend Turnstile widget runtime integration for BYOK**
+  - Deploy-CF-E adds the front-end half of the Turnstile integration
+  - Browser can obtain a Turnstile token and submit it with `POST /api/generate/byok`
+  - It does not enable broad public BYOK launch by itself
+  - Server-side Siteverify remains the source of truth (Deploy-CF-D unchanged)
+  - `TURNSTILE_BYOK_REQUIRED=false` by default
+  - `/api/health` now also returns the public `turnstileSiteKey` (secret key is never exposed)
+  - Token not persisted to localStorage / sessionStorage / IndexedDB / URL query
+  - Token not displayed, not logged
+  - Front-end does not import or reference `TURNSTILE_SECRET_KEY`
+  - New smoke test: `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` — 23/23 assertions
+  - No new live call was executed
+  - No music was generated
+  - No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed
+  - Valid-token E2E verification requires a production deploy of this phase
+  - BYOK-H is gated on that E2E pass
+  - Next step: deploy v0.4.31-alpha to production → valid-token E2E verification → BYOK-H small public launch planning only after E2E PASS
 
 - **v0.4.30-alpha — Turnstile gate for BYOK release**
   - Deploy-CF-D adds a server-side Turnstile gate for BYOK generation

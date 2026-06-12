@@ -183,14 +183,37 @@
   gap: 6px;
 }
 
+/* Phase Deploy-CF-E: Real Turnstile widget runtime container.
+   - Holds the widget script's <iframe> output.
+   - Per-state borders show the current verification state at a glance. */
+.turnstileBlock {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-color, #cbd2d9);
+  border-radius: 6px;
+  background: var(--panel-bg, #f8f9fa);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  max-width: 100%;
+}
+
 .turnstileLabel {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary, #52606d);
 }
 
+.turnstileRequired {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--error-text, #962d22);
+  font-weight: 600;
+}
+
 .turnstileWidget {
-  min-height: 48px;
+  min-height: 65px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,12 +221,57 @@
   border-radius: 4px;
   background: var(--input-bg, #ffffff);
   padding: 8px;
+  overflow: hidden;
+  max-width: 100%;
+  /* The CF widget sometimes injects an iframe with a fixed width; constrain
+     the parent so the iframe must use the size="flexible" hint. */
+  position: relative;
+}
+
+.turnstileWidget > * {
+  max-width: 100%;
+}
+
+.turnstileWidgetVerified {
+  border-color: var(--success-border, #5cb874);
+  background: var(--success-bg, #e6f4ea);
+}
+
+.turnstileWidgetExpired {
+  border-color: var(--warning-border, #f0c674);
+  background: var(--warning-bg, #fff8e1);
+}
+
+.turnstileWidgetError {
+  border-color: var(--error-border, #e07268);
+  background: var(--error-bg, #fdecea);
 }
 
 .turnstileHint {
   font-size: 12px;
   color: var(--text-tertiary, #7b8794);
   text-align: center;
+}
+
+.turnstileHintOk {
+  font-size: 12px;
+  color: var(--success-text, #1a4d2a);
+  text-align: center;
+  font-weight: 600;
+}
+
+.turnstileHintWarn {
+  font-size: 12px;
+  color: var(--warning-text, #7a4f01);
+  text-align: center;
+  font-weight: 600;
+}
+
+.turnstileHintErr {
+  font-size: 12px;
+  color: var(--error-text, #962d22);
+  text-align: center;
+  font-weight: 600;
 }
 
 .turnstileNotConfigured {
@@ -213,13 +281,19 @@
   font-style: italic;
 }
 
-/* Mobile: prevent overflow */
+/* Mobile: prevent overflow of the widget iframe on narrow viewports. */
 @media (max-width: 639px) {
-  .turnstilePlaceholder {
+  .turnstileBlock {
     padding: 8px;
   }
   .turnstileWidget {
-    min-height: 40px;
+    min-height: 60px;
     padding: 6px;
+  }
+  .turnstileHint,
+  .turnstileHintOk,
+  .turnstileHintWarn,
+  .turnstileHintErr {
+    font-size: 11px;
   }
 }
