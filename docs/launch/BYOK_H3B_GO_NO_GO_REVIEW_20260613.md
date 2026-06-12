@@ -180,3 +180,11 @@ This Go/No-Go review does **not** enable BYOK live generation or broad public la
 ## Appendix B: Final 口径
 
 > BYOK-H3B-GONO reviews the controlled live pilot gates and records a No-Go decision until explicit operator approval is received. It does not execute BYOK live generation or broad public launch.
+
+## Appendix C. H3B-COHORT follow-up
+
+The tester cohort and pilot-window planning follow-up has been recorded here:
+
+- docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md
+
+This follow-up does not change the Go/No-Go decision. The H3B live execution decision remains NO-GO until the tester cohort is finalized, the pilot window is scheduled, and the explicit operator approval phrase is received.

@@ -415,6 +415,11 @@ Recommended H2C pilot flow (operator checklist):
 - **H3B execution instructions**: NOT yet authorized to be written. `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` does not exist; its absence is the default state.
 - **Approval gate remains**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`. This review does NOT grant that approval.
 
+### In-flight phase: Phase BYOK-H3B-COHORT — Tester Cohort + Pilot Window Planning (current focus)
+
+- **Status**: `PLANNING ONLY`. No env change, no live, no music, no public launch.
+- **Teste...[truncated]
+
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
@@ -1156,3 +1161,16 @@ CI 自动验证链路稳定性和 BYOK 安全修复，防止后续改动破坏�
 - CI 失败时优先看 typecheck/build/smoke test 输出
 
 详见 [docs/CI_PIPELINE.md](docs/CI_PIPELINE.md)。
+
+### In-flight phase: Phase BYOK-H3B-COHORT — Tester Cohort + Pilot Window Planning (current focus)
+
+- **Status**: `PLANNING ONLY`. No env change, no live, no music, no public launch.
+- **Tester cohort**: anonymous T1-T5 slots only (3 required, 2 optional), all `pending_consent`.
+- **Pilot window**: `not scheduled`.
+- **Tester consent checklist**: included in section 6 of the plan.
+- **Tester-facing message draft**: included in section 9 of the plan (Chinese).
+- **No PII committed**: anonymous slot table only; tester identities/contact details must remain outside the repo.
+- **Plan doc**: [docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md](launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md)
+- **Smoke test**: `bash scripts/byok-h3b-cohort-window-plan-smoke-test.sh` (asserts plan doc + cross-doc links)
+- **Decision**: NO-GO for H3B live execution (unchanged from H3B-GONO).
+- **Approval gate**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` still NOT RECEIVED. This phase does not count as approval.

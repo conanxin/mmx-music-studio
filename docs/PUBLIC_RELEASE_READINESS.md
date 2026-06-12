@@ -140,6 +140,8 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 
 **关键口径**: BYOK-H3B-GONO reviews the controlled live pilot gates and records a No-Go decision until explicit operator approval is received. It does not execute BYOK live generation or broad public launch.
 
+**Phase BYOK-H3B-COHORT**: Tester Cohort + Pilot Window Planning — ✅ PLANNING RECORDED. Anonymous slo...[truncated]
+
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
@@ -455,3 +457,11 @@ These guardrails are intended for public alpha protection. They are not a replac
 - **Issues:** https://github.com/conanxin/mmx-music-studio/issues
 - **Source:** https://github.com/conanxin/mmx-music-studio
 - **Release Notes:** https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.13-alpha
+
+**Phase BYOK-H3B-COHORT readiness note**
+
+- **Tester cohort/window plan**: [docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md](launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md)
+- **Current decision**: NO-GO for H3B live execution.
+- **Cohort slots**: anonymous T1-T5 only; no tester PII is committed to the repository.
+- **Pilot window**: NOT SCHEDULED; approval phrase NOT RECEIVED.
+- **This phase does not open the live gate.**

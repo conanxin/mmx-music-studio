@@ -401,3 +401,34 @@ The Phase BYOK-H3B-GONO review companion to this runbook records the Go/No-Go de
 - **H3B execution instructions**: NOT yet authorized to be written. `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` does not exist; its absence is the default state.
 - **This runbook is not approval.** Approval must come from the operator as an independent message in the review channel.
 
+
+---
+
+## 18. H3B-COHORT — Tester Cohort and Pilot Window Planning
+
+---
+
+## 18. Companion: H3B Tester Cohort + Pilot Window Plan
+
+The Phase BYOK-H3B-COHORT planning companion to this runbook is:
+
+- **Plan doc**: `docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md`
+- **Status**: PLANNING ONLY. No env change, no live, no music, no public launch.
+- **Tester slots**: T1-T5 (3 required, 2 optional), all `pending_consent`.
+- **Pilot window**: `not scheduled`.
+- **Decision**: NO-GO for H3B live execution.
+- **Approval gate**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` still NOT RECEIVED.
+- **No PII committed**: anonymous slot table only.
+- **Tester consent checklist**: included in §6 of the plan.
+- **Tester-facing message draft**: included in §9 of the plan (Chinese).
+- **Smoke test**: `scripts/byok-h3b-cohort-window-plan-smoke-test.sh` (asserts plan doc + cross-doc links).
+- **This runbook is still pre-flight. It does not enable live generation.**
+
+## 19. Update History
+
+| Date | Phase | Status | Notes |
+| --- | --- | --- | --- |
+| 20260613 | BYOK-H3B-COHORT | PLANNING RECORDED | cohort + window plan; decision NO-GO; smoke 34 assertions |
+| 20260613 | BYOK-H3B-GONO | NO-GO recorded | approval phrase not received |
+| 20260613 | BYOK-H3B-DRILL | DRILL PASSED | rollback drill evidence recorded |
+| 20260613 | BYOK-H3B-PREFLIGHT | PASSED | 26/26 smoke + 18-sections runbook |
