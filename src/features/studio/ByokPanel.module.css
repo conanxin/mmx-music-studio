@@ -29,6 +29,42 @@
   color: var(--text-secondary, #52606d);
 }
 
+/* Phase BYOK-H2D: 醒目 dry-run 状态徽章 */
+.dryRunBadge {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 6px 0 0 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: 999px;
+  background: var(--info-bg, #e6f0ff);
+  border: 1px solid var(--info-border, #a9c4ff);
+  color: var(--info-text, #1a3a7a);
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* Phase BYOK-H2D: 通用 hint 文案（key 隐私 / turnstile 提示 / 敏感 prompt 提醒） */
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary, #6a737d);
+  word-break: break-word;
+}
+
+/* Phase BYOK-H2D: 确认框下 dry-run 灰字补充 */
+.confirmDryRunNote {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-tertiary, #6a737d);
+  font-weight: 400;
+}
+
 .form {
   display: flex;
   flex-direction: column;

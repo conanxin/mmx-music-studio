@@ -4,6 +4,8 @@
 > **Phase:** BYOK-H2C (Real dry-run pilot execution)
 > **Report date:** 2026-06-12
 > **Audience:** operator + future maintainer
+>
+> **Phase BYOK-H2D follow-up:** This H2C evidence informed the conservative H2D UX/copy polish phase (no env change, no live, no music). H2D updated `ByokPanel.tsx` to make the dry-run nature + key-privacy + cost-warnings more explicit to testers, and added a `byok_dry_run_only` result explainer so users do not mistake the success path for an error. See [README.md](../../README.md) / [DEVELOPMENT_HANDOFF.md](../DEVELOPMENT_HANDOFF.md) / [PUBLIC_RELEASE_READINESS.md](../PUBLIC_RELEASE_READINESS.md) for the H2D section.
 
 ---
 

@@ -48,6 +48,14 @@
  * - Token is NEVER written to localStorage / sessionStorage / IndexedDB /
  *   URL query / console.log / UI text. Raw token is never displayed.
  *
+ * Phase BYOK-H2D (UX/copy polish only, no logic change):
+ * - Dry-run 状态徽章: 提示用户当前为 dry-run，不会生成音乐
+ * - API Key 隐私说明: fake key 示例 + 不写入本地存储 / 服务器持久化
+ * - Turnstile 提示: 强调是「人机验证」不是「MiniMax 登录」
+ * - byok_dry_run_only 结果解释: 安全链路已通过，但当前为 dry-run
+ * - 所有文案为保守补充，不改变 API 行为，不改变 live/dry-run gate，
+ *   不改变 Turnstile 验证逻辑，不记录 token / apiKey，不增加依赖。
+ *
  * Deploy-CF-E: Turnstile widget runtime integration for BYOK；不代表 broad public launch。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -56,6 +64,35 @@ import styles from './ByokPanel.module.css';
 const BYOK_ENDPOINT = '/api/generate/byok';
 const DISABLED_MESSAGE = 'BYOK 暂未开放';
 const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+
+// Phase BYOK-H2D: 静态文案常量，集中管理以便 smoke test 断言。
+// 这些是 user-facing copy，单独抽出便于阅读与未来微调。
+const COPY = {
+  headerSubtitle:
+    'Key 仅在本次请求中发送到本站服务端，不写入浏览器本地存储或服务器持久化。' +
+    '当前为 dry-run 阶段，不会调用 MiniMax，不会生成音乐；' +
+    '正式 BYOK 启用后，费用由你自己的 MiniMax 账户承担。',
+  dryRunBadge: 'dry-run 阶段 · 不会生成音乐 · 不会调用 MiniMax',
+  apiKeyLabel: 'MiniMax API Key',
+  apiKeyHint:
+    'H2D 测试时可填 fake key（例如 sk-FAKE-...）。正式 BYOK 启用后填入你自己的真实 Key。' +
+    'Key 只发往 /api/generate/byok 一次，不写入 localStorage / sessionStorage / IndexedDB / URL。',
+  apiKeyNoSensitivePrompt: 'Prompt 内请勿填入敏感内容（Key、密码、身份证号等）。',
+  turnstileLabel: 'Turnstile 验证',
+  turnstileHumanOnly:
+    'Turnstile 是 Cloudflare 的人机验证（不是 MiniMax 登录）。',
+  turnstileRetryHint: '验证失败时，可点击右上角刷新图标重试，或刷新整个页面。',
+  turnstileTokenPrivacy: 'Token 不显示、不保存、不复用；每次提交后会自动重置。',
+  confirmLabel: '我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。',
+  confirmLabelDryRun: '（当前为 dry-run，不会产生真实费用）',
+  submitIdle: '使用我的 Key 试调一次（默认 fake / dry-run）',
+  resultDryRunExplain:
+    '安全链路已通过（Turnstile + Key 形状校验）。当前为 dry-run，' +
+    '所以没有调用 MiniMax，也没有生成音乐。',
+  resultErrorPrefix: '请求未通过：',
+  h2dFooterLine:
+    'Phase BYOK-H2D · dry-run UX/copy polish · 未启用 BYOK live · 未发起 broad public launch',
+} as const;
 
 // All server-side response codes the UI is allowed to surface.
 // Keep this list in sync with server/index.ts handleByokGenerate.
@@ -462,14 +499,16 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     <section className={styles.byokPanel} aria-label="BYOK 自带 Key 模式">
       <header className={styles.header}>
         <h2 className={styles.title}>使用自己的 MiniMax Key</h2>
-        <p className={styles.subtitle}>
-          Key 只会发送到本站服务端用于本次请求，不会保存在浏览器或服务器。费用与额度由你的 MiniMax 账户承担。
+        <p className={styles.subtitle}>{COPY.headerSubtitle}</p>
+        {/* Phase BYOK-H2D: 醒目 dry-run 状态徽章 */}
+        <p className={styles.dryRunBadge} role="status" data-h2d="dry-run-badge">
+          {COPY.dryRunBadge}
         </p>
       </header>
 
       <form className={styles.form} onSubmit={handleSubmit} autoComplete="off">
         <label className={styles.label} htmlFor="byok-api-key">
-          MiniMax API Key
+          {COPY.apiKeyLabel}
         </label>
         <input
           id="byok-api-key"
@@ -477,7 +516,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder="eyJhbGciOi..."
+          placeholder="sk-FAKE-... 或 eyJhbGciOi..."
           autoComplete="off"
           spellCheck={false}
           minLength={20}
@@ -485,6 +524,13 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           required
           disabled={!enabled || submitting}
         />
+        {/* Phase BYOK-H2D: Key 隐私说明 + 敏感 prompt 提醒 */}
+        <p className={styles.hint} data-h2d="api-key-hint">
+          {COPY.apiKeyHint}
+        </p>
+        <p className={styles.hint} data-h2d="prompt-no-sensitive">
+          {COPY.apiKeyNoSensitivePrompt}
+        </p>
 
         <label className={styles.label} htmlFor="byok-model">
           模型
@@ -542,7 +588,12 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             disabled={!enabled || submitting}
             required
           />
-          <span>我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。</span>
+          <span>
+            {COPY.confirmLabel}
+            <span className={styles.confirmDryRunNote}>
+              {COPY.confirmLabelDryRun}
+            </span>
+          </span>
         </label>
 
         {/* Phase Deploy-CF-E: Real Turnstile widget runtime integration.
@@ -556,10 +607,21 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             {turnstileConfigured ? (
               <>
                 <span className={styles.turnstileLabel}>
-                  Turnstile 验证
+                  {COPY.turnstileLabel}
                   {turnstileEnforced && (
                     <span className={styles.turnstileRequired}>（必填）</span>
                   )}
+                </span>
+                {/* Phase BYOK-H2D: 强调是「人机验证」非「MiniMax 登录」 */}
+                <span className={styles.hint} data-h2d="turnstile-human-only">
+                  {COPY.turnstileHumanOnly}
+                </span>
+                {/* Phase BYOK-H2D: 重试 / token 隐私提示 */}
+                <span className={styles.hint} data-h2d="turnstile-retry-hint">
+                  {COPY.turnstileRetryHint}
+                </span>
+                <span className={styles.hint} data-h2d="turnstile-token-privacy">
+                  {COPY.turnstileTokenPrivacy}
                 </span>
                 <div
                   ref={widgetContainerRef}
@@ -618,7 +680,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             className={styles.submit}
             disabled={!canSubmit}
           >
-            {submitting ? '提交中…' : '使用我的 Key 试调一次（默认 fake）'}
+            {submitting ? '提交中…' : COPY.submitIdle}
           </button>
         )}
       </form>
@@ -629,6 +691,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             lastResult.ok ? styles.resultOk : styles.resultErr
           }`}
           role="status"
+          data-h2d="result-block"
+          data-result-code={lastResult.code ?? ''}
         >
           {lastResult.ok ? (
             <>
@@ -637,6 +701,18 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
               <code>{lastResult.code}</code>
               <br />
               <span className={styles.resultMsg}>{lastResult.message}</span>
+              {/* Phase BYOK-H2D: dry-run 成功结果解释，明确「不是错误」「不会生成音乐」 */}
+              {lastResult.code === 'byok_dry_run_only' && (
+                <>
+                  <br />
+                  <small
+                    className={styles.resultHint}
+                    data-h2d="dry-run-explain"
+                  >
+                    {COPY.resultDryRunExplain}
+                  </small>
+                </>
+              )}
               {lastResult.audioFileName && (
                 <>
                   <br />
@@ -690,6 +766,9 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
         <small>
           Phase Deploy-CF-E · Turnstile widget runtime 已就位 · 服务端 Siteverify 仍为最终判断 · Token 不写入 localStorage / sessionStorage / IndexedDB / URL query · 不代表 broad public BYOK launch
         </small>
+        <br />
+        {/* Phase BYOK-H2D: 显式声明当前为 UX/copy polish，未启用 BYOK live */}
+        <small data-h2d="footer-line">{COPY.h2dFooterLine}</small>
       </footer>
     </section>
   );

@@ -4,6 +4,8 @@
 > This document is a planning artifact. It does not enable BYOK live generation.
 > It does not open BYOK to a broad public audience.
 > It does not modify production env.
+>
+> **Phase BYOK-H2D follow-up (UX/copy polish):** see [BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md](./BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md) for H2C pilot evidence and [README.md](../../README.md) / [DEVELOPMENT_HANDOFF.md](../DEVELOPMENT_HANDOFF.md) for H2D scope.
 
 ---
 

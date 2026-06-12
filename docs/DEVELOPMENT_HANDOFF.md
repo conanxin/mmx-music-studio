@@ -338,6 +338,28 @@ Recommended H2C pilot flow (operator checklist):
 
 **关键口径**: BYOK-H2C completed a controlled dry-run pilot and rolled production back to safe default. It did not enable BYOK live generation or broad public launch.
 
+### In-flight phase: Phase BYOK-H2D — Dry-Run UX/Copy Polish (current focus)
+
+- **Status**: ACTIVE (UX/copy-only, no env change, no live, no music).
+- **Scope**: Copy-only polish in `src/features/studio/ByokPanel.tsx` + `ByokPanel.module.css`. All logic, all API calls, all gates, all Turnstile flows, all data persistence are **unchanged**. Zero new dependencies. Zero new storage. Zero key/token writes to localStorage/sessionStorage/IndexedDB/URL.
+- **Env change in this phase**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true` — H1 closeout safe default preserved.
+- **Production env modified by this phase**: **No** (zero systemd drop-in changes, zero restart, MainPID 441936 unchanged).
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H2D copy improvements (user-visible)**:
+  1. **Header subtitle** strengthened: now spells out "Key 不写入本地存储或服务器持久化", "当前为 dry-run，不会调用 MiniMax，不会生成音乐", "正式 BYOK 启用后，费用由你自己的 MiniMax 账户承担".
+  2. **Dry-run badge** (new, pill-style, color-tinted): "dry-run 阶段 · 不会生成音乐 · 不会调用 MiniMax".
+  3. **API Key hint** (new): fake-key example ("sk-FAKE-...") + "不写入 localStorage/sessionStorage/IndexedDB/URL" + "Prompt 内请勿填入敏感内容".
+  4. **Turnstile hints** (new, 3 lines): "Turnstile 是 Cloudflare 的人机验证（不是 MiniMax 登录）", "验证失败时可点击刷新图标重试", "Token 不显示、不保存、不复用".
+  5. **Confirm label dry-run note**: "（当前为 dry-run，不会产生真实费用）".
+  6. **Submit button label**: "使用我的 Key 试调一次（默认 fake / dry-run）".
+  7. **Result dry-run explain** (new, only on `byok_dry_run_only`): "安全链路已通过（Turnstile + Key 形状校验）。当前为 dry-run，所以没有调用 MiniMax，也没有生成音乐。" — explicitly tells the user this is **not an error**.
+  8. **Footer line** (new): "Phase BYOK-H2D · dry-run UX/copy polish · 未启用 BYOK live · 未发起 broad public launch".
+- **All result-code mappings preserved** (`byok_generation_disabled` / `byok_dry_run_only` / `turnstile_required` / `turnstile_invalid` / `byok_live_not_enabled` / `byok_provider_error` / etc.) — only additional context is added on `byok_dry_run_only`.
+- **Smoke test**: `scripts/byok-h2d-ux-copy-smoke-test.sh` (asserts all 8 `data-h2d` anchors, all 4 stored result-code mappings, no localStorage/sessionStorage/IndexedDB/URL token/key writes, no logic regression in `ByokPanel.tsx`).
+- **H2D → H3 gate**: H3 (controlled live pilot) still requires explicit operator approval. H2D does **not** open the live gate.
+
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

@@ -64,6 +64,21 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 
 **关键口径**: BYOK-H2C completed a controlled dry-run pilot and rolled production back to safe default. It did not enable BYOK live generation or broad public launch.
 
+**Phase BYOK-H2D**: Dry-Run UX/Copy Polish — ✅ **H2D_UX_COPY_POLISH_ACTIVE** (copy-only, no env change, no live, no music).
+
+- **Status**: ACTIVE. UX/copy-only polish in `src/features/studio/ByokPanel.tsx` + `ByokPanel.module.css`. Production env unchanged (MainPID 441936 still H1 closeout safe default). Zero new dependencies, zero new storage, zero new API calls, zero new env vars.
+- **Env change**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H2D copy improvements**: (8 user-visible) dry-run badge, header subtitle rewrite, API Key hint (fake-key example + no-save), Turnstile human-only + retry + token-privacy hints, confirm-label dry-run note, submit-button label update, dry-run-result explain on `byok_dry_run_only`, footer line.
+- **未启用 BYOK live · 未发起 broad public launch** — H2D 不打开 BYOK live 通道。
+- **All result-code mappings preserved** (`byok_generation_disabled` / `byok_dry_run_only` / `turnstile_required` / `turnstile_invalid` / `byok_live_not_enabled` / `byok_provider_error` / etc.). No logic change.
+- **Smoke test**: `scripts/byok-h2d-ux-copy-smoke-test.sh`
+- **H2D → H3 gate**: H3 (controlled live pilot) still requires explicit operator approval. H2D does **not** open the live gate.
+
+**关键口径**: BYOK-H2D improves BYOK dry-run UX and copy based on tester feedback. It does not enable BYOK live generation or broad public launch.
+
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
