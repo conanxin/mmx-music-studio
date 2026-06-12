@@ -175,6 +175,28 @@ assert "! grep -qE 'minimax' '$ROOT/src/features/studio/ByokPanel.tsx' || grep -
 assert "! grep -qE 'music_generation|generateMusic|createWriteStream' '$ROOT/src/features/studio/ByokPanel.tsx'" \
   "no music generation in ByokPanel"
 
+# ── Phase H1-Hotfix-A: site-key normalization + propagation ──────────────
+
+# 24. ByokPanel normalizes site key (trim + length check, not startsWith 0x)
+assert "grep -q 'normalizedTurnstileSiteKey' '$ROOT/src/features/studio/ByokPanel.tsx'" \
+  "ByokPanel normalizes site key with trim"
+
+# 25. ByokPanel does NOT reject 1x... Cloudflare test keys
+assert "grep -q '1x' '$ROOT/src/features/studio/ByokPanel.tsx' || grep -q 'length > 0' '$ROOT/src/features/studio/ByokPanel.tsx'" \
+  "ByokPanel accepts any non-empty key (including 1x test keys)"
+
+# 26. Studio.tsx loads FULL health object (not a subset reducer)
+assert "grep -q 'setHealthInfo(h)' '$ROOT/src/features/studio/Studio.tsx'" \
+  "Studio.tsx loads full health object so turnstileSiteKey propagates"
+
+# 27. /api/health returns publicByokEnabled (H1 hotfix)
+assert "grep -q 'publicByokEnabled: config.publicByokEnabled' '$ROOT/server/index.ts'" \
+  "/api/health returns publicByokEnabled"
+
+# 28. No secret/token/Authorization leak in any modified source
+assert "! grep -qE 'TURNSTILE_SECRET_KEY=|Authorization: Bearer|sk-[A-Za-z0-9]{20,}' '$ROOT/src/features/studio/ByokPanel.tsx'" \
+  "ByokPanel contains no secret/token/Authorization leak"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 

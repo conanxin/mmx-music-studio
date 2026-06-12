@@ -549,23 +549,12 @@ export default function Studio({
     }, 2000);
   }
 
+  // Phase H1-Hotfix-A: Load full health object so every field (including
+  // turnstileSiteKey, turnstileByokRequired, etc.) propagates to child
+  // components.  Subset reducers silently drop new fields.
   useEffect(() => {
     getHealth().then(h => {
-      setHealthInfo({
-        backend: h.backend,
-        realGenerationEnabled: h.realGenerationEnabled,
-        mockGenerationEnabled: h.mockGenerationEnabled,
-        previewAccessEnabled: h.previewAccessEnabled,
-        byokEnabled: h.byokEnabled,
-        // Phase H1: public BYOK kill-switch (boolean only).
-        publicByokEnabled: h.publicByokEnabled,
-        realApiAttemptLimitEnabled: h.realApiAttemptLimitEnabled,
-        realApiDailyAttemptLimit: h.realApiDailyAttemptLimit,
-        remainingRealApiAttempts: h.remainingRealApiAttempts,
-        dailyQuotaEnabled: h.dailyQuotaEnabled,
-        dailyGenerationUsed: h.dailyGenerationUsed,
-        remainingDailyGenerations: h.remainingDailyGenerations,
-      });
+      setHealthInfo(h);
     });
   }, []);
 

@@ -267,7 +267,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // Avoid double-initialisation under React 18 StrictMode dev double-render.
   const widgetInitInFlightRef = useRef<boolean>(false);
 
-  const turnstileConfigured = !!props.turnstileSiteKey;
+  // Phase H1-Hotfix-A: defensive normalization — accept any non-empty string,
+  // including Cloudflare test keys (1x...), invisible keys (0x...), etc.
+  const normalizedTurnstileSiteKey = props.turnstileSiteKey?.trim() ?? '';
+  const turnstileConfigured = normalizedTurnstileSiteKey.length > 0;
   const turnstileEnforced =
     turnstileConfigured && props.turnstileByokRequired === true;
 
@@ -295,7 +298,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
         }
         widgetInitInFlightRef.current = true;
         const id = window.turnstile.render(widgetContainerRef.current, {
-          sitekey: props.turnstileSiteKey as string,
+          // Phase H1-Hotfix-A: use the normalized (trimmed) key so the widget
+          // receives a clean string even if the server response has stray
+          // whitespace.
+          sitekey: normalizedTurnstileSiteKey,
           callback: (token: string) => {
             setTurnstileToken(token);
             setTurnstileUiState('verified');
@@ -335,7 +341,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       widgetInitInFlightRef.current = false;
       setTurnstileToken('');
     };
-  }, [enabled, turnstileConfigured, props.turnstileSiteKey]);
+  }, [enabled, turnstileConfigured, normalizedTurnstileSiteKey]);
 
   // Clear token when the panel is disabled so stale tokens don't linger.
   useEffect(() => {
