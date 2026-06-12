@@ -531,3 +531,21 @@ Fixes an uncaught TypeError (`Cannot read properties of undefined
 Re-verified under safe default: `byok_generation_disabled` returned,
 `byokSubmitsReceived` 0 → 2, `byokLastSubmitStage=killswitch_off`,
 no uncaught TypeError, no MiniMax call, no music, no secret leak.
+BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-3 — single-T1 controlled submit + unconditional rollback
+
+* Evidence: docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY3_20260613.md
+* Smoke: scripts/byok-h3b-live-t1-micropilot-retry3-smoke-test.sh (38/38 PASS)
+* Window: 2026-06-13 07:39:45 → 08:39:45 (Asia/Shanghai)
+* WINDOW_ID: h3b-20260613-t1-retry3-073945
+* Hardened live gate ON; one-shot guard = 1 attempt / window; submit observability ON
+* T1 submitted twice (counter 0→4); both reached server, both `modeCandidate=live`,
+  both blocked at `audio_quota_rejected` (not `byok_live_attempt_limit_reached`)
+* No MiniMax call (`byokLiveAttemptsUsed=0`, `realApiAttemptsUsed=0`)
+* No music generated (`dailyGenerationUsed=0`, generated audio count = 0)
+* T2/T3/T4/T5 not run
+* Unconditional rollback to safe default at 07:48:06; post-rollback
+  `byok_generation_disabled` confirmed
+* Final口径: BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-3 executed at most one
+  controlled BYOK live generation for T1 using the hardened live gate,
+  one-shot guard, and submit observability, then restored safe default.
+  It does not broaden public launch.
