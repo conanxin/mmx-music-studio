@@ -373,6 +373,19 @@ Recommended H2C pilot flow (operator checklist):
 - **Smoke test**: `bash scripts/byok-h3a-controlled-live-pilot-planning-smoke-test.sh` (35/35 PASS, `BYOK_H3A_CONTROLLED_LIVE_PILOT_PLANNING_SMOKE_PASS`).
 - **H3B (execution) is a separate phase** and is not authorised by this plan. H3B requires (a) the operator approval phrase, (b) the Go/No-Go checklist fully satisfied, (c) cost ceiling observability verified, (d) circuit breaker tested, (e) rollback drill completed.
 
+### In-flight phase: Phase BYOK-H3B-PREFLIGHT — Controlled Live Pilot Pre-Flight Runbook (current focus)
+
+- **Status**: PRE-FLIGHT RUNBOOK ONLY. This is a runbook, not a live execution authorisation. H3B-PREFLIGHT does not enable BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience, and does not modify production environment.
+- **Env change in this phase**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **Runbook doc**: [docs/launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md](launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md) (15 sections + appendix, ~365 lines)
+- **Approval phrase**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` (must be sent in review channel; the runbook itself is NOT approval; per-window re-approval required).
+- **Runbook sections covered**: purpose, approval, pre-flight prerequisites, environment baseline, Go/No-Go, cost ceiling, circuit breaker, rollback drill, live window operating rules, tester instructions, monitoring commands, provider call boundary, incident response, handoff placeholder, final no-live statement.
+- **Smoke test**: `bash scripts/byok-h3b-preflight-runbook-smoke-test.sh` (26/26 PASS, `BYOK_H3B_PREFLIGHT_RUNBOOK_SMOKE_PASS`).
+- **H3B execution is still NOT authorised.** A separate `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` will be written only after explicit operator approval and Go/No-Go fully satisfied. That file does NOT exist yet; its absence is the default state.
+
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

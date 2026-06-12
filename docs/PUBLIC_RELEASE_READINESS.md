@@ -95,6 +95,17 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 
 **关键口径**: BYOK-H3A prepares the controlled live pilot plan. It does not enable BYOK live generation or broad public launch.
 
+**Phase BYOK-H3B-PREFLIGHT**: Controlled Live Pilot Pre-Flight Runbook — ✅ **H3B_PREFLIGHT_RUNBOOK_COMPLETE** (pre-flight runbook only, no env change, no live, no music, no public launch).
+
+- **Status**: PRE-FLIGHT RUNBOOK ONLY. This is a runbook, not a live execution authorisation. H3B-PREFLIGHT does not enable BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience, and does not modify production environment.
+- **未启用 BYOK live · 未发起 broad public launch** — H3B-PREFLIGHT 只准备 runbook, 不打开 live 通道, 不发起 launch.
+- **Runbook doc**: [`docs/launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md`](../launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md) (15 sections + appendix: purpose, required approval, pre-flight prerequisites, environment baseline, Go/No-Go checklist, cost ceiling, circuit breaker commands, rollback drill, live window operating rules, tester instructions, monitoring commands, provider call boundary, incident response, H3B execution handoff placeholder, final no-live statement).
+- **Approval phrase**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` (per-window, in review channel; the runbook itself is NOT approval).
+- **H3B execution is still NOT authorised.** A separate `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md` will be written only after explicit operator approval + Go/No-Go fully satisfied. That file does NOT exist yet; its absence is the default state.
+- **Smoke test**: `scripts/byok-h3b-preflight-runbook-smoke-test.sh` (26/26 PASS, `BYOK_H3B_PREFLIGHT_RUNBOOK_SMOKE_PASS`).
+
+**关键口径**: BYOK-H3B-PREFLIGHT prepares the controlled live pilot runbook. It does not enable BYOK live generation or broad public launch.
+
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

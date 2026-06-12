@@ -429,3 +429,21 @@ H3B is **not** included in this plan and **must not** be inferred from this plan
 ## Appendix A: Change log
 
 - 2026-06-12: Initial H3A plan (planning only) created. Status: `BYOK_H3A_CONTROLLED_LIVE_PILOT_PLANNING_SMOKE_PASS` (when the matching smoke test passes). No live execution. Production remains in the H1 closeout safe default.
+
+
+---
+
+## 16. Companion: H3B Pre-Flight Runbook
+
+The companion runbook for H3B live execution is now available at:
+
+> [`docs/launch/BYOK_H3B_PREFLIGHT_RUNBOOK.md`](BYOK_H3B_PREFLIGHT_RUNBOOK.md) (15 sections + appendix, 26/26 smoke PASS, `BYOK_H3B_PREFLIGHT_RUNBOOK_SMOKE_PASS`).
+
+The runbook:
+
+- Defines the pre-flight checks, switches, monitoring, circuit breaker, and rollback drill that must be performed **before** H3B execution is considered.
+- Records the current safe default (no env change made by the runbook itself).
+- Carries the same approval phrase (`CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`) and final no-live statement.
+- Does **not** itself authorise a live pilot. The H3B execution instruction document (`docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`) does not exist yet; it will be written only after explicit operator approval.
+
+The H3A plan + H3B runbook together form the planning-and-pre-flight layer. They are necessary but not sufficient for H3B live execution. The execution layer requires its own approval, its own Go/No-Go verification, and its own drill evidence.
