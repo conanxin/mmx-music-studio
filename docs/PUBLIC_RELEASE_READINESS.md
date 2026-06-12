@@ -2,9 +2,38 @@
 
 > 文档版本：v0.4.31-alpha · 2026-06-12
 >
-> **Current Release: v0.4.31-alpha — Frontend Turnstile widget runtime for BYOK.** Deploy-CF-E adds the front-end half of the Cloudflare Turnstile integration: the browser can now obtain a verification token and submit it with `POST /api/generate/byok`. The server-side gate from Deploy-CF-D is unchanged. It does not enable broad public BYOK launch by itself. `TURNSTILE_BYOK_REQUIRED=false` by default. No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. The front-end does not import or reference `TURNSTILE_SECRET_KEY`. The token is never written to localStorage / sessionStorage / IndexedDB / URL query, and is never displayed in the DOM or console.log'd. Valid-token E2E verification requires a production deploy of this phase (local smoke cannot exercise a real Cloudflare widget without a real key + recognised origin); BYOK-H is gated on that E2E pass.
+> **Current Release: v0.4.31-alpha — Frontend Turnstile widget runtime for BYOK.** Deploy-CF-E adds the front-end half of the Cloudflare Turnstile integration: the browser can now obtain a verification token and submit it with `POST /api/generate/byok`. The server-side gate from Deploy-CF-D is unchanged. It does not enable broad public BYOK launch by itself. `TURNSTILE_BYOK_REQUIRED=true` post-H1 closeout (production-safe default; was `false` pre-H1). No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. The front-end does not import or reference `TURNSTILE_SECRET_KEY`. The token is never written to localStorage / sessionStorage / IndexedDB / URL query, and is never displayed in the DOM or console.log'd. Valid-token E2E verification requires a production deploy of this phase (local smoke cannot exercise a real Cloudflare widget without a real key + recognised origin); BYOK-H is gated on that E2E pass.
 
 **Current release**: v0.4.31-alpha
+
+**Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
+
+- **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
+- **Env change**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H1 valid-token browser E2E**: PASS (predecessor).
+- **Plan doc**: [docs/launch/BYOK_H2_DRY_RUN_PILOT_PLAN.md](launch/BYOK_H2_DRY_RUN_PILOT_PLAN.md)
+- **Smoke test**: `bash scripts/byok-h2-dry-run-pilot-planning-smoke-test.sh` (25/25 PASS)
+- **No release tag** created or moved. v0.4.31-alpha tag stays at `ee6a8a1`.
+
+What H2A delivers:
+
+- A complete **dry-run pilot plan**: 3–5 trusted testers, Chinese instructions, feedback template, monitoring checklist, rollback plan, Go/No-Go gates for H3.
+- A **smoke test** that asserts the plan is structurally correct and does not claim BYOK is now live.
+- **No production env change.** **No code change.** **No release tag.**
+
+What H2A does **not** deliver:
+
+- Pilot execution (that's H2C, separate phase, requires operator approval).
+- Live call (that's H3, separate phase, requires operator approval + cost ceiling + circuit breaker).
+
+Recommended H2 improvement (for H2B, separate commit):
+
+- Add a symmetric success-path redacted log line `[byok-turnstile-ok]` in `server/index.ts` so the operator can grep for the dry-run success path in the journal.
+
+**关键口径**: BYOK-H2A prepares the dry-run pilot plan for BYOK. It does not enable BYOK live generation or broad public launch.
 
 **Phase Release v0.4.31-alpha**: Frontend Turnstile widget runtime for BYOK — ✅ COMPLETED (2026-06-12).
   - Deploy-CF-E adds frontend Cloudflare Turnstile widget runtime integration

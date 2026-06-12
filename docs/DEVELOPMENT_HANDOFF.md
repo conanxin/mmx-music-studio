@@ -253,6 +253,35 @@
 - **Status**: Released as v0.4.31-alpha (commit pending this session)
 - **Next**: Release v0.4.31-alpha → deploy to production → valid-token E2E verification → BYOK-H small public launch planning only after E2E PASS.
 
+### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
+
+- **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
+- **Env change in this phase**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H1 valid-token browser E2E**: PASS (predecessor phase, closed).
+- **Plan doc**: [docs/launch/BYOK_H2_DRY_RUN_PILOT_PLAN.md](launch/BYOK_H2_DRY_RUN_PILOT_PLAN.md)
+- **Smoke test**: `bash scripts/byok-h2-dry-run-pilot-planning-smoke-test.sh` (25/25 PASS)
+
+What H2A delivers:
+
+- A complete **dry-run pilot plan**: 3–5 trusted testers, Chinese instructions, feedback template, monitoring checklist, rollback plan, Go/No-Go gates for H3.
+- A **smoke test** that asserts the plan is structurally correct and does not claim BYOK is now live.
+- **No production env change.** **No code change.** **No release tag.** The v0.4.31-alpha tag stays at `ee6a8a1`.
+
+What H2A does **not** deliver:
+
+- Pilot execution (that's H2C, separate phase, requires operator approval).
+- Live call (that's H3, separate phase, requires operator approval + cost ceiling + circuit breaker).
+- A new release tag.
+
+Recommended H2 improvement (for H2B, separate commit):
+
+- Add a symmetric success-path redacted log line `[byok-turnstile-ok]` in `server/index.ts` so the operator can grep for the dry-run success path in the journal. Without H2B, H2C must rely on UI evidence + server response for the success signal.
+
+**关键口径**: BYOK-H2A prepares the dry-run pilot plan for BYOK. It does not enable BYOK live generation or broad public launch.
+
 ### In-flight phase: none — Phase Release v0.4.25-alpha closed (2026-06-11)
 
 - **Phase Release v0.4.25-alpha** (Phase Storage-B0 promoted to release) — ✅ closed2026-06-11.
