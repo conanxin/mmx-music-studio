@@ -1804,10 +1804,23 @@ async function handleByokGenerate(
       secret: process.env.TURNSTILE_SECRET_KEY ?? '',
       remoteIp,
       expectedAction: 'byok-generate',
+      requestId,
     });
     if (!turnstileResult.ok) {
       const errorCode = turnstileResult.errorCode ?? 'turnstile_verification_error';
-      console.warn(`[byok] turnstile verification failed [${requestId}]:`, turnstileResult.details);
+      // Phase H1-Hotfix-C: redacted diagnostics — no token, no secret, no apiKey
+      if (turnstileResult.redacted) {
+        const r = turnstileResult.redacted;
+        console.warn(
+          `[byok-turnstile-debug] requestId=${r.requestId} tokenLength=${r.tokenLength} ` +
+          `tokenSha256_8=${r.tokenSha256_8} cloudflareSuccess=${r.cloudflareSuccess} ` +
+          `cloudflareErrorCodes=[${r.cloudflareErrorCodes.join(',')}] ` +
+          `hostname=${r.hostname ?? 'missing'} action=${r.action ?? 'missing'} ` +
+          `cdata=${r.cdata ?? 'missing'} outcome=${errorCode}`,
+        );
+      } else {
+        console.warn(`[byok] turnstile verification failed [${requestId}]:`, turnstileResult.details);
+      }
       sendJson(res, 403, {
         ok: false,
         code: errorCode,
