@@ -465,3 +465,11 @@ These guardrails are intended for public alpha protection. They are not a replac
 - **Cohort slots**: anonymous T1-T5 only; no tester PII is committed to the repository.
 - **Pilot window**: NOT SCHEDULED; approval phrase NOT RECEIVED.
 - **This phase does not open the live gate.**
+
+BYOK-H3B-WINDOW-LOCK readiness note
+
+- Window-lock evidence: `docs/launch/BYOK_H3B_WINDOW_LOCK_20260613.md`
+- Approval phrase: RECEIVED
+- Tester cohort: T1–T5 confirmed anonymous slots only
+- Pilot window: 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai)
+- This phase does not open the live gate.

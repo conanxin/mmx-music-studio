@@ -188,3 +188,11 @@ The tester cohort and pilot-window planning follow-up has been recorded here:
 - docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md
 
 This follow-up does not change the Go/No-Go decision. The H3B live execution decision remains NO-GO until the tester cohort is finalized, the pilot window is scheduled, and the explicit operator approval phrase is received.
+
+## Appendix D. H3B-WINDOW-LOCK follow-up
+
+The tester cohort and pilot window have been locked here:
+
+- `docs/launch/BYOK_H3B_WINDOW_LOCK_20260613.md`
+
+Approval phrase is now received, T1–T5 are confirmed anonymous slots, and the pilot window is 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai). This follow-up does not execute live generation and does not change production env by itself.

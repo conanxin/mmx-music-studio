@@ -235,3 +235,11 @@ This plan is companion to:
 | Circuit breaker | The one-shot kill switch that flips all live flags back to safe default |
 | Redacted summary | Summary containing only counts / durations / status flags, no key / PII / audio body |
 | PII | Personally identifiable information (name / email / phone / social ID) |
+
+## Appendix C. H3B-WINDOW-LOCK follow-up
+
+The final tester cohort and pilot window lock has been recorded here:
+
+- `docs/launch/BYOK_H3B_WINDOW_LOCK_20260613.md`
+
+T1–T5 are confirmed as anonymous slots. Pilot window: 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai). No tester PII is committed. This follow-up does not execute live generation.

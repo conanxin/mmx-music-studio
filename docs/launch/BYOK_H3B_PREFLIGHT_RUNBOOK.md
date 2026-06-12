@@ -432,3 +432,11 @@ The Phase BYOK-H3B-COHORT planning companion to this runbook is:
 | 20260613 | BYOK-H3B-GONO | NO-GO recorded | approval phrase not received |
 | 20260613 | BYOK-H3B-DRILL | DRILL PASSED | rollback drill evidence recorded |
 | 20260613 | BYOK-H3B-PREFLIGHT | PASSED | 26/26 smoke + 18-sections runbook |
+
+## 19. H3B-WINDOW-LOCK — Tester cohort and pilot window locked
+
+The final tester cohort and pilot window gate has been recorded:
+
+- `docs/launch/BYOK_H3B_WINDOW_LOCK_20260613.md`
+
+T1–T5 are confirmed as anonymous tester slots. No tester PII is committed. The pilot window is 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai). This enables authoring a separate H3B execution instruction document, but it does not execute live generation by itself.
