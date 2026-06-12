@@ -127,6 +127,82 @@ Per-tester rules:
 > `BYOK_LIVE_WINDOW_ID` (e.g. from `h3b-20260613-t1` to
 > `h3b-20260613-t2`).
 
+## 4b. Submit observability (Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP)
+
+To distinguish "browser never reached server" from "server received and
+blocked at gate X" in future live retries, the BYOK submit handler
+emits a redacted `[byok-submit-received]` log line at the very first
+statement of `handleByokGenerate`, **before any early return**. It also
+records a cumulative in-memory `ByokSubmitObservabilityStats` snapshot
+exposed via `/api/health`. The telemetry is **strictly non-sensitive**:
+only booleans, enum strings, the request id, and an ISO timestamp are
+logged and surfaced.
+
+New health fields (boolean / enum / ISO / integer / requestId only — no
+apiKey, no token, no prompt, no lyrics, no Authorization, no provider
+raw response):
+
+- `byokSubmitsReceived` (integer, cumulative since process boot)
+- `byokLastSubmitAt` (ISO timestamp of the most recent submit, or empty)
+- `byokLastSubmitStage` (enum: `received` / `killswitch_off` /
+  `body_parse_failed` / `turnstile_missing` / `turnstile_failed` /
+  `audio_quota_rejected` / `live_attempt_blocked` /
+  `live_confirmation_mismatch` / `fake_relay_ok` / `live_relay_ok` /
+  `provider_error` / `invalid_input`)
+- `byokLastSubmitOutcome` (enum)
+- `byokLastSubmitRequestId` (requestId, no key inside)
+- `byokLastSubmitModeCandidate` (`live` / `fake` / `unknown`)
+- `byokLastSubmitTurnstilePresent` (boolean)
+- `byokLastSubmitApiKeyPresent` (boolean — length only, value never
+  logged)
+- `byokLastSubmitPromptPresent` (boolean)
+
+The counter is in-memory only; it resets when the process restarts. It
+is not persisted to disk, and never carries the apiKey, token, prompt,
+lyrics, or any provider raw response.
+
+### 4b.1 Safe-default probe (Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP-HOTFIX)
+
+The submit-observability instrumentation was hardened after a pre-merge
+production probe hit an uncaught TypeError (`Cannot read properties of
+undefined (reading 'length')`). The original code in `handleByokGenerate`
+probed `req.headers['x-turnstile-token']` via a `as string` cast on the
+**raw** header value (which can be `undefined` or `string[]`), then
+read `.length`. When the header was absent, the cast did not coerce, and
+`undefined.length` raised.
+
+**Fixes applied**:
+
+1. Three safe helpers added in `server/index.ts`:
+   `safeString(value)` / `safeStringLength(value)` / `safeHeaderString(value)`.
+2. The header probe rewritten as
+   `safeHeaderString(req.headers['x-turnstile-token']).length > 0`.
+3. The body `apiKey` probe rewritten as `safeStringLength(body.apiKey) > 0`.
+4. The initial observability state (`SUBMIT_OBSERVABILITY_EMPTY` in
+   `server/adapters/minimax-api/byok.ts`) no longer carries
+   `stage='received' / outcome='allowed'` — these are now empty strings,
+   so `/api/health` does not mislead operators when no submit has ever
+   been received.
+5. A new enum value `ByokSubmitStage = 'unhandled_error'` is reserved
+   for any future uncaught-error observability path.
+
+**Verified behavior under safe default** (POST `/api/generate/byok` with
+a fake `sk-FAKE-...` key while production is in safe default):
+
+- response `code` = `byok_generation_disabled` ✓
+- `byokSubmitsReceived` increments from 0 → 2 (one `received` + one
+  `killswitch_off` record) ✓
+- `byokLastSubmitStage` = `killswitch_off` ✓
+- `byokLastSubmitOutcome` = `blocked_killswitch_off` ✓
+- `[byok-submit-received]` log line fires in journal ✓
+- no uncaught TypeError ✓
+- no MiniMax call, no music generated, no secret leak ✓
+
+Operator monitoring must include: if `byokSubmitsReceived` increases
+but the tester's UI shows an error, check `byokLastSubmitStage` to see
+which gate rejected the submit; this is the primary way to diagnose
+"client-side fake/dry-run" vs "server-side live-gate" behavior.
+
 ## 5. Monitoring checklist (operator runs every ~5 min during the window)
 
 - [ ] request count vs planned;

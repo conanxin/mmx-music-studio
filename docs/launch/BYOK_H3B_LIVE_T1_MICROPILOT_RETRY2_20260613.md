@@ -189,3 +189,75 @@ test source — a deliberate negative-assertion string, not a secret leak.)
    set, and an operator present for the full 60 minutes.
 5. Do not broaden the live window to T2–T5 until the post-mortem above is
    complete and a new approval phrase is recorded.
+
+## 10. Observability gap and follow-up
+
+The "no server-observable artifact despite T1 reporting a single
+submission" outcome revealed an observability gap: the BYOK submit
+handler logged nothing at the route entry, and `byokLiveAttemptsUsed`
+only counted live-mode attempts that passed the one-shot guard. A
+submit rejected at Turnstile, or a submit whose `mode` was `fake` (the
+adapter default when no live mode is requested), would be invisible to
+both `byokLiveAttemptsUsed` and to the operator's journal scan.
+
+The T1 screenshot showed `byok_fake_relay_ok` / `source: byok-fake`,
+which means the submit reached the server and the BYOK adapter ran in
+**fake mode** (no provider call). The hardened live gate and one-shot
+guard worked correctly; what was missing was telemetry at the route
+entry and a non-mode-discriminating submit counter.
+
+This observability gap is closed by **Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP**
+(separate commit), which adds:
+
+- A redacted `[byok-submit-received]` log line at the **first**
+  statement of `handleByokGenerate`, before any early return.
+- A cumulative in-memory `byokSubmitsReceived` counter (and related
+  `byokLastSubmitStage` / `byokLastSubmitOutcome` / `byokLastSubmitModeCandidate`
+  fields) exposed via `/api/health`.
+- Strict non-sensitive policy: only booleans, enum strings, request id,
+  and ISO timestamp are logged; never apiKey, token, prompt, lyrics, or
+  raw provider response.
+
+The counter is in-memory only and resets on process restart. It is not
+persisted to disk.
+
+### 10.1 Hotfix: runtime .length error (Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP-HOTFIX)
+
+A pre-merge production probe (POST `/api/generate/byok` with a fake
+`sk-FAKE-...` key under safe default) revealed an uncaught TypeError
+emitted at server scope:
+
+```
+[server] uncaught [req_3120e99de4e2]: Cannot read properties of undefined
+  (reading 'length')
+```
+
+Root cause: `handleByokGenerate` (Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP)
+probed `req.headers['x-turnstile-token']` via `(x as string).length`,
+where the cast did not coerce a missing or `string[]` header. The
+expression evaluated to `undefined.length` and raised BEFORE
+`recordByokSubmit` could fire — which is why `byokSubmitsReceived` stayed
+at 0 across the probe.
+
+The hotfix shipped:
+
+1. `safeString` / `safeStringLength` / `safeHeaderString` helpers in
+   `server/index.ts`.
+2. Header probe rewritten as
+   `safeHeaderString(req.headers['x-turnstile-token']).length > 0`.
+3. Body `apiKey` probe rewritten as `safeStringLength(body.apiKey) > 0`.
+4. `SUBMIT_OBSERVABILITY_EMPTY` initial state no longer carries
+   `stage='received' / outcome='allowed'` — empty strings prevent
+   misleading `/api/health` output before any real submit.
+5. New enum value `ByokSubmitStage = 'unhandled_error'` reserved for
+   future top-level catch paths.
+
+**Re-verified behavior under safe default**:
+
+- `byok_generation_disabled` returned (unchanged)
+- `byokSubmitsReceived`: 0 → 2 (received + killswitch_off)
+- `byokLastSubmitStage`: `''` → `killswitch_off`
+- `byokLastSubmitOutcome`: `''` → `blocked_killswitch_off`
+- `[byok-submit-received]` log line present in journal
+- no uncaught TypeError
+- no MiniMax call, no music, no secret leak

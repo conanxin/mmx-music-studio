@@ -305,3 +305,117 @@ export function consumeByokLiveAttempt(
   }
   return getByokLiveAttemptStats(config);
 }
+
+// ── Submit observability (in-memory, non-persistent) ────────────────────────
+//
+// Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP. Records that a BYOK submit hit the
+// server so future live retries can distinguish "browser never reached server"
+// from "server received but blocked at gate X". NEVER stores user key, token,
+// auth headers, prompt, lyrics, or raw provider response. Counter resets on
+// process restart; never persisted to disk.
+
+export type ByokSubmitStage =
+  | 'received'
+  | 'killswitch_off'
+  | 'body_parse_failed'
+  | 'turnstile_missing'
+  | 'turnstile_failed'
+  | 'audio_quota_rejected'
+  | 'live_attempt_blocked'
+  | 'live_confirmation_mismatch'
+  | 'fake_relay_ok'
+  | 'live_relay_ok'
+  | 'provider_error'
+  | 'invalid_input'
+  | 'unhandled_error';
+
+export type ByokSubmitOutcome =
+  | 'allowed'
+  | 'blocked_killswitch_off'
+  | 'blocked_body_parse'
+  | 'blocked_turnstile'
+  | 'blocked_audio_quota'
+  | 'blocked_live_attempt_limit'
+  | 'blocked_live_confirmation_mismatch'
+  | 'fake_relay_ok'
+  | 'live_relay_ok'
+  | 'live_relay_provider_error'
+  | 'invalid_input';
+
+export interface ByokSubmitObservabilityStats {
+  /** Total number of submit calls received by the server (cumulative, in-memory). */
+  submitsReceived: number;
+  /** ISO timestamp of the last submit, or empty string if never. */
+  lastSubmitAt: string;
+  /** Pipeline stage of the last submit (enum). */
+  lastSubmitStage: ByokSubmitStage;
+  /** Outcome classification of the last submit (enum). */
+  lastSubmitOutcome: ByokSubmitOutcome;
+  /** Request id of the last submit (already redacted — never includes a key). */
+  lastSubmitRequestId: string;
+  /** Whether the last submit's input looked like a live-mode attempt. */
+  lastSubmitModeCandidate: 'live' | 'fake' | 'unknown';
+  /** Whether the last submit carried a Turnstile token. */
+  lastSubmitTurnstilePresent: boolean;
+  /** Whether the last submit included an apiKey field (length only; value NEVER logged). */
+  lastSubmitApiKeyPresent: boolean;
+  /** Whether the last submit included a non-empty prompt (length only; value NEVER logged). */
+  lastSubmitPromptPresent: boolean;
+}
+
+const SUBMIT_OBSERVABILITY_EMPTY: ByokSubmitObservabilityStats = {
+  submitsReceived: 0,
+  lastSubmitAt: '',
+  // Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP-HOTFIX: initial stage/outcome
+  // must be empty (NOT 'received' / 'allowed') so health output is not
+  // misleading before any submit has actually been processed.
+  lastSubmitStage: '' as ByokSubmitStage,
+  lastSubmitOutcome: '' as ByokSubmitOutcome,
+  lastSubmitRequestId: '',
+  lastSubmitModeCandidate: 'unknown',
+  lastSubmitTurnstilePresent: false,
+  lastSubmitApiKeyPresent: false,
+  lastSubmitPromptPresent: false,
+};
+
+let submitObservabilityState: ByokSubmitObservabilityStats = {
+  ...SUBMIT_OBSERVABILITY_EMPTY,
+};
+
+export interface RecordByokSubmitInput {
+  requestId: string;
+  stage: ByokSubmitStage;
+  outcome: ByokSubmitOutcome;
+  modeCandidate: 'live' | 'fake' | 'unknown';
+  turnstilePresent: boolean;
+  apiKeyPresent: boolean;
+  promptPresent: boolean;
+}
+
+/**
+ * Record a single submit event. In-memory only. NEVER logs the apiKey, token,
+ * prompt, lyrics, or any provider raw response — only booleans + enums.
+ */
+export function recordByokSubmit(input: RecordByokSubmitInput): void {
+  submitObservabilityState = {
+    submitsReceived: submitObservabilityState.submitsReceived + 1,
+    lastSubmitAt: new Date().toISOString(),
+    lastSubmitStage: input.stage,
+    lastSubmitOutcome: input.outcome,
+    lastSubmitRequestId: input.requestId,
+    lastSubmitModeCandidate: input.modeCandidate,
+    lastSubmitTurnstilePresent: input.turnstilePresent,
+    lastSubmitApiKeyPresent: input.apiKeyPresent,
+    lastSubmitPromptPresent: input.promptPresent,
+  };
+}
+
+/** Read-only snapshot for /api/health. Pure. */
+export function getByokSubmitObservability(): ByokSubmitObservabilityStats {
+  return { ...submitObservabilityState };
+}
+
+/** Reset to empty (test-only convenience). */
+export function _resetByokSubmitObservabilityForTests(): void {
+  submitObservabilityState = { ...SUBMIT_OBSERVABILITY_EMPTY };
+}

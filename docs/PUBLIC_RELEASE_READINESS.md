@@ -481,3 +481,53 @@ BYOK-H3B-EXEC-INSTRUCTIONS readiness note
 - T1–T5 are confirmed anonymous slots; pilot window is locked (2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00, Asia/Shanghai).
 - The execution instructions document itself does not open the live gate; it only records the steps.
 - Live execution requires a separate operator action after re-validating the window.
+
+**Phase BYOK-H3B-CODE-FOLLOWUP**: Live Gate Hardening — ✅ CODE FOLLOWUP COMPLETE.
+
+- **Status**: CODE FOLLOWUP ONLY. Centralised `BYOK_LIVE_CONFIRMATION_PHRASE`; added server-side one-shot guard; added 5+1 new `/api/health` live-gate fields.
+- This phase does not enable BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience, and does not modify production environment.
+- **Smoke test**: `scripts/byok-h3b-code-followup-smoke-test.sh` (53/53 PASS, `BYOK_H3B_CODE_FOLLOWUP_SMOKE_PASS`).
+
+**Phase BYOK-H3B-LIVE-T1-MICROPILOT**: First Controlled Live Attempt — ✅ WINDOW EXECUTED + ROLLED BACK.
+
+- **Status**: WINDOW-LOCKED + T1-ONLY LIVE ATTEMPT. Hardened live gate and one-shot guard verified. T1's submit returned `byok_live_attempt_limit_reached` on retry; no second live call reached MiniMax. Unconditional rollback executed; production safe default re-verified.
+- Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_20260613.md`.
+- **Approval phrase**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` already received for the broader H3B pilot plan, but the single-shot T1 attempt is a separate operator-attended window.
+
+**Phase BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-2**: Second Controlled Live Attempt — ✅ WINDOW EXECUTED + ROLLED BACK.
+
+- **Status**: WINDOW-LOCKED + T1-ONLY LIVE ATTEMPT, REVISITED. T1 reported a single submission; server-side observed only `byok_fake_relay_ok` (fake path, no provider call); `byokLiveAttemptsUsed` remained 0. Unconditional rollback executed; production safe default re-verified.
+- Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY2_20260613.md`.
+- **Smoke test**: `scripts/byok-h3b-live-t1-micropilot-retry2-smoke-test.sh` (33/33 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY2_SMOKE_PASS`).
+- **Observability gap discovery**: the BYOK submit handler logged nothing at the route entry, and `byokLiveAttemptsUsed` only counted live-mode attempts. Closed in `Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP`.
+
+**Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP**: Submit Observability — ✅ CODE FOLLOWUP COMPLETE.
+
+- **Status**: CODE FOLLOWUP ONLY. Redacted `[byok-submit-received]` log line at the first statement of `handleByokGenerate`; 9 new `/api/health` fields (`byokSubmitsReceived` / `byokLastSubmitAt` / `byokLastSubmitStage` / `byokLastSubmitRequestId` / `byokLastSubmitOutcome` / `byokLastSubmitModeCandidate` / `byokLastSubmitTurnstilePresent` / `byokLastSubmitApiKeyPresent` / `byokLastSubmitPromptPresent`).
+- Strict non-sensitive policy: only booleans, enum strings, requestId, ISO timestamp — never apiKey, token, prompt, lyrics, or raw provider response.
+- Counter is in-memory only; resets on process restart; never persisted to disk.
+- This phase does not enable BYOK live generation, does not call MiniMax, does not generate music, does not open BYOK to a broad public audience, and does not modify production environment.
+- Closes the observability gap discovered in `Phase BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-2`.
+- **Smoke test**: `scripts/byok-h3b-observability-followup-smoke-test.sh` (output: `BYOK_H3B_OBSERVABILITY_FOLLOWUP_SMOKE_PASS`).
+
+**关键口径**: BYOK-H3B-OBSERVABILITY-FOLLOWUP adds redacted submit-received telemetry so future live retries can distinguish client-side fake/dry-run behavior from server-side live-gate handling. It does not execute BYOK live generation or broaden public launch.
+
+### BYOK-H3B-OBSERVABILITY-FOLLOWUP-HOTFIX (2026-06-13)
+
+Fixes an uncaught TypeError (`Cannot read properties of undefined
+(reading 'length')`) discovered during a safe-default production probe:
+
+- Three safe helpers added in `server/index.ts`:
+  `safeString` / `safeStringLength` / `safeHeaderString`.
+- Header probe rewritten as
+  `safeHeaderString(req.headers['x-turnstile-token']).length > 0`.
+- Body `apiKey` probe rewritten as `safeStringLength(body.apiKey) > 0`.
+- `SUBMIT_OBSERVABILITY_EMPTY` initial state no longer carries
+  `stage='received' / outcome='allowed'` — empty strings prevent
+  misleading `/api/health` output before any real submit.
+- New enum value `ByokSubmitStage = 'unhandled_error'` reserved for
+  future top-level catch paths.
+
+Re-verified under safe default: `byok_generation_disabled` returned,
+`byokSubmitsReceived` 0 → 2, `byokLastSubmitStage=killswitch_off`,
+no uncaught TypeError, no MiniMax call, no music, no secret leak.

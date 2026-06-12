@@ -119,6 +119,10 @@ import {
   checkByokLiveAttemptLimit,
   consumeByokLiveAttempt,
   isByokLiveConfirmationConfigured,
+  recordByokSubmit,
+  getByokSubmitObservability,
+  type ByokSubmitStage,
+  type ByokSubmitOutcome,
   type ByokModel,
 } from './adapters/minimax-api/byok.js';
 import {
@@ -765,6 +769,23 @@ async function handleHealth(
     byokLiveMaxAttemptsPerWindow: liveAttemptStats.maxAttempts,
     byokLiveAttemptsUsed: liveAttemptStats.attemptsUsed,
     byokLiveAttemptsRemaining: liveAttemptStats.remaining,
+    // Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP: submit observability counters.
+    // In-memory only; never persisted. Booleans/enums/ISO timestamp only —
+    // NEVER include apiKey, token, prompt, lyrics, or Authorization.
+    ...(() => {
+      const so = getByokSubmitObservability();
+      return {
+        byokSubmitsReceived: so.submitsReceived,
+        byokLastSubmitAt: so.lastSubmitAt,
+        byokLastSubmitStage: so.lastSubmitStage,
+        byokLastSubmitOutcome: so.lastSubmitOutcome,
+        byokLastSubmitRequestId: so.lastSubmitRequestId,
+        byokLastSubmitModeCandidate: so.lastSubmitModeCandidate,
+        byokLastSubmitTurnstilePresent: so.lastSubmitTurnstilePresent,
+        byokLastSubmitApiKeyPresent: so.lastSubmitApiKeyPresent,
+        byokLastSubmitPromptPresent: so.lastSubmitPromptPresent,
+      };
+    })(),
     // Phase Deploy-CF-D: Turnstile (boolean only, never secret value)
     turnstileByokRequired: config.turnstileByokRequired,
     turnstileSecretKeyConfigured: config.turnstileSecretKeyConfigured,
@@ -1759,6 +1780,21 @@ async function handleDebugCli(
  * - apiKey is never logged (redactObject is used in any error path)
  * - apiKey is never returned to the client
  */
+// ── BYOK submit observability safe helpers (Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP-HOTFIX) ──
+// These wrap the most common "length / presence" probes so a missing
+// header or undefined body field never raises a runtime TypeError.
+// NEVER echo the underlying value — only its length / presence.
+function safeString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+function safeStringLength(value: unknown): number {
+  return typeof value === 'string' ? value.length : 0;
+}
+function safeHeaderString(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
+  return typeof value === 'string' ? value : '';
+}
+
 interface ByokGenerateRequest {
   apiKey?: string;
   input?: unknown;
@@ -1782,8 +1818,45 @@ async function handleByokGenerate(
   res: http.ServerResponse,
   config: ServerConfig,
 ): Promise<void> {
+  // 0. Observability: log that a submit hit the server BEFORE any early
+  //    returns. Distinguishes "browser never reached server" from
+  //    "server received and blocked at gate X". NEVER logs the apiKey,
+  //    token, prompt, lyrics, or Authorization header.
+  const submitRequestId = `byok_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  const submitModeCandidate: 'live' | 'fake' | 'unknown' =
+    config.byokLiveEnabled === true && config.byokDryRunOnly === false
+      ? 'live'
+      : 'fake';
+  // We do not have a parsed body yet. Log only booleans we can derive
+  // from the Content-Type / content-length headers. Use safeHeaderString
+  // so an undefined / string[] header never throws.
+  const submitTurnstilePresent =
+    safeHeaderString(req.headers['x-turnstile-token']).length > 0;
+  console.log(
+    `[byok-submit-received] requestId=${submitRequestId} liveGateCandidate=${submitModeCandidate} turnstilePresent=${submitTurnstilePresent} apiKeyPresent=pending promptPresent=pending`,
+  );
+  // Provisional record (apiKey/prompt will be updated after body parse).
+  recordByokSubmit({
+    requestId: submitRequestId,
+    stage: 'received',
+    outcome: 'allowed',
+    modeCandidate: submitModeCandidate,
+    turnstilePresent: submitTurnstilePresent,
+    apiKeyPresent: false,
+    promptPresent: false,
+  });
+
   // 1. Kill switch: PUBLIC_BYOK_ENABLED must be true
   if (config.publicByokEnabled !== true) {
+    recordByokSubmit({
+      requestId: submitRequestId,
+      stage: 'killswitch_off',
+      outcome: 'blocked_killswitch_off',
+      modeCandidate: submitModeCandidate,
+      turnstilePresent: submitTurnstilePresent,
+      apiKeyPresent: false,
+      promptPresent: false,
+    });
     sendJson(res, 403, {
       ok: false,
       code: 'byok_generation_disabled',
@@ -1798,16 +1871,45 @@ async function handleByokGenerate(
   try {
     body = await parseBody<ByokGenerateRequest>(req, config.maxRequestBodyMb);
   } catch {
+    recordByokSubmit({
+      requestId: submitRequestId,
+      stage: 'body_parse_failed',
+      outcome: 'blocked_body_parse',
+      modeCandidate: submitModeCandidate,
+      turnstilePresent: submitTurnstilePresent,
+      apiKeyPresent: false,
+      promptPresent: false,
+    });
     sendError(res, 'unknown', '无效请求体');
     return;
   }
 
-  const requestId = `byok_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  // Update provisional record with body-derived booleans (NEVER value).
+  // Note: prompt/lyrics travel under `body.input` (untyped), so we only
+  // check apiKey presence here. Prompt presence detection requires a
+  // schema-specific probe; for the observability follow-up we record
+  // apiKey present (the sensitive field) and leave prompt to log-pending.
+  // Use safeStringLength so body.apiKey = undefined does not throw.
+  const submitApiKeyPresent = safeStringLength(body.apiKey) > 0;
+  console.log(
+    `[byok-submit-received] requestId=${submitRequestId} liveGateCandidate=${submitModeCandidate} turnstilePresent=${submitTurnstilePresent} apiKeyPresent=${submitApiKeyPresent} promptPresent=pending (post-parse)`,
+  );
+
+  const requestId = submitRequestId;
 
   // Phase Deploy-CF-D: Turnstile gate (before any live/direct path)
   if (config.turnstileByokRequired === true) {
     const turnstileToken = body.turnstileToken;
     if (!turnstileToken || typeof turnstileToken !== 'string') {
+      recordByokSubmit({
+        requestId: submitRequestId,
+        stage: 'turnstile_missing',
+        outcome: 'blocked_turnstile',
+        modeCandidate: submitModeCandidate,
+        turnstilePresent: false,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: false,
+      });
       sendJson(res, 403, {
         ok: false,
         code: 'turnstile_required',
@@ -1842,6 +1944,15 @@ async function handleByokGenerate(
       } else {
         console.warn(`[byok] turnstile verification failed [${requestId}]:`, turnstileResult.details);
       }
+      recordByokSubmit({
+        requestId: submitRequestId,
+        stage: 'turnstile_failed',
+        outcome: 'blocked_turnstile',
+        modeCandidate: submitModeCandidate,
+        turnstilePresent: true,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: false,
+      });
       sendJson(res, 403, {
         ok: false,
         code: errorCode,
@@ -1909,6 +2020,15 @@ async function handleByokGenerate(
           : 15),
       ),
     );
+    recordByokSubmit({
+      requestId: submitRequestId,
+      stage: 'audio_quota_rejected',
+      outcome: 'blocked_audio_quota',
+      modeCandidate: submitModeCandidate,
+      turnstilePresent: true,
+      apiKeyPresent: submitApiKeyPresent,
+      promptPresent: true,
+    });
     auditGenerationBlocked('launch_guard', '/api/generate/byok', getClientHashShort(req), getUserAgent(req));
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Retry-After', String(retryAfter));
@@ -1953,6 +2073,15 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
   console.warn(
     `[byok] live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokLiveConfirmation.length}`,
   );
+  recordByokSubmit({
+    requestId: submitRequestId,
+    stage: 'live_confirmation_mismatch',
+    outcome: 'blocked_live_confirmation_mismatch',
+    modeCandidate: 'live',
+    turnstilePresent: true,
+    apiKeyPresent: submitApiKeyPresent,
+    promptPresent: true,
+  });
   sendJson(res, 403, {
     ok: false,
     code: 'byok_live_confirmation_required',
@@ -1970,6 +2099,15 @@ if (!liveAttemptCheck.allowed) {
   console.warn(
     `[byok] live attempt limit reached [${requestId}]: window=${liveAttemptCheck.stats.windowId} used=${liveAttemptCheck.stats.attemptsUsed}/${liveAttemptCheck.stats.maxAttempts}`,
   );
+  recordByokSubmit({
+    requestId: submitRequestId,
+    stage: 'live_attempt_blocked',
+    outcome: 'blocked_live_attempt_limit',
+    modeCandidate: 'live',
+    turnstilePresent: true,
+    apiKeyPresent: submitApiKeyPresent,
+    promptPresent: true,
+  });
   sendJson(res, 403, {
     ok: false,
     code: 'byok_live_attempt_limit_reached',
@@ -2072,6 +2210,17 @@ if (!liveAttemptCheck.allowed) {
  });
 
  if (!adapterResult.ok) {
+   // Record the failure outcome (in-memory only).
+   const isLiveMode = adapterResult.generationSource === 'byok-live';
+   recordByokSubmit({
+     requestId: submitRequestId,
+     stage: isLiveMode ? 'provider_error' : 'invalid_input',
+     outcome: isLiveMode ? 'live_relay_provider_error' : 'invalid_input',
+     modeCandidate: isLiveMode ? 'live' : 'fake',
+     turnstilePresent: true,
+     apiKeyPresent: submitApiKeyPresent,
+     promptPresent: true,
+   });
    sendJson(res, 502, {
      ok: false,
      code: adapterResult.code,
@@ -2081,8 +2230,18 @@ if (!liveAttemptCheck.allowed) {
    return;
  }
 
- // 6e. Success. Return the relay result code. apiKey is never echoed.
- sendJson(res, 200, {
+// 6e. Success. Return the relay result code. apiKey is never echoed.
+const isLiveSuccess = adapterResult.generationSource === 'byok-live';
+recordByokSubmit({
+  requestId: submitRequestId,
+  stage: isLiveSuccess ? 'live_relay_ok' : 'fake_relay_ok',
+  outcome: isLiveSuccess ? 'live_relay_ok' : 'fake_relay_ok',
+  modeCandidate: isLiveSuccess ? 'live' : 'fake',
+  turnstilePresent: true,
+  apiKeyPresent: submitApiKeyPresent,
+  promptPresent: true,
+});
+sendJson(res, 200, {
    ok: true,
    code: adapterResult.code,
    message: adapterResult.message,

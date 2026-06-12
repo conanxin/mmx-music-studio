@@ -133,6 +133,10 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Phase BYOK-H3B-DRILL: dry-run rollback drill recorded (safe-default rewrite only; no live, no music, no public launch; `/api/generate/byok` returns `byok_generation_disabled`; `/ops` and `/api/status` still Cloudflare Access protected). Evidence: [`docs/launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md`](docs/launch/H3B_DRY_RUN_ROLLBACK_DRILL_20260613.md). H3B execution still requires `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`. |
 | Phase BYOK-H3B-GONO: Go/No-Go review (no env change, no live, no music, no public launch). Decision: **NO-GO for H3B live execution** because explicit operator approval phrase `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` has not been received. Tester cohort and pilot window are not finalized. H3B execution instructions are not yet authorized to be written. Review: [`docs/launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md`](docs/launch/BYOK_H3B_GO_NO_GO_REVIEW_20260613.md). |
 | Phase BYOK-H3B-COHORT: tester cohort + pilot window planning (no env change, no live, no music, no public launch). Anonymous slots T1-T5 (3 required, 2 optional), all currently `pending_consent`. Pilot window: `not scheduled`. Tester consent checklist + tester-facing message draft recorded. No PII committed to repo. Decision remains **NO-GO for H3B live execution** until tester cohort + pilot window + approval phrase are all satisfied. Plan: [`docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md`](docs/launch/BYOK_H3B_TESTER_COHORT_WINDOW_PLAN.md). |
+| Phase BYOK-H3B-CODE-FOLLOWUP: live gate hardening (centralised phrase + server-side one-shot guard, 5+1 new health fields). No env change, no live, no music, no public launch. [code-followup evidence: `docs/launch/BYOK_H3B_CODE_FOLLOWUP_20260613.md`]. |
+| Phase BYOK-H3B-LIVE-T1-MICROPILOT: first controlled live attempt (window locked, gate verified, T1 only, rolled back). [evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_20260613.md`] |
+| Phase BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-2: second controlled live attempt (T1 reported single submit, server-side observed only `byok_fake_relay_ok`/fake path, no live provider call, unconditional rollback). [evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY2_20260613.md`] |
+| Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP: redacted submit-received telemetry + 9 new health counters (boolean/enum/requestId/ISO only). Closes the `byok_fake_relay_ok` observability gap. No env change, no live, no music, no public launch. [smoke: `scripts/byok-h3b-observability-followup-smoke-test.sh`] |
 -- `/api/generate/byok` live/direct path now supports Turnstile verification.
 - `TURNSTILE_BYOK_REQUIRED=true` (post-H1 closeout — production-safe default; was `false` pre-H1).
 - This is **not** a broad public BYOK launch.
@@ -1029,3 +1033,23 @@ BYOK-H3B-EXEC-INSTRUCTIONS — H3B execution instructions recorded
 - Live-enabling plan, one-tester-at-a-time sequence (T1, T2, T3, T4 optional, T5 optional), monitoring checklist, circuit breaker, rollback after pilot, and stop conditions are all recorded.
 - No tester PII. No key persistence. No broad public launch.
 - Operator may proceed to H3B live execution **only after** re-confirming the window is still valid and re-running the pre-flight checks.
+
+### BYOK-H3B-OBSERVABILITY-FOLLOWUP-HOTFIX (2026-06-13)
+
+Fixes an uncaught TypeError (`Cannot read properties of undefined
+(reading 'length')`) discovered during a safe-default production probe:
+
+- Three safe helpers added in `server/index.ts`:
+  `safeString` / `safeStringLength` / `safeHeaderString`.
+- Header probe rewritten as
+  `safeHeaderString(req.headers['x-turnstile-token']).length > 0`.
+- Body `apiKey` probe rewritten as `safeStringLength(body.apiKey) > 0`.
+- `SUBMIT_OBSERVABILITY_EMPTY` initial state no longer carries
+  `stage='received' / outcome='allowed'` — empty strings prevent
+  misleading `/api/health` output before any real submit.
+- New enum value `ByokSubmitStage = 'unhandled_error'` reserved for
+  future top-level catch paths.
+
+Re-verified under safe default: `byok_generation_disabled` returned,
+`byokSubmitsReceived` 0 → 2, `byokLastSubmitStage=killswitch_off`,
+no uncaught TypeError, no MiniMax call, no music, no secret leak.
