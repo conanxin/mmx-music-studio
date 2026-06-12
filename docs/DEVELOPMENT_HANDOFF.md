@@ -1182,3 +1182,11 @@ BYOK-H3B-WINDOW-LOCK — Tester cohort and pilot window locked
 - T1–T5 are confirmed anonymous slots; real tester identities remain outside the repo.
 - Pilot window: 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai)
 - Live execution still requires a separate H3B execution instruction document.
+
+BYOK-H3B-EXEC-INSTRUCTIONS — H3B execution instructions recorded
+
+- Instructions: `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`
+- This phase is documentation only; it does not execute live generation.
+- Pre-flight checks, live-enabling plan, one-tester sequence, monitoring, circuit breaker, rollback, and stop conditions are all written.
+- No tester PII committed. No real MiniMax key committed. No authorization header committed.
+- Live execution still requires a separate operator action after the locked window is re-validated.

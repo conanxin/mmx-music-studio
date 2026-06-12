@@ -138,3 +138,11 @@ This phase:
 ## 12. Final no-live statement
 
 This H3B window-lock document does not enable BYOK live generation or broad public launch.
+
+## Appendix D. H3B-EXEC-INSTRUCTIONS follow-up
+
+The H3B execution instructions document has been written:
+
+- `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`
+
+This follow-up does not execute live generation and does not change production env. It only records the pre-flight checks, live-enabling plan, one-tester sequence, monitoring, circuit breaker, rollback, and stop conditions. Live execution requires a separate operator action after re-validating the locked window.

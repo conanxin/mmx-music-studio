@@ -440,3 +440,11 @@ The final tester cohort and pilot window gate has been recorded:
 - `docs/launch/BYOK_H3B_WINDOW_LOCK_20260613.md`
 
 T1–T5 are confirmed as anonymous tester slots. No tester PII is committed. The pilot window is 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai). This enables authoring a separate H3B execution instruction document, but it does not execute live generation by itself.
+
+## 20. H3B-EXEC-INSTRUCTIONS — H3B execution instructions recorded
+
+The H3B execution instructions document has been written:
+
+- `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`
+
+This is the execution instructions document, not execution itself. It records the final pre-flight checks, live-enabling plan, one-tester-at-a-time sequence (T1, T2, T3, T4 optional, T5 optional), per-tester constraints (own key only, no persistence, max 1–2 generations, stop on first provider error), monitoring checklist, circuit breaker, rollback after pilot, and stop conditions. This runbook does not grant live execution by itself; live execution requires a separate operator action after the locked window is re-validated.

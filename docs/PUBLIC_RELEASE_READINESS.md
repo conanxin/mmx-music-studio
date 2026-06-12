@@ -473,3 +473,11 @@ BYOK-H3B-WINDOW-LOCK readiness note
 - Tester cohort: T1–T5 confirmed anonymous slots only
 - Pilot window: 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai)
 - This phase does not open the live gate.
+
+BYOK-H3B-EXEC-INSTRUCTIONS readiness note
+
+- Instructions: `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`
+- This phase is documentation only; production env remains safe default.
+- T1–T5 are confirmed anonymous slots; pilot window is locked (2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00, Asia/Shanghai).
+- The execution instructions document itself does not open the live gate; it only records the steps.
+- Live execution requires a separate operator action after re-validating the window.

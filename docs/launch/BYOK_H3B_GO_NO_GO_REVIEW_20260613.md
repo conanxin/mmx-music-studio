@@ -196,3 +196,11 @@ The tester cohort and pilot window have been locked here:
 - `docs/launch/BYOK_H3B_WINDOW_LOCK_20260613.md`
 
 Approval phrase is now received, T1–T5 are confirmed anonymous slots, and the pilot window is 2026-06-13T04:45:04+08:00 → 2026-06-13T05:15:04+08:00 (Asia/Shanghai). This follow-up does not execute live generation and does not change production env by itself.
+
+## Appendix E. H3B-EXEC-INSTRUCTIONS follow-up
+
+The H3B execution instructions document has been written:
+
+- `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`
+
+This follow-up does not execute live generation and does not change production env. It only records the pre-flight checks, live-enabling plan, one-tester sequence, monitoring, circuit breaker, rollback, and stop conditions. Live execution requires a separate operator action after re-validating the window.
