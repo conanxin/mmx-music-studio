@@ -297,25 +297,27 @@ Recommended H2C pilot flow (operator checklist):
 
 **关键口径**: BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch.
 
-### In-flight phase: Phase BYOK-H2C — Dry-Run Pilot Execution (rolled back, runtime-only closeout)
+### In-flight phase: Phase BYOK-H2C — Dry-Run Pilot Execution (PASS, rolled back) — see [BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md](launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md)
 
-- **Status**: RUNTIME_READY_PARTIAL_ROLLED_BACK. Production restored to H1 closeout default. No repo commit; runtime-only closeout.
-- **H2C deploy**: H2B commit (`baaafd7`) deployed to production. MainPID cycled: 422764 → 428445.
+- **Status**: **H2C_DRY_RUN_PILOT_PASS_ROLLED_BACK** (real pilot executed, production rolled back to safe default).
+- **Pilot result**: 4/4 testers PASS. 4 unique `[byok-turnstile-ok]` success-path log lines observed. 0 `[byok-turnstile-debug]` during pilot window. 8-pattern leak audit ALL CLEAR. 0 live call, 0 MiniMax call, 0 music, 0 real MiniMax key.
+- **H2C deploy**: H2B commit (`baaafd7`) deployed to production. MainPID cycled: 422764 → 428445 (post-H2A) → 437656 (H2C pilot mode) → 441936 (post-rollback).
 - **H2C pilot runtime (temporary, since rolled back)**:
   - `PUBLIC_BYOK_ENABLED=true` (1 hour window, then rolled back)
   - `BYOK_DRY_RUN_ONLY=true`
   - `BYOK_DIRECT_LIVE_ENABLED=false`
   - `TURNSTILE_DEBUG_REDACTED=true`
-  - Drop-in file: `byok-test.conf` was temporarily rewritten; backup saved to `/tmp/byok-test.conf.h2c.bak`.
+  - Drop-in file: `byok-test.conf` was temporarily rewritten; backup saved to `/tmp/byok-test.conf.h2c-pilot.20260612_221511.bak`.
 - **H2C server-side verifications PASS** (in pilot window, before rollback):
   - `/api/health` → `publicByokEnabled=true, byokEnabled=false, hasServerKey=false` (dry-run gate, no live key)
   - `/api/generate/byok` no-token → `code=turnstile_required` (Turnstile gate, never reached MiniMax)
-  - H2B failure-path `[byok-turnstile-debug]` log line fired in production (3 requestIds observed: `byok_0021a2c943ac`, `byok_fc9ef121e221`, `byok_42c06184690b`) — redactor end-to-end verified, no leak
-- **H2C pilot execution: NOT actually run.** No real tester in real browser submitted a fresh Turnstile token. The H2B success-path `[byok-turnstile-ok]` log line was **not** observed in production (only the failure path was driven by sandbox curl with `XXXX.FAIL.TOKEN.XXXX`).
+  - **4 real success-path `[byok-turnstile-ok]` log lines** (4 unique requestIds: `byok_8d4ffa2fbe94`, `byok_717b3025da5a`, `byok_d7b73105d73c`, `byok_1a526bf40112`; all `hostname=music.conanxin.com`, all `action=byok-generate`, all `outcome=turnstile_ok`) — proves real-browser Turnstile flow works in production
+  - 0 `[byok-turnstile-debug]` during pilot window 22:05:05–22:08:32
+  - 8-pattern leak audit on 12 captured journal lines: ALL CLEAR
 - **H2C rollback executed**:
   - `byok-test.conf` reverted to 3-line safe default (`PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`)
   - `TURNSTILE_DEBUG_REDACTED` is now `<unset>` in process env (env fully cleared, debug off)
-  - `sudo systemctl daemon-reload && sudo systemctl restart mmx-music-studio` → MainPID 428445, active/running
+  - `sudo systemctl daemon-reload && sudo systemctl restart mmx-music-studio` → MainPID 441936, active/running
   - Residual journal watch (PID 424825) cleaned via `sudo pkill -9 -f "journalctl -u mmx-music-studio.*-f"`
 - **H2C post-rollback verifications PASS**:
   - `/api/health` → `publicByokEnabled=false, byokEnabled=false, hasServerKey=false` ✅
@@ -329,10 +331,12 @@ Recommended H2C pilot flow (operator checklist):
 - **Real MiniMax call**: None.
 - **Music generated**: None.
 - **Real user apiKey**: None.
-- **H2B success-path logging**: deployed but not yet observed from a real pilot.
+- **H2B success-path logging**: deployed and observed from 4 real testers in production.
 - **H2A dry-run pilot planning**: PASS_WITH_KNOWN_VALIDATION_EXCEPTION (predecessor).
+- **Full evidence report**: [`docs/launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md`](launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md)
+- **Smoke test**: `scripts/byok-h2c-final-evidence-smoke-test.sh` (asserts evidence doc contains all 4 requestIds, action metadata, lessons, and links).
 
-**关键口径**: BYOK-H2C was runtime-ready but pilot execution has not actually occurred. Production has been rolled back to safe default. BYOK live generation remains disabled.
+**关键口径**: BYOK-H2C completed a controlled dry-run pilot and rolled production back to safe default. It did not enable BYOK live generation or broad public launch.
 
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 

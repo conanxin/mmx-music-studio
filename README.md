@@ -124,6 +124,9 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Phase H1-Hotfix-D: client-side `action: 'byok-generate'` metadata added (widget → Cloudflare → server contract). |
 | Phase H1-Hotfix-E: real Turnstile credentials for dry-run E2E (real secret never in chat; mode 600 drop-in; lex-sort order audit). |
 | Phase H1 closeout: `PUBLIC_BYOK_ENABLED=false` restored; `turnstile-debug.conf` removed; real site/secret kept. |
+| Phase BYOK-H2A: dry-run pilot plan (plan doc only, no runtime change). |
+| Phase BYOK-H2B: success-path `[byok-turnstile-ok]` redacted logging for dry-run pilot observability. |
+| Phase BYOK-H2C: real dry-run pilot executed — **H2C_DRY_RUN_PILOT_PASS_ROLLED_BACK**. 4/4 testers PASS, 4 success-path logs, 0 failure during pilot, 0 leak, 0 live call, 0 music; production rolled back to safe default. Evidence: [`docs/launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md`](docs/launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md). |
 - `/api/generate/byok` live/direct path now supports Turnstile verification.
 - `TURNSTILE_BYOK_REQUIRED=true` (post-H1 closeout — production-safe default; was `false` pre-H1).
 - This is **not** a broad public BYOK launch.
