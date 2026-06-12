@@ -379,3 +379,32 @@ This wording is required for any v0.4.31-alpha or later H2A closeout communicati
 2. States what was verified (a plan, not a pilot).
 3. States the truth (does NOT enable BYOK live; does NOT broad public launch).
 4. Forbids drift into "BYOK is now live" or "BYOK is now public" claims.
+
+---
+
+## 16. Update log: H2B shipped (success-path redacted log)
+
+**Status (2026-06-12):** H2B has been shipped as a follow-up hotfix to H2A.
+
+What changed in H2B:
+
+- `server/index.ts` now emits `[byok-turnstile-ok]` on the success path, mirroring the H1-Hotfix-C failure-path `[byok-turnstile-debug]`.
+- Both logs are gated by the same `TURNSTILE_DEBUG_REDACTED=true` runtime flag (the `redacted` field of `verifyTurnstileToken` is only populated when this flag is on).
+- The success log includes the same redacted fields as the failure log: `requestId`, `tokenLength`, `tokenSha256_8`, `cloudflareSuccess`, `cloudflareErrorCodes`, `hostname`, `action`, `cdata`, `outcome=turnstile_ok`.
+- A new smoke test `scripts/byok-h2b-success-log-smoke-test.sh` (18/18 PASS) validates the change and asserts the redaction policy is preserved.
+
+Operational impact on H2C pilot execution:
+
+- The operator no longer needs to rely solely on UI screenshots + server responses to confirm a tester actually submitted. The journal can now be grepped for `[byok-turnstile-ok]` to confirm a per-request success signal.
+- Recommended grep: `journalctl -u mmx-music-studio --since "1 hour ago" | grep -E "byok-turnstile-(ok|debug)"`.
+- The H2B log is per-request and only emitted when `TURNSTILE_DEBUG_REDACTED=true`. The operator opens the flag for H2C pilot, closes it after.
+
+What H2B did NOT do:
+
+- No production env change.
+- No new release tag. v0.4.31-alpha tag stays at `ee6a8a1`. All pre-H1 tags unchanged.
+- No change to the live path / dry-run early return / MiniMax call logic. H2B is **observability only**.
+
+Final wording for H2B:
+
+> "BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch."

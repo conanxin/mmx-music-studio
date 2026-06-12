@@ -259,6 +259,66 @@ Final wording:
 
 > "BYOK-H2A prepares the dry-run pilot plan for BYOK. It does not enable BYOK live generation or broad public launch."
 
+## Phase BYOK-H2B: Success-Path Redacted Turnstile Log (current focus)
+
+> **Status: OBSERVABILITY HOTFIX. Production env unchanged. Live gate stays closed. No broad public launch.**
+
+| Field | Value |
+|---|---|
+| **Phase** | BYOK-H2B |
+| **Type** | Observability hotfix (success-path log only) |
+| **Env change in this phase** | None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false` |
+| **Real MiniMax call** | None |
+| **Music generated** | None |
+| **Real user apiKey** | None |
+| **Broad public BYOK launch** | Not enabled |
+| **H2A dry-run pilot planning** | PASS_WITH_KNOWN_VALIDATION_EXCEPTION (predecessor) |
+| **Smoke test** | `bash scripts/byok-h2b-success-log-smoke-test.sh` (18/18 PASS) |
+
+What H2B delivers:
+
+- A symmetric **success-path redacted log** `[byok-turnstile-ok]` in `server/index.ts`, mirroring the failure-path `[byok-turnstile-debug]`.
+- Both logs are gated by the same `TURNSTILE_DEBUG_REDACTED=true` runtime flag, and only fire when `verifyTurnstileToken()` populates the `redacted` block.
+- **No production env change.** **No release tag.** The v0.4.31-alpha tag stays at `ee6a8a1`.
+- H2C dry-run pilot can now confirm Turnstile success in the journal without relying on UI screenshots.
+
+What H2B does **not** deliver:
+
+- BYOK live generation (still disabled).
+- Pilot execution (H2C, requires operator approval).
+- A new release tag.
+
+Success-path log fields (all redacted):
+
+- `requestId` (e.g. `byok_421450bf6804`)
+- `tokenLength` (numeric, e.g. `417`)
+- `tokenSha256_8` (8-char hex fingerprint of the token)
+- `cloudflareSuccess` (`true` for this path)
+- `cloudflareErrorCodes` (empty list for this path)
+- `hostname`, `action`, `cdata` (from Cloudflare Siteverify response)
+- `outcome=turnstile_ok`
+
+Forbid­den fields (must NEVER appear):
+
+- Raw token
+- `TURNSTILE_SECRET_KEY`
+- User apiKey
+- Authorization header
+- Full request body (lyrics / prompt)
+- Provider raw response
+
+Recommended pilot flow (for H2C):
+
+1. Set `TURNSTILE_DEBUG_REDACTED=true` in the temporary `byok-test.conf` drop-in (operator runs `read -s` to read the value, no chat exposure).
+2. Restart service.
+3. Pilot testers complete Turnstile + submit fake key. Operator greps the journal: `journalctl -u mmx-music-studio --since "1 hour ago" | grep -E "byok-turnstile-(ok|debug)"`.
+4. After pilot ends, set `TURNSTILE_DEBUG_REDACTED=""` (empty) to silence logs.
+5. Restore `PUBLIC_BYOK_ENABLED=false` and `BYOK_DRY_RUN_ONLY=true` (the closeout contract from H1).
+
+Final wording:
+
+> "BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch."
+
 ## Release
 
 **v0.4.23-alpha**：Phase Release v0.4.23-alpha — Library UX polish and timeline clarity release (commit `bde4cff` + release prep, tag `v0.4.23-alpha`)

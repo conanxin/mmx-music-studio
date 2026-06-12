@@ -1833,6 +1833,21 @@ async function handleByokGenerate(
       });
       return;
     }
+    // Phase BYOK-H2B: success-path redacted observability.
+    // Same redaction policy as the failure path: no token, no secret, no user apiKey.
+    // Only emitted when the runtime has TURNSTILE_DEBUG_REDACTED=true AND the
+    // verifyTurnstileToken() result included a populated `redacted` block.
+    // Operator opens the flag during H2C dry-run pilot, closes it after.
+    if (turnstileResult.redacted) {
+      const r = turnstileResult.redacted;
+      console.log(
+        `[byok-turnstile-ok] requestId=${r.requestId} tokenLength=${r.tokenLength} ` +
+        `tokenSha256_8=${r.tokenSha256_8} cloudflareSuccess=${r.cloudflareSuccess} ` +
+        `cloudflareErrorCodes=[${r.cloudflareErrorCodes.join(',')}] ` +
+        `hostname=${r.hostname ?? 'missing'} action=${r.action ?? 'missing'} ` +
+        `cdata=${r.cdata ?? 'missing'} outcome=turnstile_ok`,
+      );
+    }
   }
 
   // 3. Validate apiKey — never log the key itself

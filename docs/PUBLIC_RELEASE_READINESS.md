@@ -6,6 +6,33 @@
 
 **Current release**: v0.4.31-alpha
 
+**Phase BYOK-H2B**: Success-Path Redacted Turnstile Log — ✅ OBSERVABILITY HOTFIX COMPLETE (this phase, no production env change).
+
+- **Status**: OBSERVABILITY HOTFIX. Production env unchanged. Live gate stays closed. No broad public launch.
+- **Env change**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H2A dry-run pilot planning**: PASS_WITH_KNOWN_VALIDATION_EXCEPTION (predecessor).
+- **Smoke test**: `bash scripts/byok-h2b-success-log-smoke-test.sh` (18/18 PASS)
+- **No release tag** created or moved. v0.4.31-alpha tag stays at `ee6a8a1`.
+
+What H2B delivers:
+
+- A symmetric **success-path redacted log** `[byok-turnstile-ok]` in `server/index.ts`, mirroring the failure-path `[byok-turnstile-debug]` from H1-Hotfix-C.
+- Both logs are gated by the same `TURNSTILE_DEBUG_REDACTED=true` runtime flag, and only fire when `verifyTurnstileToken()` populates the `redacted` block.
+- **No production env change.** **No code change to the live path.** **No release tag.**
+
+What H2B does **not** deliver:
+
+- BYOK live generation (still disabled).
+- Pilot execution (H2C, requires operator approval).
+- A new release tag.
+
+Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256_8`, `cloudflareSuccess`, `cloudflareErrorCodes`, `hostname`, `action`, `cdata`, `outcome=turnstile_ok`. Forbidden: raw token, `TURNSTILE_SECRET_KEY`, user apiKey, Authorization header, full body, provider raw response.
+
+**关键口径**: BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch.
+
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
