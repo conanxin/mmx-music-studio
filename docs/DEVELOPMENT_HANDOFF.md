@@ -297,6 +297,43 @@ Recommended H2C pilot flow (operator checklist):
 
 **关键口径**: BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch.
 
+### In-flight phase: Phase BYOK-H2C — Dry-Run Pilot Execution (rolled back, runtime-only closeout)
+
+- **Status**: RUNTIME_READY_PARTIAL_ROLLED_BACK. Production restored to H1 closeout default. No repo commit; runtime-only closeout.
+- **H2C deploy**: H2B commit (`baaafd7`) deployed to production. MainPID cycled: 422764 → 428445.
+- **H2C pilot runtime (temporary, since rolled back)**:
+  - `PUBLIC_BYOK_ENABLED=true` (1 hour window, then rolled back)
+  - `BYOK_DRY_RUN_ONLY=true`
+  - `BYOK_DIRECT_LIVE_ENABLED=false`
+  - `TURNSTILE_DEBUG_REDACTED=true`
+  - Drop-in file: `byok-test.conf` was temporarily rewritten; backup saved to `/tmp/byok-test.conf.h2c.bak`.
+- **H2C server-side verifications PASS** (in pilot window, before rollback):
+  - `/api/health` → `publicByokEnabled=true, byokEnabled=false, hasServerKey=false` (dry-run gate, no live key)
+  - `/api/generate/byok` no-token → `code=turnstile_required` (Turnstile gate, never reached MiniMax)
+  - H2B failure-path `[byok-turnstile-debug]` log line fired in production (3 requestIds observed: `byok_0021a2c943ac`, `byok_fc9ef121e221`, `byok_42c06184690b`) — redactor end-to-end verified, no leak
+- **H2C pilot execution: NOT actually run.** No real tester in real browser submitted a fresh Turnstile token. The H2B success-path `[byok-turnstile-ok]` log line was **not** observed in production (only the failure path was driven by sandbox curl with `XXXX.FAIL.TOKEN.XXXX`).
+- **H2C rollback executed**:
+  - `byok-test.conf` reverted to 3-line safe default (`PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`)
+  - `TURNSTILE_DEBUG_REDACTED` is now `<unset>` in process env (env fully cleared, debug off)
+  - `sudo systemctl daemon-reload && sudo systemctl restart mmx-music-studio` → MainPID 428445, active/running
+  - Residual journal watch (PID 424825) cleaned via `sudo pkill -9 -f "journalctl -u mmx-music-studio.*-f"`
+- **H2C post-rollback verifications PASS**:
+  - `/api/health` → `publicByokEnabled=false, byokEnabled=false, hasServerKey=false` ✅
+  - `/api/generate/byok` (fake key, no token) → `code=byok_generation_disabled` ✅ (gate closed pre-Turnstile)
+  - `/api/health` exposes only public `turnstileSiteKey` (24 chars) + boolean configs; **no `TURNSTILE_SECRET_KEY`, no raw token, no user key, no Authorization, no full prompt** ✅
+  - `/ops` and `/api/status` → 302 to `soft-wood-f891.cloudflareaccess.com/cdn-cgi/access/login/...` (Access protection intact) ✅
+- **H2C lessons learned** (to be patched into `mmx-music-studio-public-byok-relay` skill on next session):
+  1. **systemd drop-in lex order gotcha (recurring)**: Adding a new drop-in named `99-byok-h2c-dry-run.conf` did NOT override `byok-test.conf` — `byok-test.conf` (letter `b` = 0x62) is still sorted after `99-` (digit `9` = 0x39)? NO — `99-` < `b` lex, but in this case `byok-test.conf` was created later. **The real rule is "last write wins" within the drop-in merge order, but lex order determines merge order, NOT timestamp.** Fix: directly edit the existing `byok-test.conf` (and back it up to `/tmp/`).
+  2. **Sandbox cannot fake real tester pilot**: H2C success-path verification requires real browser Turnstile widget, which sandbox cannot simulate. The Cloudflare test secret (`1x00000000000000000000AA`) is sandbox-only; the production secret returns different results. **H2C pilot must be human-driven, not sandbox-driven.**
+  3. **Background process output preview is unreliable**: Hermes `process output_preview` did not capture piped output from `journalctl | grep | python3` — the watch was alive but the tool showed empty preview. Workaround: use `tee /tmp/h2c-seen.log` side-effect for verification.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H2B success-path logging**: deployed but not yet observed from a real pilot.
+- **H2A dry-run pilot planning**: PASS_WITH_KNOWN_VALIDATION_EXCEPTION (predecessor).
+
+**关键口径**: BYOK-H2C was runtime-ready but pilot execution has not actually occurred. Production has been rolled back to safe default. BYOK live generation remains disabled.
+
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

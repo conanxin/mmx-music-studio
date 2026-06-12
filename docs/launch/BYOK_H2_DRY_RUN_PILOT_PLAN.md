@@ -408,3 +408,46 @@ What H2B did NOT do:
 Final wording for H2B:
 
 > "BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch."
+
+---
+
+## 17. Update log: H2C runtime-ready, then rolled back (pilot not actually executed)
+
+**Status (2026-06-12):** H2C runtime was activated, sandbox-side verifications passed, but the pilot was **not actually executed** with a real tester cohort. Production was rolled back to safe default.
+
+What happened in H2C:
+
+- H2B commit (`baaafd7`) was already deployed to production before H2C started.
+- A temporary H2C drop-in was prepared: `byok-test.conf` was rewritten to set `PUBLIC_BYOK_ENABLED=true`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_DEBUG_REDACTED=true`. Backup of the H2C version saved at `/tmp/byok-test.conf.h2c.bak`.
+- Service was restarted. MainPID cycled 422764 → 428445. Process env confirmed: `PUBLIC_BYOK_ENABLED=true, TURNSTILE_DEBUG_REDACTED=true`.
+- **Sandbox-side verifications PASS** (server-side curl, no real browser):
+  - `/api/health` → `publicByokEnabled=true, byokEnabled=false, hasServerKey=false` ✅
+  - `/api/generate/byok` no-token → `code=turnstile_required` ✅
+  - H2B `[byok-turnstile-debug]` failure-path log fired in production (3 requestIds: `byok_0021a2c943ac`, `byok_fc9ef121e221`, `byok_42c06184690b`) with `cloudflareErrorCodes=[invalid-input-response]` — redactor end-to-end verified, no leak ✅
+- **Pilot execution did NOT actually happen.** No real tester in a real browser submitted a fresh Turnstile token. H2B `[byok-turnstile-ok]` success-path log was **not** observed in production.
+- **Rollback executed**:
+  - `byok-test.conf` reverted to 3-line safe default (`PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`).
+  - `TURNSTILE_DEBUG_REDACTED` is now `<unset>` in process env (env fully cleared).
+  - `sudo systemctl daemon-reload && restart` → MainPID 428445, active/running.
+  - Residual journal watch (PID 424825) cleaned via `sudo pkill -9 -f "journalctl -u mmx-music-studio.*-f"`.
+- **Post-rollback verifications PASS**:
+  - `/api/health` → `publicByokEnabled=false, byokEnabled=false, hasServerKey=false` ✅
+  - `/api/generate/byok` (fake key, no token) → `code=byok_generation_disabled` ✅ (gate closed pre-Turnstile)
+  - `/api/health` exposes only public `turnstileSiteKey` (24 chars) + boolean configs; **no `TURNSTILE_SECRET_KEY`, no raw token, no user key, no Authorization, no full prompt** ✅
+  - `/ops` and `/api/status` → 302 to `soft-wood-f891.cloudflareaccess.com/cdn-cgi/access/login/...` (Access protection intact) ✅
+
+Lessons learned (to be patched into `mmx-music-studio-public-byok-relay` skill on next session):
+
+1. **systemd drop-in lex order gotcha (recurring)**: Adding a new drop-in named `99-byok-h2c-dry-run.conf` did NOT override `byok-test.conf`. The merge order is determined by lexicographic sort of filenames within `/etc/systemd/system/<unit>.service.d/`, with later files winning — but `byok-test.conf` (which existed before) was sorted later, so it kept winning. **Fix: directly edit the existing drop-in file, and back up the previous version to `/tmp/`.**
+2. **Sandbox cannot fake real tester pilot**: H2C success-path verification requires a real browser Turnstile widget, which sandbox curl cannot simulate. The Cloudflare test secret (`1x00000000000000000000AA`) is sandbox-only; the production secret (`0x4AAA...`, 35 chars) returns different results. **H2C pilot must be human-driven, not sandbox-driven.**
+3. **Background process `output_preview` is unreliable**: The Hermes `process` tool's `output_preview` did not capture piped output from `journalctl | grep | python3` — the watch was alive but the tool showed empty preview. Workaround: use `tee /tmp/h2c-seen.log` side-effect for verification.
+
+Final wording for H2C:
+
+> "BYOK-H2C was runtime-ready but pilot execution has not actually occurred. Production has been rolled back to safe default. BYOK live generation remains disabled."
+
+Next-step recommendations (operator decides):
+
+- Schedule a real H2C dry-run pilot window with 3–5 trusted testers, each on a real browser. Operator opens `PUBLIC_BYOK_ENABLED=true` and `TURNSTILE_DEBUG_REDACTED=true` for the window, then rolls back.
+- H3 controlled live pilot still requires explicit operator approval, cost ceiling, circuit breaker documentation, and H2C real execution PASS.
+- No code commit was made for H2C. This is a **runtime-only closeout**.

@@ -33,6 +33,35 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 
 **关键口径**: BYOK-H2B adds success-path redacted Turnstile logging for dry-run pilot observability. It does not enable BYOK live generation or broad public launch.
 
+**Phase BYOK-H2C**: Dry-Run Pilot Execution — ⚠️ RUNTIME_READY_PARTIAL_ROLLED_BACK (runtime-only closeout, no repo commit).
+
+- **Status**: Runtime-only. Production restored to H1 closeout default. No live call. No music. No real user apiKey. No broad public launch.
+- **H2C deploy**: H2B commit `baaafd7` deployed to production. Build PASS, restart PASS, MainPID cycled 422764 → 428445.
+- **H2C pilot window** (1 hour, since rolled back):
+  - `PUBLIC_BYOK_ENABLED=true`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_DEBUG_REDACTED=true`
+  - Drop-in: `byok-test.conf` temporarily rewritten; backup at `/tmp/byok-test.conf.h2c.bak`
+- **H2C server-side verifications PASS** (sandbox, before rollback):
+  - `/api/health` → `publicByokEnabled=true, byokEnabled=false, hasServerKey=false` ✅
+  - `/api/generate/byok` no-token → `code=turnstile_required` ✅
+  - H2B `[byok-turnstile-debug]` failure-path log fired in production (3 requestIds) — redactor end-to-end verified, no leak ✅
+- **H2C pilot execution: NOT actually run.** No real tester in real browser submitted a fresh Turnstile token. H2B `[byok-turnstile-ok]` success-path log **not** observed in production.
+- **H2C rollback executed** (production restored to safe default):
+  - `byok-test.conf` reverted to 3-line safe default
+  - `TURNSTILE_DEBUG_REDACTED` is now `<unset>` in process env
+  - `sudo systemctl daemon-reload && restart` → MainPID 428445, active/running
+  - Residual journal watch (PID 424825) cleaned via `sudo pkill -9 -f "journalctl -u mmx-music-studio.*-f"`
+- **H2C post-rollback verifications PASS**:
+  - `/api/health` → `publicByokEnabled=false, byokEnabled=false, hasServerKey=false` ✅
+  - `/api/generate/byok` (fake key, no token) → `code=byok_generation_disabled` ✅
+  - `/api/health` exposes only public `turnstileSiteKey` (24 chars) + booleans; **no `TURNSTILE_SECRET_KEY`, no raw token, no user key, no Authorization, no full prompt** ✅
+  - `/ops` and `/api/status` → 302 to Cloudflare Access login ✅
+- **H2C lessons learned**:
+  1. **systemd drop-in lex order gotcha (recurring)**: 99-prefix did NOT override `byok-test.conf`. Fix: directly edit the existing drop-in + back up to `/tmp/`.
+  2. **Sandbox cannot fake real tester pilot**: H2C success-path needs real browser Turnstile widget, which sandbox cannot simulate. H2C pilot must be human-driven.
+  3. **Background process `output_preview` is unreliable**: Use `tee /tmp/h2c-seen.log` side-effect for verification.
+
+**关键口径**: BYOK-H2C was runtime-ready but pilot execution has not actually occurred. Production has been rolled back to safe default. BYOK live generation remains disabled.
+
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.
