@@ -1,3 +1,47 @@
+## v0.4.31-alpha
+
+### Highlights
+
+- **Frontend Turnstile widget runtime integration for BYOK.**
+- `ByokPanel.tsx` now dynamically loads `https://challenges.cloudflare.com/turnstile/v0/api.js` and renders a per-instance widget via `window.turnstile.render(...)`.
+- Handles `callback` / `expired-callback` / `error-callback` lifecycles.
+- Sends `turnstileToken` with `POST /api/generate/byok` only when the panel is enabled and a fresh token is present.
+- Resets the widget and clears the token after submit to enforce single-use.
+- Submit-time guard: when `turnstileByokRequired === true` and no fresh token is present, the submit button is blocked.
+- `Studio.tsx` passes Turnstile fields from `healthInfo` into `<ByokPanel />` (`turnstileSiteKey`, `turnstileByokRequired`, `turnstileSecretKeyConfigured`).
+- `/api/health` exposes the public `turnstileSiteKey` (booleans from v0.4.30-alpha remain). The `TURNSTILE_SECRET_KEY` is **never** returned.
+- Server-side `Siteverify` gate from Deploy-CF-D (v0.4.30-alpha) is unchanged and remains the source of truth.
+- `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking.
+- New smoke test: `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` — **23/23 PASS**.
+
+### Notes
+
+- This is **not** a broad public BYOK launch.
+- No new live call was executed.
+- No music was generated.
+- No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed.
+- Token is never written to `localStorage` / `sessionStorage` / IndexedDB / URL query, and is never displayed in the DOM or `console.log`'d.
+- Front-end does not import or reference `TURNSTILE_SECRET_KEY`.
+- valid-token E2E verification is **deferred** until this release is deployed to production with real Turnstile site/secret keys configured outside the repository.
+- BYOK-H small public launch planning is **blocked** until valid-token E2E verification passes on production.
+
+## v0.4.30-alpha
+
+### Highlights
+
+- **Deploy-CF-D Turnstile gate for BYOK release.**
+- Server-side Turnstile verification for `/api/generate/byok` via `server/security/turnstile.ts`.
+- `/api/generate/byok` gate: requires `turnstileToken` when `TURNSTILE_BYOK_REQUIRED=true`; returns `turnstile_required` / `turnstile_invalid` / `turnstile_verification_error`.
+- `/api/health` exposes Turnstile configuration status (booleans only, never the secret).
+- ByokPanel Turnstile UI skeleton + placeholder styles.
+- `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking.
+
+### Notes
+
+- This is **not** a broad public BYOK launch.
+- No new live call was executed.
+- No music was generated.
+
 ## v0.4.29-alpha
 
 ### Highlights

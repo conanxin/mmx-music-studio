@@ -1,13 +1,28 @@
 # mmx-music-studio Development Handoff
 
-> 文档版本：v0.4.30-alpha · 2026-06-12
+> 文档版本：v0.4.31-alpha · 2026-06-12
 > 用途：换电脑继续开发、项目交接、开源维护参考
 
 ---
 
 ## Current release line
 
-> 文档版本：v0.4.30-alpha · 2026-06-12
+> 文档版本：v0.4.31-alpha · 2026-06-12
+
+**v0.4.31-alpha** — Phase Release v0.4.31-alpha: Turnstile widget runtime for BYOK release.
+
+- Deploy-CF-E 已完成 (commit 89e5f9c): frontend Cloudflare Turnstile widget runtime integration.
+- `ByokPanel.tsx` 动态加载 `https://challenges.cloudflare.com/turnstile/v0/api.js`，通过 `window.turnstile.render(...)` 渲染 per-instance widget。
+- `callback` / `expired-callback` / `error-callback` 三套回调管理 `turnstileToken` lifecycle；submit-time guard + submit 后 reset+清空 token 强制 single-use。
+- `Studio.tsx` 从 `healthInfo` 透传 `turnstileSiteKey` / `turnstileByokRequired` / `turnstileSecretKeyConfigured` 到 `<ByokPanel />`。
+- `/api/health` 新增 public `turnstileSiteKey`（仅 site key，secret 永不返回）。
+- server-side `Siteverify` gate（Deploy-CF-D）保持不变，仍为 source of truth。
+- token 不写 `localStorage` / `sessionStorage` / IndexedDB / URL / console / UI。
+- 新 smoke test `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` 23/23 PASS。
+- `TURNSTILE_BYOK_REQUIRED=false` 默认非阻断。
+- **No new live call / no music generation / no broad public BYOK launch**。
+- valid-token E2E verification deferred：需部署 v0.4.31-alpha 到 production 后进行。
+- See: [docs/release/RELEASE_NOTES_v0.4.31-alpha.md](docs/release/RELEASE_NOTES_v0.4.31-alpha.md)
 
 **v0.4.30-alpha** — Phase Release v0.4.30-alpha: Turnstile gate for BYOK release.
 

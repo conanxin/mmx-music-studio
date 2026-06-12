@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.25--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.25-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.31--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.31-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -115,7 +115,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | MMX CLI backend | ✅ **Recommended** | Same route as Telegram |
 | BYOK API Adapter | ✅ Verified once / Experimental | Real `direct_audio` success; not production-ready |
 
-**Current release**: v0.4.30-alpha — Turnstile gate for BYOK
+**Current release**: v0.4.31-alpha — Turnstile widget runtime for BYOK
 
 | Phase Deploy-CF-D: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking). |
 | Phase Deploy-CF-E: Front-end Turnstile widget runtime integration. `turnstileSiteKey` exposed by `/api/health`; secret never returned. Token not persisted, not logged, not displayed. |
@@ -563,7 +563,28 @@ Design documents:
 - **Site operator key used**: **no**
 - **Report**: `docs/security/BYOK_DIRECT_SINGLE_LIVE_CALL_REPORT.md`
 - **Safety**: Live env 已恢复默认（disabled / dry-run）
-- **Next**: Release v0.4.30-alpha — Turnstile gate for BYOK
+- **Next**: Release v0.4.31-alpha — Turnstile widget runtime for BYOK
+
+**v0.4.31-alpha**：Phase Release v0.4.31-alpha — Turnstile widget runtime for BYOK release (commit `89e5f9c` + release prep, tag `v0.4.31-alpha`)
+
+- Deploy-CF-E adds frontend Cloudflare Turnstile widget runtime integration for BYOK.
+- It does not enable broad public BYOK launch by itself.
+- `ByokPanel.tsx` dynamically loads `https://challenges.cloudflare.com/turnstile/v0/api.js` and renders a per-instance widget via `window.turnstile.render(...)`.
+- `callback` / `expired-callback` / `error-callback` lifecycles drive `turnstileToken` state.
+- `turnstileToken` is sent with `POST /api/generate/byok` only when the panel is enabled and a fresh token is present.
+- Widget is reset and token cleared after submit to enforce single-use.
+- `Studio.tsx` passes `turnstileSiteKey` / `turnstileByokRequired` / `turnstileSecretKeyConfigured` from `healthInfo` into `<ByokPanel />`.
+- `/api/health` exposes the public `turnstileSiteKey` (booleans from v0.4.30-alpha remain). The `TURNSTILE_SECRET_KEY` is **never** returned.
+- Server-side `Siteverify` gate from Deploy-CF-D is unchanged and remains the source of truth.
+- Token is never written to `localStorage` / `sessionStorage` / IndexedDB / URL query, and is never displayed in the DOM or `console.log`'d.
+- Front-end does not import or reference `TURNSTILE_SECRET_KEY`.
+- `TURNSTILE_BYOK_REQUIRED=false` by default.
+- New smoke test: `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` — **23/23 PASS**.
+- No new live call was executed.
+- No music was generated.
+- No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed.
+- valid-token E2E verification is **deferred** until v0.4.31-alpha is deployed to production with real Turnstile site/secret keys configured outside the repository.
+- BYOK-H small public launch planning is **blocked** until valid-token E2E verification passes on production.
 
 **v0.4.30-alpha**：Phase Release v0.4.30-alpha — Turnstile gate for BYOK release (commit `b3d1095` + release prep, tag `v0.4.30-alpha`)
 

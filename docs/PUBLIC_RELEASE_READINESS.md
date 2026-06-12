@@ -2,11 +2,32 @@
 
 > 文档版本：v0.4.31-alpha · 2026-06-12
 >
-> **Current Release: v0.4.31-alpha — Frontend Turnstile widget runtime integration for BYOK.** Deploy-CF-E adds the front-end half of the Cloudflare Turnstile integration: the browser can now obtain a verification token and submit it with `POST /api/generate/byok`. The server-side gate from Deploy-CF-D is unchanged. It does not enable broad public BYOK launch by itself. `TURNSTILE_BYOK_REQUIRED=false` by default. No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. The front-end does not import or reference `TURNSTILE_SECRET_KEY`. The token is never written to localStorage / sessionStorage / IndexedDB / URL query, and is never displayed in the DOM or console.log'd. Valid-token E2E verification requires a production deploy of this phase (local smoke cannot exercise a real Cloudflare widget without a real key + recognised origin); BYOK-H is gated on that E2E pass.
+> **Current Release: v0.4.31-alpha — Frontend Turnstile widget runtime for BYOK.** Deploy-CF-E adds the front-end half of the Cloudflare Turnstile integration: the browser can now obtain a verification token and submit it with `POST /api/generate/byok`. The server-side gate from Deploy-CF-D is unchanged. It does not enable broad public BYOK launch by itself. `TURNSTILE_BYOK_REQUIRED=false` by default. No new live call was executed. No music was generated. No Turnstile secret, key, env, runtime storage, logs, audio, or tsconfig was committed. The front-end does not import or reference `TURNSTILE_SECRET_KEY`. The token is never written to localStorage / sessionStorage / IndexedDB / URL query, and is never displayed in the DOM or console.log'd. Valid-token E2E verification requires a production deploy of this phase (local smoke cannot exercise a real Cloudflare widget without a real key + recognised origin); BYOK-H is gated on that E2E pass.
 
 **Current release**: v0.4.31-alpha
 
-**Phase Deploy-CF-E**: Frontend Turnstile widget runtime integration for BYOK — ✅ COMPLETED (2026-06-12, commit pending this session).
+**Phase Release v0.4.31-alpha**: Frontend Turnstile widget runtime for BYOK — ✅ COMPLETED (2026-06-12).
+  - Deploy-CF-E adds frontend Cloudflare Turnstile widget runtime integration
+  - `ByokPanel.tsx` dynamically loads `https://challenges.cloudflare.com/turnstile/v0/api.js`
+  - Renders per-instance widget via `window.turnstile.render(...)`
+  - `callback` / `expired-callback` / `error-callback` lifecycle management
+  - Single-use token: widget reset + token clear after submit
+  - Submit-time guard: when `turnstileByokRequired === true` and no fresh token, block submit
+  - `Studio.tsx` passes `turnstileSiteKey` / `turnstileByokRequired` / `turnstileSecretKeyConfigured` from `healthInfo` into `<ByokPanel />`
+  - `/api/health` now also returns the public `turnstileSiteKey` (secret key is never exposed)
+  - Server-side `Siteverify` gate (Deploy-CF-D) unchanged and remains source of truth
+  - `TURNSTILE_BYOK_REQUIRED=false` by default — non-blocking
+  - Token not persisted to localStorage / sessionStorage / IndexedDB / URL query
+  - Token not displayed, not logged
+  - Front-end does not import or reference `TURNSTILE_SECRET_KEY`
+  - New smoke test: `scripts/deploy-cf-e-turnstile-widget-smoke-test.sh` — **23/23 PASS**
+  - Does not affect `/api/generate`, `/api/health` (no secret exposed), `/api/status`, `/ops`
+- **Default**: disabled / dry-run / non-broad public
+- **No new live call**
+- **No music generation**
+- **Next**: Deploy v0.4.31-alpha to production → valid-token E2E verification → BYOK-H small public launch planning only after E2E PASS
+
+**Phase Deploy-CF-D**: Turnstile protection for BYOK generation — ✅ COMPLETED (2026-06-12, commit b3d1095).
   - `/api/health` now also returns the public `turnstileSiteKey` (the secret key is never exposed)
   - `src/lib/serverApi.ts` `HealthInfo` type extended with `turnstileSiteKey?: string` + boolean flags
   - `Studio.tsx` passes Turnstile props into `<ByokPanel />`
