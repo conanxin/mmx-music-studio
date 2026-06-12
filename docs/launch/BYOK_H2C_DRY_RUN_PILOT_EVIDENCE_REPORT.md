@@ -3,8 +3,10 @@
 > **Status:** `H2C_DRY_RUN_PILOT_PASS_ROLLED_BACK`
 > **Phase:** BYOK-H2C (Real dry-run pilot execution)
 > **Report date:** 2026-06-12
-> **Audience:** operator + future maintainer
->
+> **Audience:** operator + future H3 planners
+
+**Follow-up (2026-06-12, BYOK-H3A)**: H2C evidence is now also referenced by the BYOK-H3 controlled live pilot plan ([`BYOK_H3_CONTROLLED_LIVE_PILOT_PLAN.md`](BYOK_H3_CONTROLLED_LIVE_PILOT_PLAN.md)). H3A is PLANNING ONLY — it does **not** enable BYOK live generation or broad public launch, and production remains in H1 closeout safe default.
+
 > **Phase BYOK-H2D follow-up:** This H2C evidence informed the conservative H2D UX/copy polish phase (no env change, no live, no music). H2D updated `ByokPanel.tsx` to make the dry-run nature + key-privacy + cost-warnings more explicit to testers, and added a `byok_dry_run_only` result explainer so users do not mistake the success path for an error. See [README.md](../../README.md) / [DEVELOPMENT_HANDOFF.md](../DEVELOPMENT_HANDOFF.md) / [PUBLIC_RELEASE_READINESS.md](../PUBLIC_RELEASE_READINESS.md) for the H2D section.
 
 ---

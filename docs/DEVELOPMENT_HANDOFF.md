@@ -360,6 +360,19 @@ Recommended H2C pilot flow (operator checklist):
 - **Smoke test**: `scripts/byok-h2d-ux-copy-smoke-test.sh` (asserts all 8 `data-h2d` anchors, all 4 stored result-code mappings, no localStorage/sessionStorage/IndexedDB/URL token/key writes, no logic regression in `ByokPanel.tsx`).
 - **H2D → H3 gate**: H3 (controlled live pilot) still requires explicit operator approval. H2D does **not** open the live gate.
 
+### In-flight phase: Phase BYOK-H3A — Controlled Live Pilot Planning (latest closeout)
+
+- **Status**: PLANNING ONLY. This is a planning artifact, not a live execution authorisation. H3A does not enable BYOK live generation, does not open BYOK to a broad public audience, and does not modify production environment.
+- **Env change in this phase**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **H2A/H2B/H2C/H2D predecessors**: all PASS. H2C was a real dry-run pilot (4/4 testers, 0 failure, leak audit CLEAN, rolled back). H2D is UX/copy polish (48/48 smoke). H3A inherits their evidence and adds cost ceiling, circuit breaker, real-key isolation, provider boundary, monitoring, tester instructions, incident response, and Go/No-Go checklist.
+- **Plan doc**: [docs/launch/BYOK_H3_CONTROLLED_LIVE_PILOT_PLAN.md](launch/BYOK_H3_CONTROLLED_LIVE_PILOT_PLAN.md) (15 sections + appendix)
+- **Approval gate**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` (operator must send in review channel; without it, no one may set `BYOK_DIRECT_LIVE_ENABLED=true` or `BYOK_DRY_RUN_ONLY=false`).
+- **Smoke test**: `bash scripts/byok-h3a-controlled-live-pilot-planning-smoke-test.sh` (35/35 PASS, `BYOK_H3A_CONTROLLED_LIVE_PILOT_PLANNING_SMOKE_PASS`).
+- **H3B (execution) is a separate phase** and is not authorised by this plan. H3B requires (a) the operator approval phrase, (b) the Go/No-Go checklist fully satisfied, (c) cost ceiling observability verified, (d) circuit breaker tested, (e) rollback drill completed.
+
 ### In-flight phase: Phase BYOK-H2A — Dry-Run Pilot Planning (current focus)
 
 - **Status**: PLANNING ONLY. Production env unchanged. Live gate stays closed. No broad public launch.

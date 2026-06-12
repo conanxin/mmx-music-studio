@@ -73,11 +73,27 @@ Success-path log fields (all redacted): `requestId`, `tokenLength`, `tokenSha256
 - **Real user apiKey**: None.
 - **H2D copy improvements**: (8 user-visible) dry-run badge, header subtitle rewrite, API Key hint (fake-key example + no-save), Turnstile human-only + retry + token-privacy hints, confirm-label dry-run note, submit-button label update, dry-run-result explain on `byok_dry_run_only`, footer line.
 - **未启用 BYOK live · 未发起 broad public launch** — H2D 不打开 BYOK live 通道。
+- **H2D does **not** open the live gate**; BYOK live generation remains disabled until explicit H3 operator approval.
 - **All result-code mappings preserved** (`byok_generation_disabled` / `byok_dry_run_only` / `turnstile_required` / `turnstile_invalid` / `byok_live_not_enabled` / `byok_provider_error` / etc.). No logic change.
-- **Smoke test**: `scripts/byok-h2d-ux-copy-smoke-test.sh`
-- **H2D → H3 gate**: H3 (controlled live pilot) still requires explicit operator approval. H2D does **not** open the live gate.
 
-**关键口径**: BYOK-H2D improves BYOK dry-run UX and copy based on tester feedback. It does not enable BYOK live generation or broad public launch.
+**Phase BYOK-H3A**: Controlled Live Pilot Planning — ✅ **H3A_PLANNING_COMPLETE** (planning only, no env change, no live, no music, no public launch).
+
+- **Status**: PLANNING ONLY. This is a planning artifact, not a live execution authorisation. H3A does not enable BYOK live generation, does not open BYOK to a broad public audience, and does not modify production environment.
+- **Env change**: None. `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_DIRECT_LIVE_ENABLED=false`, `TURNSTILE_BYOK_REQUIRED=true`.
+- **Real MiniMax call**: None.
+- **Music generated**: None.
+- **Real user apiKey**: None.
+- **Plan doc**: [`docs/launch/BYOK_H3_CONTROLLED_LIVE_PILOT_PLAN.md`](../launch/BYOK_H3_CONTROLLED_LIVE_PILOT_PLAN.md) (15 sections + appendix: purpose, readiness evidence, scope, approval gate, env toggle matrix, cost ceiling, circuit breaker, rollback drill, real key isolation, provider call boundary, monitoring, tester instructions, incident response, Go/No-Go checklist, H3B execution placeholder).
+- **Approval gate**: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` (operator must send in review channel; without it, no one may set `BYOK_DIRECT_LIVE_ENABLED=true` or `BYOK_DRY_RUN_ONLY=false`).
+- **Cost ceiling**: ≤ 10 total live generations, ≤ 2 per tester, ≤ 6/hour, 0 retry on provider error, **stop** on first provider error.
+- **Circuit breaker**: one-shot kill switch (set safe-default env, `daemon-reload` + `restart`, verify `/api/health` + `/api/generate/byok` returns `byok_generation_disabled`).
+- **Real key isolation**: no localStorage / sessionStorage / IndexedDB / URL / server storage / log / metadata write of raw key.
+- **Provider boundary**: direct HTTPS only, no CLI path, no site operator key fallback, no `MINIMAX_API_KEY` operator fallback.
+- **未启用 BYOK live · 未发起 broad public launch** — H3A 只是 planning, 不打开 live 通道, 不发起 launch。
+- **H3B (execution) is a separate phase** and is not authorised by H3A. H3B requires operator approval phrase + Go/No-Go checklist fully satisfied.
+- **Smoke test**: `scripts/byok-h3a-controlled-live-pilot-planning-smoke-test.sh` (35/35 PASS, `BYOK_H3A_CONTROLLED_LIVE_PILOT_PLANNING_SMOKE_PASS`).
+
+**关键口径**: BYOK-H3A prepares the controlled live pilot plan. It does not enable BYOK live generation or broad public launch.
 
 **Phase BYOK-H2A**: Dry-Run Pilot Planning — ✅ PLANNING COMPLETE (this phase, no production env change).
 

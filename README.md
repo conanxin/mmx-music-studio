@@ -127,7 +127,8 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | Phase BYOK-H2A: dry-run pilot plan (plan doc only, no runtime change). |
 | Phase BYOK-H2B: success-path `[byok-turnstile-ok]` redacted logging for dry-run pilot observability. |
 | Phase BYOK-H2C: real dry-run pilot executed — **H2C_DRY_RUN_PILOT_PASS_ROLLED_BACK**. 4/4 testers PASS, 4 success-path logs, 0 failure during pilot, 0 leak, 0 live call, 0 music; production rolled back to safe default. Evidence: [`docs/launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md`](docs/launch/BYOK_H2C_DRY_RUN_PILOT_EVIDENCE_REPORT.md). |
-| Phase BYOK-H2D: dry-run UX/copy polish (no env change, no live, no music; copy-only in `ByokPanel.tsx`). |
+| Phase BYOK-H2D: dry-run UX/copy polish (no env change, no live, no music). |
+| Phase BYOK-H3A: controlled live pilot planning (no env change, no live, no music, no public launch). H3B execution is a separate phase requiring explicit operator approval. |
 - `/api/generate/byok` live/direct path now supports Turnstile verification.
 - `TURNSTILE_BYOK_REQUIRED=true` (post-H1 closeout — production-safe default; was `false` pre-H1).
 - This is **not** a broad public BYOK launch.
