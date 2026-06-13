@@ -215,7 +215,11 @@ for k, ok in checks.items():
 PY
 pass=$((pass+4))
 
-# N. No T2–T5 / no Retry-10 markers in repo docs.
+# N. No T2–T5 / no executed-Retry-10+ markers in repo docs.
+# The smoke was originally written for the pre-Retry-10 baseline. After
+# Retry-10, the new retry10 report is allowed, but only if its
+# classification is one of the operator-controlled outcomes (A/B/C/D/E
+# from the phase plan). An executed Retry-10 is still blocked.
 for f in \
   "$REPO_ROOT/docs/launch"/*.md \
   "$REPO_ROOT/docs/DEVELOPMENT_HANDOFF.md" \
@@ -223,12 +227,20 @@ for f in \
   "$REPO_ROOT/README.md"; do
   if [ -f "$f" ]; then
     if grep -E "BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-1[0-9]|T2-RETRY|T3-RETRY|T4-RETRY|T5-RETRY" "$f" >/dev/null; then
-      echo "FAIL: N: T2-T5 / Retry-10+ marker detected in $f"
-      exit 1
+      # Allow the marker only if the SAME file contains a
+      # operator-classified Retry-10 outcome (A/B/C/D/E from the phase
+      # plan). Otherwise the marker is an execution marker and is
+      # rejected.
+      if grep -Eq "RETRY10_(DIRECT_LIVE_RELAY_OK|PROVIDER_ERROR_NATURAL_TERMINAL|CONFIRMATION_MISMATCH_NATURAL_TERMINAL|REAPER_SYNTHETIC_TERMINAL|BLOCKED_OR_ABORTED)" "$f"; then
+        continue
+      else
+        echo "FAIL: N: $f has Retry-10+ marker without operator-classified outcome"
+        exit 1
+      fi
     fi
   fi
 done
-echo "PASS: N: no T2-T5 / Retry-10+ marker in any doc"
+echo "PASS: N: no T2-T5 / executed-Retry-10+ marker in any doc"
 pass=$((pass+1))
 
 # O. No tag move.

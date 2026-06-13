@@ -1592,3 +1592,28 @@ Key changes for the next engineer / operator:
   §7. **Execution is operator-only and not automatic.**
 * New smoke: `byok-h3b-live-t1-micropilot-retry10-preflight-smoke-test.sh`
   (29/29 PASS).
+
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-10
+
+* Result classification: **RETRY10_BLOCKED_OR_ABORTED** (operator approval
+  `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` was issued; the agent paused at
+  STEP 2 because the production `/api/health` reported
+  `byokLiveConfirmationConfigured: false` and `byokLiveEnabled: false`,
+  indicating the operator's local live gate env vars were not yet set.
+  The agent did **not** open the live gate, did **not** perform any
+  submit, and did **not** disturb the safe default.)
+* Reason: **OPERATOR_SECRET_STEP_NOT_CONFIRMED**
+* Window: `h3b-20260613-t1-retry10-133900` (planned 13:21:27Z to
+  14:21:27Z, **not opened**)
+* T1 only, no T2–T5, no broad public launch, no MiniMax call, no
+  audio generated.
+* Safe default preserved: PID 916435 unchanged, all live gates
+  closed, no submit, no provider call, no audio.
+* New smoke: `byok-h3b-live-t1-micropilot-retry10-smoke-test.sh`
+  (27/27 PASS).
+* Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY10_20260613.md`.
+* Operator may re-attempt by setting the local live gate env vars
+  and confirming `byokLiveConfirmationConfigured: true` before
+  asking the agent to open the live gate. **No automatic Retry-11
+  is planned.**

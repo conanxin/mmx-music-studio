@@ -1371,3 +1371,16 @@ MiniMax call and no music generated, no public launch broadened.
 * Production health shows safe default. Production frontend bundle is the `1566134` build.
 * No live gate opened, no live window relocked, no MiniMax call, no audio generated, no T2-T5, no public launch broadened.
 * Suggested Retry-10 execution plan is in `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY10_PREFLIGHT_20260613.md` §7. Execution is operator-only.
+
+
+### BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-10 (attempted, blocked at secret step)
+
+* Result classification: **RETRY10_BLOCKED_OR_ABORTED** (operator
+  approval `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT` issued; agent
+  paused at STEP 2 because `byokLiveConfirmationConfigured: false`).
+* Reason: **OPERATOR_SECRET_STEP_NOT_CONFIRMED**
+* Window: `h3b-20260613-t1-retry10-133900` (not opened).
+* T1 only, no T2–T5, no broad public launch, no MiniMax call, no
+  audio.
+* Safe default preserved (PID 916435 unchanged).
+* Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY10_20260613.md`.
