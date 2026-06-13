@@ -1191,3 +1191,24 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-6 — controlled live pilot attempt after fron
 * This phase exercises the FRONTEND-MODE-FOLLOWUP fix at the protocol level (T1 didn't trigger the live submit path; only the server-side `byok_live_mode_required` guard is exercised via code review + existing smokes).
 * Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY6_20260613.md` (171 lines)
 * Smoke: `scripts/byok-h3b-live-t1-micropilot-retry6-smoke-test.sh` — 43/43 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY6_SMOKE_PASS`.
+
+BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-7 — T1 submitted, frontend direct-live verified, one-shot guard bounded, silent consume observed
+
+* Window: `h3b-20260613-t1-retry7-125556` (Asia/Shanghai, 60 min, 12:55:56 → 13:55:56 +08:00)
+* Deployed commit: `1fbc61b` (master HEAD)
+* Stage-level approval: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`
+* Health live gate: all 17/17 checks PASS before submit
+* T1 submitted 6 times, violating the single-submit rule
+* Frontend direct-live fix verified: `byokLastSubmitModeCandidate=live` (frontend payload's `mode: "direct-live"` reached server and was routed to the live path)
+* One-shot guard verified: first request `byok_03867c9a057e` consumed the slot (`byokLiveAttemptsUsed 0 → 1`); submits 2–6 all rejected with `blocked_live_attempt_limit`
+* `byokLiveAudioUsed=0`, `realApiAttemptsUsed=0` — no MiniMax call, no audio generated, no real API attempt
+* Provider result: no MiniMax call observed
+* Generated audio count: 0
+* NEW issue (unresolved): first consumed live attempt produced no terminal `live_relay_ok` / `provider_error` / `live_relay_failed` stage. Final health `byokLastSubmitStage` was overwritten to `live_attempt_blocked` by later submits, hiding the first request's terminal stage. Required follow-up: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP`
+* Rollback verified: post-rollback POST returned `code: byok_generation_disabled`; safe default env restored (`PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`, `BYOK_LIVE_ENABLED=false`, `BYOK_LIVE_CONFIRMATION=`, `BYOK_LIVE_WINDOW_ID=`)
+* Health endpoint leak scan: clean
+* No secret/key/token/PII/audio/log/runtime committed. Guard file + tsbuildinfo intentionally NOT staged.
+* T2–T5 not executed. No broad public launch.
+* Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md`
+* Smoke: `scripts/byok-h3b-live-t1-micropilot-retry7-smoke-test.sh` — 20/20 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_SMOKE_PASS`.
+* Next: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP` before Retry-8. No T2–T5.

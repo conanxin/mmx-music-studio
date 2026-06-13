@@ -657,3 +657,19 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-6 — controlled live pilot attempt after fron
 * Rollback verified: post-rollback `code: byok_generation_disabled`
 * Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY6_20260613.md` (171 lines)
 * Smoke: `scripts/byok-h3b-live-t1-micropilot-retry6-smoke-test.sh` — 43/43 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY6_SMOKE_PASS`.
+
+BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-7 — T1 submitted, frontend direct-live verified, one-shot guard bounded, silent consume observed
+
+* Window: `h3b-20260613-t1-retry7-125556` (Asia/Shanghai, 60 min, 12:55:56 → 13:55:56 +08:00)
+* Deployed commit: `1fbc61b` (master HEAD)
+* Health live gate: all 17/17 checks PASS before submit
+* T1 submitted 6 times, violating the single-submit rule
+* Frontend direct-live fix verified: `byokLastSubmitModeCandidate=live`
+* One-shot guard verified: first request `byok_03867c9a057e` consumed the slot; submits 2–6 all rejected with `blocked_live_attempt_limit`
+* `byokLiveAudioUsed=0`, `realApiAttemptsUsed=0` — no MiniMax call, no audio generated
+* NEW issue (unresolved): first consumed live attempt produced no terminal relay/provider stage. Required follow-up: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP`
+* Rollback verified: post-rollback `code: byok_generation_disabled`; safe default env restored
+* No broad public launch. T2–T5 not executed.
+* Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md`
+* Smoke: `scripts/byok-h3b-live-t1-micropilot-retry7-smoke-test.sh` — 20/20 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_SMOKE_PASS`.
+* Next: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP` before Retry-8. No T2–T5.
