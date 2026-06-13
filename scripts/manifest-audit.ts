@@ -63,18 +63,21 @@ async function audit(): Promise<{ issues: string[]; fixed: number; total: number
   const issues: string[] = [];
   let fixed = 0;
 
-  if (!fs.existsSync(MANIFEST_PATH)) {
-    issues.push(`FATAL: manifest.json not found at ${MANIFEST_PATH}`);
-    return { issues, fixed, total: 0 };
-  }
-
   let manifest: Manifest;
-  try {
-    const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
-    manifest = JSON.parse(raw);
-  } catch (e) {
-    issues.push(`FATAL: manifest.json is not valid JSON: ${e}`);
-    return { issues, fixed, total: 0 };
+  if (!fs.existsSync(MANIFEST_PATH)) {
+    // An empty local storage directory is a valid safe-default state.
+    // The server's loadManifest() also treats a missing manifest as
+    // { version: 1, tracks: [] }, so release checks should not require
+    // a runtime file that .gitignore intentionally excludes.
+    manifest = { version: 1, tracks: [] };
+  } else {
+    try {
+      const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+      manifest = JSON.parse(raw);
+    } catch (e) {
+      issues.push(`FATAL: manifest.json is not valid JSON: ${e}`);
+      return { issues, fixed, total: 0 };
+    }
   }
 
   if (!manifest.tracks || !Array.isArray(manifest.tracks)) {

@@ -113,19 +113,11 @@ fi
 
 # ── 9. Secret scan ────────────────────────────────────────────────────────
 echo "[9/11] Secret scan..."
-SECRET_FOUND=$(grep -rInE \
-  "sk-[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{30,}|authorization: Bearer" \
-  --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git \
-  --exclude-dir=storage --exclude-dir=tmp \
-  --exclude-dir=scripts \
-  --exclude="*.png" --exclude="*.zip" --exclude="*.mp3" --exclude="*.wav" \
-  . 2>/dev/null | head -5 || true)
-
-if [[ -z "$SECRET_FOUND" ]]; then
+if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
   fail "Secret scan: potential secret found"
-  echo "$SECRET_FOUND" | head -5
+  cat /tmp/secret-scan.out | tail -10
 fi
 
 # ── 10. Git status ─────────────────────────────────────────────────────────

@@ -1,0 +1,7 @@
+scripts/release-check.sh text eol=lf
+scripts/config-smoke-test.sh text eol=lf
+scripts/web-api-smoke-test.sh text eol=lf
+scripts/cli-adapter-smoke-test.sh text eol=lf
+scripts/verify-existing-cli-track.sh text eol=lf
+scripts/byok-h3b-r10-blocker-closeout-smoke-test.sh text eol=lf
+scripts/byok-h3b-live-t1-micropilot-retry10-smoke-test.sh text eol=lf

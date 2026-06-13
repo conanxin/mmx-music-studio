@@ -1,26 +1,20 @@
-#!/bin/bash
-# ─── Web API Smoke Test ───────────────────────────────────────────────────────
-# Verifies the full Web → API pipeline in mock mode.
-# Forces: REAL_GENERATION_ENABLED=false, MOCK_GENERATION_ENABLED=true,
-#         PUBLIC_DEMO_MODE=false, MINIMAX_API_KEY=MOCK_ONLY_PRESENT_KEY
+#!/usr/bin/env bash
+# Web API smoke test.
 #
-# Tests:
-#   1. npm run build
-#   2. GET  /api/health
-#   3. POST /api/key/check (server mode)
-#   4. POST /api/generate → mock track
-#   5. GET  /api/tracks/:id/audio
-#   6. GET  /api/tracks/:id/download
-#   7. DELETE /api/tracks/:id
-#   8. Verify no secret leakage
+# Runs the normal web API in mock mode only. It never calls MiniMax,
+# never calls /api/generate/byok, and never enables BYOK live gates.
 
 set -euo pipefail
+
 cd "$(dirname "$0")/.."
 
-API_BASE="http://localhost:8787"
+API_PORT="${API_PORT:-8787}"
+API_FALLBACK_PORT="${API_FALLBACK_PORT:-18787}"
+API_BASE="http://127.0.0.1:${API_PORT}"
 SERVER_PID=""
 SERVER_LOG="/tmp/mmx-webapi-smoke.log"
 SECRET_PATTERNS="MOCK_ONLY_PRESENT_KEY|Bearer|Authorization|sk-|sk_"
+TSX_BIN="./node_modules/.bin/tsx"
 
 cleanup() {
   if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -30,103 +24,133 @@ cleanup() {
 }
 trap cleanup EXIT
 
-start_server() {
-  pkill -f "tsx server/index.ts" 2>/dev/null || true
-  sleep 2
-  echo "Starting API server (mock mode)..."
-  REAL_GENERATION_ENABLED=false \
-    MOCK_GENERATION_ENABLED=true \
-    PUBLIC_DEMO_MODE=false \
-    MINIMAX_API_KEY=MOCK_ONLY_PRESENT_KEY \
-    npm run dev:server > "$SERVER_LOG" 2>&1 &
-  SERVER_PID=$!
-  sleep 3
-  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-    echo "  ✗ Server failed to start"
-    tail -20 "$SERVER_LOG"
+port_is_free() {
+  python3 - "$1" <<'PY'
+import socket
+import sys
+
+port = int(sys.argv[1])
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+    sock.bind(("127.0.0.1", port))
+except OSError:
+    raise SystemExit(1)
+finally:
+    sock.close()
+PY
+}
+
+pick_port() {
+  if port_is_free "$API_PORT"; then
+    API_BASE="http://127.0.0.1:${API_PORT}"
+    return
+  fi
+
+  echo "  INFO: port ${API_PORT} is busy; trying ${API_FALLBACK_PORT}"
+  API_PORT="$API_FALLBACK_PORT"
+  API_BASE="http://127.0.0.1:${API_PORT}"
+  if ! port_is_free "$API_PORT"; then
+    echo "  FAIL: fallback port ${API_PORT} is also busy"
     exit 1
   fi
-  echo "  ✓ Server started (PID $SERVER_PID)"
 }
 
 wait_health() {
-  for i in $(seq 1 15); do
-    if curl -sf "$API_BASE/api/health" > /dev/null 2>&1; then
+  for _ in {1..20}; do
+    if curl -sf "$API_BASE/api/health" >/dev/null 2>&1; then
       return 0
+    fi
+    if [ -n "$SERVER_PID" ] && ! kill -0 "$SERVER_PID" 2>/dev/null; then
+      echo "  FAIL: server exited before health was ready"
+      tail -40 "$SERVER_LOG" 2>/dev/null || true
+      exit 1
     fi
     sleep 1
   done
-  echo "  ✗ Server did not become ready"; exit 1
+  echo "  FAIL: server did not become ready at $API_BASE"
+  tail -40 "$SERVER_LOG" 2>/dev/null || true
+  exit 1
+}
+
+start_server() {
+  pick_port
+  echo "Starting API server on ${API_BASE} (mock mode)..."
+  REAL_GENERATION_ENABLED=false \
+    MOCK_GENERATION_ENABLED=true \
+    PUBLIC_DEMO_MODE=false \
+    MINIMAX_BACKEND=mock \
+    MINIMAX_API_KEY=MOCK_ONLY_PRESENT_KEY \
+    PUBLIC_BYOK_ENABLED=false \
+    BYOK_DRY_RUN_ONLY=true \
+    BYOK_LIVE_ENABLED=false \
+    BYOK_DIRECT_LIVE_ENABLED=false \
+    PORT="$API_PORT" \
+    "$TSX_BIN" server/index.ts > "$SERVER_LOG" 2>&1 &
+  SERVER_PID=$!
+  wait_health
+  echo "  PASS: server started (PID $SERVER_PID)"
 }
 
 check_no_secrets() {
   local response="$1"
   local label="$2"
-  if echo "$response" | grep -Ei "$SECRET_PATTERNS" > /dev/null 2>&1; then
-    echo "  ✗ Secret found in $label:"
+  if echo "$response" | grep -Ei "$SECRET_PATTERNS" >/dev/null 2>&1; then
+    echo "  FAIL: secret-like value found in $label"
     echo "$response" | grep -Ei "$SECRET_PATTERNS"
     exit 1
   fi
-  echo "  ✓ No secrets in $label"
-}
-
-# ── JSON helpers ──────────────────────────────────────────────────────────────
-json_get() {
-  local key="$1"
-  echo "$2" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-v=d.get('$key','')
-sys.stdout.write(str(v))
-" 2>/dev/null || echo ""
-}
-
-json_get_nested() {
-  local key="$1"
-  echo "$2" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-v=d.get('track',{}).get('$key','')
-sys.stdout.write(str(v))
-" 2>/dev/null || echo ""
+  echo "  PASS: no secrets in $label"
 }
 
 echo "=== mmx-music-studio Web API Smoke Test ==="
 
-# ── Build ─────────────────────────────────────────────────────────────────────
 echo ""
-echo "─── Step 1: npm run build ───"
-npm run build 2>&1 | tail -5
+echo "--- Step 1: npm run build ---"
+npm run build >/tmp/mmx-webapi-build.out 2>&1
+tail -5 /tmp/mmx-webapi-build.out
 
-# ── Start server ──────────────────────────────────────────────────────────────
 start_server
-wait_health
 
-# ── Test 1: GET /api/health ───────────────────────────────────────────────────
 echo ""
-echo "─── Test 1: GET /api/health ───"
-HEALTH=$(curl -sf "$API_BASE/api/health")
+echo "--- Test 1: GET /api/health ---"
+HEALTH="$(curl -sf "$API_BASE/api/health")"
 echo "Response: $HEALTH"
 check_no_secrets "$HEALTH" "/api/health"
+JSON_INPUT="$HEALTH" python3 - <<'PY'
+import json
+import os
+import sys
 
-# ── Test 2: POST /api/key/check ─────────────────────────────────────────────
+d = json.loads(os.environ["JSON_INPUT"])
+checks = {
+    "realGenerationEnabled false": d.get("realGenerationEnabled") is False,
+    "publicByokEnabled false": d.get("publicByokEnabled") is False,
+    "byokLiveEnabled false": d.get("byokLiveEnabled") is False,
+    "realApiAttemptsUsed zero": d.get("realApiAttemptsUsed", 0) == 0,
+}
+for label, ok in checks.items():
+    print(("  PASS: " if ok else "  FAIL: ") + label)
+    if not ok:
+        raise SystemExit(1)
+PY
+
 echo ""
-echo "─── Test 2: POST /api/key/check (server mode) ───"
-KEY_RESP=$(curl -sf -X POST "$API_BASE/api/key/check" \
+echo "--- Test 2: POST /api/key/check (server mode) ---"
+KEY_RESP="$(curl -sf -X POST "$API_BASE/api/key/check" \
   -H "Content-Type: application/json" \
-  -d '{"keyMode":"server"}')
+  -d '{"keyMode":"server"}')"
 echo "Response: $KEY_RESP"
 check_no_secrets "$KEY_RESP" "/api/key/check"
-if echo "$KEY_RESP" | grep -q '"ok":true'; then
-  echo "  ✓ ok=true"
-else
-  echo "  ✗ ok should be true"; exit 1
-fi
+echo "$KEY_RESP" | grep -q '"ok":true' || {
+  echo "  FAIL: key/check ok should be true"
+  exit 1
+}
+echo "  PASS: key/check ok=true"
 
-# ── Test 3: POST /api/generate ───────────────────────────────────────────────
 echo ""
-echo "─── Test 3: POST /api/generate ───"
-GEN_RESP=$(curl -sf -X POST "$API_BASE/api/generate" \
+echo "--- Test 3: POST /api/generate (mock mode) ---"
+GEN_RESP="$(curl -sf -X POST "$API_BASE/api/generate" \
   -H "Content-Type: application/json" \
   -d '{
     "keyMode": "server",
@@ -134,102 +158,79 @@ GEN_RESP=$(curl -sf -X POST "$API_BASE/api/generate" \
       "mode": "instrumental",
       "prompt": "lo-fi hip hop, study, coffee shop, relaxed, no vocals"
     }
-  }')
+  }')"
 echo "Response: $GEN_RESP"
 check_no_secrets "$GEN_RESP" "/api/generate response"
+echo "$GEN_RESP" | grep -q '"ok":true' || {
+  echo "  FAIL: generate ok should be true"
+  exit 1
+}
 
-if echo "$GEN_RESP" | grep -q '"ok":true'; then
-  echo "  ✓ ok=true"
-else
-  echo "  ✗ ok should be true"; exit 1
-fi
-
-# Phase 4B: /api/generate returns {ok, job:{id, status}} (async)
-# Older sync format returned {ok, track:{id}, generationSource} (backward compat)
-JOB_ID=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('id',''))" 2>/dev/null)
-TRACK_ID=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('track',{}).get('id',''))" 2>/dev/null)
+JOB_ID="$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('id',''))" 2>/dev/null)"
+TRACK_ID="$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('track',{}).get('id',''))" 2>/dev/null)"
 
 if [ -n "$JOB_ID" ]; then
-  echo "  ✓ job.id=$JOB_ID (async format — Phase 4B)"
-  echo "  ✓ status=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status','?'))")"
-elif [ -n "$TRACK_ID" ]; then
-  echo "  ✓ track.id=$TRACK_ID (sync format — backward compatible)"
-else
-  echo "  ✗ neither job.id nor track.id found"; exit 1
-fi
-
-SOURCE=$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('generationSource','') or d.get('job',{}).get('generationSource',''))" 2>/dev/null)
-if [ -n "$SOURCE" ]; then
-  if [ "$SOURCE" = "mock" ]; then
-    echo "  ✓ generationSource=mock"
-  else
-    echo "  ✓ generationSource=$SOURCE"
-  fi
-fi
-
-# ── Test 4: resolve track ID (async job → poll; sync → use directly) ────────
-if [ -n "$JOB_ID" ]; then
-  echo ""
-  echo "─── Resolving track from async job ───"
-  echo "  Waiting for job $JOB_ID to complete..."
-  for i in $(seq 1 15); do
+  echo "  PASS: job.id=$JOB_ID"
+  for i in {1..15}; do
     sleep 2
-    JOB_STATUS=$(curl -sf "${API_BASE}/api/jobs/${JOB_ID}" \
-      | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status','?'))" 2>/dev/null)
-    echo "  [${i}] status=$JOB_STATUS"
+    JOB_JSON="$(curl -sf "${API_BASE}/api/jobs/${JOB_ID}")"
+    JOB_STATUS="$(echo "$JOB_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status','?'))" 2>/dev/null)"
+    echo "  [$i] status=$JOB_STATUS"
     case "$JOB_STATUS" in
       succeeded)
-        TRACK_ID=$(curl -sf "${API_BASE}/api/jobs/${JOB_ID}" \
-          | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('trackId',''))" 2>/dev/null)
-        echo "  ✓ job succeeded, trackId=$TRACK_ID"
+        TRACK_ID="$(echo "$JOB_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('trackId',''))" 2>/dev/null)"
         break
         ;;
       failed|cancelled)
-        echo "  ✗ job ended with status=$JOB_STATUS — cannot test audio endpoint"; exit 1
+        echo "  FAIL: job ended with status=$JOB_STATUS"
+        exit 1
         ;;
     esac
-    if [ "$i" -eq 15 ]; then echo "  ✗ timeout waiting for job"; exit 1; fi
   done
+elif [ -n "$TRACK_ID" ]; then
+  echo "  PASS: track.id=$TRACK_ID"
+else
+  echo "  FAIL: neither job.id nor track.id found"
+  exit 1
 fi
 
-# ── Test 4: GET /api/tracks/:id/audio ───────────────────────────────────────
+if [ -z "$TRACK_ID" ]; then
+  echo "  FAIL: no track id resolved"
+  exit 1
+fi
+
 echo ""
-echo "─── Test 4: GET /api/tracks/$TRACK_ID/audio ───"
-AUDIO_HEAD=$(curl -sI "$API_BASE/api/tracks/$TRACK_ID/audio")
-AUDIO_STATUS=$(echo "$AUDIO_HEAD" | grep -i "^HTTP" | awk '{print $2}')
-echo "  HTTP $AUDIO_STATUS"
+echo "--- Test 4: GET /api/tracks/$TRACK_ID/audio ---"
+AUDIO_HEAD="$(curl -sI "$API_BASE/api/tracks/$TRACK_ID/audio")"
+AUDIO_STATUS="$(echo "$AUDIO_HEAD" | awk 'BEGIN{IGNORECASE=1} /^HTTP/{print $2; exit}')"
 check_no_secrets "$AUDIO_HEAD" "audio headers"
-if [ "$AUDIO_STATUS" = "200" ] || [ "$AUDIO_STATUS" = "206" ]; then
-  echo "  ✓ HTTP $AUDIO_STATUS"
-else
-  echo "  ✗ Expected 200 or 206"; exit 1
+if [ "$AUDIO_STATUS" != "200" ] && [ "$AUDIO_STATUS" != "206" ]; then
+  echo "  FAIL: expected audio HTTP 200 or 206, got $AUDIO_STATUS"
+  exit 1
 fi
+echo "  PASS: audio HTTP $AUDIO_STATUS"
 
-# ── Test 5: GET /api/tracks/:id/download ─────────────────────────────────────
 echo ""
-echo "─── Test 5: GET /api/tracks/$TRACK_ID/download ───"
-DL_HEAD=$(curl -sI "$API_BASE/api/tracks/$TRACK_ID/download")
-DL_STATUS=$(echo "$DL_HEAD" | grep -i "^HTTP" | awk '{print $2}')
-echo "  HTTP $DL_STATUS"
+echo "--- Test 5: GET /api/tracks/$TRACK_ID/download ---"
+DL_HEAD="$(curl -sI "$API_BASE/api/tracks/$TRACK_ID/download")"
+DL_STATUS="$(echo "$DL_HEAD" | awk 'BEGIN{IGNORECASE=1} /^HTTP/{print $2; exit}')"
 check_no_secrets "$DL_HEAD" "download headers"
-if [ "$DL_STATUS" = "200" ]; then
-  echo "  ✓ HTTP 200"
-else
-  echo "  ✗ Expected 200"; exit 1
+if [ "$DL_STATUS" != "200" ]; then
+  echo "  FAIL: expected download HTTP 200, got $DL_STATUS"
+  exit 1
 fi
+echo "  PASS: download HTTP 200"
 
-# ── Test 6: DELETE /api/tracks/:id ─────────────────────────────────────────
 echo ""
-echo "─── Test 6: DELETE /api/tracks/$TRACK_ID ───"
-DEL_RESP=$(curl -sf -X DELETE "$API_BASE/api/tracks/$TRACK_ID")
+echo "--- Test 6: DELETE /api/tracks/$TRACK_ID ---"
+DEL_RESP="$(curl -sf -X DELETE "$API_BASE/api/tracks/$TRACK_ID")"
 echo "Response: $DEL_RESP"
 check_no_secrets "$DEL_RESP" "delete response"
-if echo "$DEL_RESP" | grep -q '"ok":true'; then
-  echo "  ✓ ok=true"
-else
-  echo "  ✗ ok should be true"; exit 1
-fi
+echo "$DEL_RESP" | grep -q '"ok":true' || {
+  echo "  FAIL: delete ok should be true"
+  exit 1
+}
+echo "  PASS: delete ok=true"
 
 echo ""
-echo "=== All Web API Smoke Tests Passed ==="
-echo ""
+echo "WEB_API_SMOKE_PASS"

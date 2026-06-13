@@ -1617,3 +1617,21 @@ Key changes for the next engineer / operator:
   and confirming `byokLiveConfirmationConfigured: true` before
   asking the agent to open the live gate. **No automatic Retry-11
   is planned.**
+
+## BYOK-H3B-R10-BLOCKER-CLOSEOUT
+
+* Status: **SAFE-DEFAULT CLOSED / NO-LIVE**.
+* Scope: local docs and static smoke coverage only; no production env
+  change, no live submit, no MiniMax call, no audio generation.
+* Retry-10 remains **RETRY10_BLOCKED_OR_ABORTED** because
+  **OPERATOR_SECRET_STEP_NOT_CONFIRMED**: the public health surface
+  still showed `byokLiveConfirmationConfigured=false` and
+  `byokLiveEnabled=false` at the pause point.
+* Codex must not set `BYOK_LIVE_CONFIRMATION`, must not set
+  `BYOK_LIVE_WINDOW_ID`, must not enable `BYOK_DIRECT_LIVE_ENABLED`,
+  and must not submit `POST /api/generate/byok` before a future
+  operator reports `OPERATOR_SECRET_CONFIG_APPLIED` without values.
+* Handoff/checklist:
+  `docs/launch/BYOK_H3B_R10_BLOCKER_CLOSEOUT_20260613.md`.
+* Static smoke:
+  `scripts/byok-h3b-r10-blocker-closeout-smoke-test.sh`.
