@@ -1316,3 +1316,17 @@ BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP — adapter alignment
 * No MiniMax call in this phase. No live pilot executed. No broad
   public launch.
 * Smoke: scripts/byok-h3b-provider-selection-followup-smoke-test.sh — 27/27 PASS.
+
+BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-5 — controlled live pilot attempt
+
+* Window: h3b-20260613-t1-retry5-091635
+* Direct confirmation: CONFIRM_BYOK_DIRECT_LIVE_TEST (read from code constant)
+* Health live gate: all true before submit
+* T1 submitted once, one-shot guard consumed slot (byokLiveAttemptsUsed=1)
+* Provider result: fake_relay_ok (not live_relay_ok)
+* Root cause: client request sent mode='fake' (default), not mode='live' or
+  mode='direct-live'. The server correctly honored the client's mode choice.
+* No MiniMax call. No audio generated. realApiAttemptsUsed=0.
+* Rollback verified. Post-rollback byok_generation_disabled confirmed.
+* No secret/key/token/PII/audio/log committed.
+* Smoke: scripts/byok-h3b-live-t1-micropilot-retry5-smoke-test.sh — 26/26 PASS.
