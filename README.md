@@ -1302,3 +1302,38 @@ no follow-up event). The fix is a **post-consume timeout reaper** in
   `live_attempt_consumed_without_terminal_stage` synthetic row, and
   `byokSilentConsumeCount` will increment. No T2–T5 until
   `live_relay_ok` is observed end-to-end.
+
+### BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-9 (reaper verified → rollback)
+
+Retry-9 closed the silent-consume observability gap surfaced by
+Retry-8. The hardened live gate was opened under window
+`h3b-20260613-t1-retry9-175611` (Asia/Shanghai, 2026-06-13 17:56:11 →
+18:56:11). T1 submitted once with `mode: "direct-live"`. The trace ring
+buffer captured the same silent-consume pattern that Retry-8 hit
+(requestId `byok_3c7cc9cc4e96`), but this time the post-consume
+reaper fired at 18:02:49.452Z — exactly 30.001s after the consume
+(`BYOK_SILENT_CONSUME_TIMEOUT_MS=30000`) — and emitted the synthetic
+terminal stage `live_attempt_consumed_without_terminal_stage` with
+`responseCode: silent_consume_detected`. `byokSilentConsumeCount`
+incremented from 0 to 1. `byokPendingConsumedAttempts` cleared.
+
+The **reaper works as designed**. The post-consume code defect that
+causes the consume to land without a natural terminal is a separate
+issue (the `direct_live_confirmation_mismatch` rejection exits the
+handler before recording). Per the strict spec, unconditional rollback
+to safe default was executed at 2026-06-13T18:04:30+08:00, post-rollback
+`POST /api/generate/byok` returned `code=byok_generation_disabled`,
+no real MiniMax API call landed (`realApiAttemptsUsed=0`), no audio
+generated (`byokLiveAudioUsed=0`), no public launch broadened. The
+evidence lives in
+`docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY9_20260613.md`. Smoke:
+`scripts/byok-h3b-live-t1-micropilot-retry9-smoke-test.sh` —
+`BYOK_H3B_LIVE_T1_MICROPILOT_RETRY9_SMOKE_PASS`. The
+`ci-secret-scan` reports CLEAN.
+
+**Next:** investigate the post-consume code path in
+`server/index.ts` (the `direct_live_confirmation_mismatch` branch
+must record a terminal stage via `recordByokSubmit` before returning
+to the client). When that fix is deployed and verified, open
+Retry-10. No T2–T5 under any circumstance. This phase made no real
+MiniMax call and no music generated, no public launch broadened.

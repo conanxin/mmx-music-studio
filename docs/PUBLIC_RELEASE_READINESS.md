@@ -780,3 +780,23 @@ BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume g
   `live_attempt_consumed_without_terminal_stage` synthetic row, and
   `byokSilentConsumeCount` will increment. If that fires in a window,
   halt and investigate the post-consume relay chain. No T2–T5.
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-9
+
+* Status: **REAPER_VERIFIED → ROLLBACK**.
+* Window `h3b-20260613-t1-retry9-175611` (Asia/Shanghai,
+  2026-06-13 17:56:11 → 18:56:11). Deployed commit: `4ce358d`.
+* T1 submitted once. requestId `byok_3c7cc9cc4e96` consumed at
+  18:02:19.451Z. Reaper fired 30.001s later and emitted the
+  synthetic terminal stage. `byokSilentConsumeCount` 0 → 1.
+* Post-consume code defect (same as Retry-8): the
+  `direct_live_confirmation_mismatch` rejection branch exits without
+  recording a terminal stage. The reaper caught it. Investigate in
+  the next phase.
+* Rollback at 2026-06-13T18:04:30+08:00. Safe default verified.
+  Post-rollback probe: `code=byok_generation_disabled`. No live
+  call, no MiniMax call, no music, no public launch broadened.
+* Smoke: `scripts/byok-h3b-live-t1-micropilot-retry9-smoke-test.sh`
+  PASS. Secret scan CLEAN.
+* Next: fix the post-consume code path so all rejection branches
+  record a terminal stage. Then Retry-10. No T2–T5.

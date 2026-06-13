@@ -1497,3 +1497,33 @@ Key changes for the next engineer / operator:
 * Next: Retry-9 only after this commit CI is green. Inspect
   `byokSubmitTraceRecent` for the first T1 submit in the new window.
   No T2–T5.
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-9
+
+* Window: `h3b-20260613-t1-retry9-175611`, Asia/Shanghai,
+  2026-06-13 17:56:11 → 18:56:11. Deployed commit: `4ce358d`.
+* T1 submitted once with `mode: "direct-live"`. requestId:
+  `byok_3c7cc9cc4e96`. Consumed at 18:02:19.451Z. Reaper fired at
+  18:02:49.452Z (consume + 30.001s) with synthetic terminal stage
+  `live_attempt_consumed_without_terminal_stage` /
+  `responseCode: silent_consume_detected`.
+* `byokSilentConsumeCount: 0 → 1` (reaper incremented — Retry-8 had
+  this stuck at 0).
+* `byokPendingConsumedAttempts: 0 → 0` (reaper cleared the pending
+  entry on fire).
+* `byokSubmitsReceived: 0 → 3`. `byokLiveAttemptsUsed=1` (cap
+  enforced). `byokLiveAudioUsed=0` (no audio). `realApiAttemptsUsed=0`
+  (no MiniMax call).
+* Post-consume code defect (same as Retry-8): the
+  `direct_live_confirmation_mismatch` branch in
+  `server/index.ts:2271` rejects the request but does **not** call
+  `recordByokSubmit` with a terminal stage. The reaper correctly
+  detected this gap. Investigate in the next phase.
+* Rollback at 2026-06-13T18:04:30+08:00. Post-rollback probe:
+  `code=byok_generation_disabled`. Safe default verified.
+* Files: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY9_20260613.md`
+  (new), `scripts/byok-h3b-live-t1-micropilot-retry9-smoke-test.sh`
+  (new), `README.md` / `docs/DEVELOPMENT_HANDOFF.md` /
+  `docs/PUBLIC_RELEASE_READINESS.md` (appended).
+* Next: fix the post-consume code path so all rejection branches
+  record a terminal stage. Then Retry-10. No T2–T5.
