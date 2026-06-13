@@ -800,3 +800,14 @@ BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume g
   PASS. Secret scan CLEAN.
 * Next: fix the post-consume code path so all rejection branches
   record a terminal stage. Then Retry-10. No T2–T5.
+
+## BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX
+
+* Status: **FIX_COMMITTED (pending operator push), SAFE-DEFAULT VERIFIED**
+* Effect: every `handleByokGenerate` rejection branch in the
+  direct-live path now records a natural terminal trace. The
+  silent-consume reaper is retained as defense-in-depth.
+* No `PUBLIC_BYOK_ENABLED` flip, no real MiniMax call, no music
+  generated, no `.env*` change, no tag move.
+* Next step is operator-approved commit / push / CI; no Retry-10,
+  no T2–T5, no broad public launch.

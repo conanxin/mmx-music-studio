@@ -1337,3 +1337,23 @@ must record a terminal stage via `recordByokSubmit` before returning
 to the client). When that fix is deployed and verified, open
 Retry-10. No T2–T5 under any circumstance. This phase made no real
 MiniMax call and no music generated, no public launch broadened.
+
+### BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX (post-consume observability closed)
+
+* Fixed root cause: four rejection branches in `handleByokGenerate`
+  (the ones that fire AFTER `consumeByokLiveAttempt`) did not call
+  `recordByokSubmit` with a terminal stage, so the post-consume reaper
+  had to clean them up after a 30s timeout.
+* Branches patched: `byok_direct_live_not_enabled`,
+  `direct_live_confirmation_mismatch`, `direct_live_provider_error`,
+  and the success path `direct_live_relay_ok`.
+* Each patch is an additive `recordByokSubmit({ ...terminal: true,
+  responseCode: <aligned> })` call immediately before the rejection
+  return. No env change, no public BYOK flip, no MiniMax call, no music
+  generated.
+* Reaper is retained as defense-in-depth and now should not fire
+  from `handleByokGenerate`. The reaper stage
+  `live_attempt_consumed_without_terminal_stage` and the
+  `getByokSilentConsumeCount` accessor remain in place.
+* No Retry-10, no T2–T5, no broad public launch. Awaiting operator
+  confirmation to commit / push / CI.

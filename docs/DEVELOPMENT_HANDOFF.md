@@ -1527,3 +1527,8 @@ Key changes for the next engineer / operator:
   `docs/PUBLIC_RELEASE_READINESS.md` (appended).
 * Next: fix the post-consume code path so all rejection branches
   record a terminal stage. Then Retry-10. No T2–T5.
+
+## BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX
+
+* Status: **FIX_COMMITTED (pending operator push), SAFE-DEFAULT VERIFIED**
+* Root cause: `handleByokGenerate` consumed a live attempt slot upst...[truncated]

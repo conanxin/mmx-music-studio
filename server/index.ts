@@ -2253,6 +2253,22 @@ console.info(
  if (requestedMode === 'direct-live') {
    // 6f. Direct live gate check
    if (config.byokDirectLiveEnabled !== true) {
+     // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
+     // The live attempt slot was already consumed upstream
+     // (consumeByokLiveAttempt at step 6b), so this rejection must
+     // record a natural terminal trace or the post-consume reaper will
+     // fire `live_attempt_consumed_without_terminal_stage` later.
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'direct_live_not_enabled',
+       outcome: 'blocked_direct_live_not_enabled',
+       modeCandidate: 'live',
+       turnstilePresent: submitTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+       terminal: true,
+       responseCode: 'byok_direct_live_not_enabled',
+     });
      sendJson(res, 403, {
        ok: false,
        code: 'byok_direct_live_not_enabled',
@@ -2265,6 +2281,25 @@ console.info(
      console.warn(
        `[byok] direct live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokDirectLiveConfirmation.length}`,
      );
+     // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
+     // The live attempt slot was already consumed upstream, so this
+     // rejection must record a natural terminal trace or the reaper
+     // will fire `live_attempt_consumed_without_terminal_stage`.
+     // This is the exact branch Retry-9 hit: T1 sent mode=direct-live,
+     // the request cleared all upstream gates, consumed the one-shot
+     // live attempt, then was rejected here because the direct-live
+     // confirmation phrase was not provided by the client.
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'direct_live_confirmation_mismatch',
+       outcome: 'blocked_direct_live_confirmation_mismatch',
+       modeCandidate: 'live',
+       turnstilePresent: submitTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+       terminal: true,
+       responseCode: 'byok_direct_live_confirmation_required',
+     });
      sendJson(res, 403, {
        ok: false,
        code: 'byok_direct_live_confirmation_required',
@@ -2286,6 +2321,24 @@ console.info(
    });
 
    if (!directResult.ok) {
+     // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
+     // The live attempt slot was already consumed upstream, so this
+     // provider-error rejection must record a natural terminal trace
+     // or the post-consume reaper will fire
+     // `live_attempt_consumed_without_terminal_stage` later. The
+     // `directResult.code` is a typed ByokDirectErrorCode; we forward
+     // it as the responseCode so the trace aligns with the HTTP body.
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'direct_live_provider_error',
+       outcome: 'live_relay_provider_error',
+       modeCandidate: 'live',
+       turnstilePresent: submitTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+       terminal: true,
+       responseCode: directResult.code,
+     });
      sendJson(res, 502, {
        ok: false,
        code: directResult.code,
@@ -2299,6 +2352,23 @@ console.info(
   // Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: record successful audio
   // generation against the BYOK-live audio cap.
   recordByokLiveAudioGenerated(liveAudioCapConfig);
+  // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
+  // Record a natural terminal trace for the success path. The live
+  // attempt slot was consumed upstream, so without this the post-
+  // consume reaper would fire `live_attempt_consumed_without_terminal_stage`
+  // for a successful direct-live submit too. Stage 'direct_live_relay_ok'
+  // is a known terminal stage in BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME.
+  recordByokSubmit({
+    requestId: submitRequestId,
+    stage: 'direct_live_relay_ok',
+    outcome: 'direct_live_relay_ok',
+    modeCandidate: 'live',
+    turnstilePresent: submitTurnstilePresent,
+    apiKeyPresent: submitApiKeyPresent,
+    promptPresent: true,
+    terminal: true,
+    responseCode: 'byok_direct_live_ok',
+  });
   sendJson(res, 200, {
     ok: true,
     code: 'byok_direct_live_ok',
