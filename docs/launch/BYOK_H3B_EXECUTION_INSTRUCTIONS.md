@@ -456,3 +456,55 @@ See `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY5_20260613.md` §12
 for the full evidence-doc enrichment (root cause, fix, server
 defense, this-phase boundary).
 
+
+## Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP (after RETRY-7)
+
+**Goal:** close the silent-consume gap surfaced in
+`docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md` §
+"Silent Consume Issue (NEW — unresolved in this phase)".
+
+**Scope:**
+
+- **Submit trace ring buffer** in `server/adapters/minimax-api/byok.ts`
+  (default 32, max 256). Per-submit `ByokSubmitTrace` record with stage,
+  outcome, modeCandidate, requestId, ISO timestamp, `liveAttemptConsumed`
+  boolean, `terminal` boolean, `responseCode`.
+- **Silent-consume guard** in `recordByokSubmit()`. A
+  `liveAttemptConsumed: true` stage followed (same requestId) by a stage
+  not in `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` increments
+  `silentConsumeCount` and emits a synthetic
+  `live_attempt_consumed_without_terminal_stage` trace entry.
+- **Health trace fields** on `/api/health`:
+  `byokSubmitTraceCount`, `byokSubmitTraceRecent`,
+  `byokSilentConsumeCount`.
+- **Server index updates** (`server/index.ts`):
+  - Imports the three new accessors.
+  - Adds health fields to the `/api/health` payload.
+  - Marks the `live_attempt_consumed` recordByokSubmit block as
+    `liveAttemptConsumed: true, terminal: false, responseCode:
+    'in_progress'`.
+
+**Strictly forbidden in this phase:**
+
+- No `BYOK_LIVE_ENABLED=true` or `BYOK_LIVE_CONFIRMATION=...`.
+- No `PUBLIC_BYOK_ENABLED=true` or `BYOK_DIRECT_LIVE_ENABLED=true`.
+- No `BYOK_DRY_RUN_ONLY=false`.
+- No live call. No MiniMax call. No music generation. No real MiniMax
+  user key. No tester PII. No raw secret/env/runtime/log/audio.
+- No `storage/guard/public-generation-guard.json` commit.
+- No `tsconfig.tsbuildinfo` commit.
+- No release tag. No tag move.
+- No broad public launch.
+
+**Smoke**: `scripts/byok-h3b-silent-consume-followup-smoke-test.sh`
+(38/38 PASS, `BYOK_H3B_SILENT_CONSUME_FOLLOWUP_SMOKE_PASS`).
+
+**Next step after this phase:** Retry-8 only after
+`byokSubmitTraceRecent` shows a clean consume → terminal pairing for the
+first submit in the window. Inspect `byokSilentConsumeCount`; if > 0,
+do not retry — investigate the post-`consumeByokLiveAttempt()` relay
+chain first. No T2–T5 until `live_relay_ok` is observed.
+
+See `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md` §
+"Silent Consume Followup — RESOLVED in BYOK-H3B-SILENT-CONSUME-FOLLOWUP"
+for the full resolution summary.

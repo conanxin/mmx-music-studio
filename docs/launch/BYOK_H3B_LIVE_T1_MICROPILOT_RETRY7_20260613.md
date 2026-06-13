@@ -206,3 +206,61 @@ mode reaches the server and that the one-shot guard blocks repeated
 submits, but the first consumed live attempt produced no final
 relay/provider stage. Production was rolled back to safe default. It
 does not broaden public launch.
+
+## Silent Consume Followup — RESOLVED in BYOK-H3B-SILENT-CONSUME-FOLLOWUP
+
+The followup is now in place. Summary of what was added:
+
+- **Submit trace ring buffer** (default 32, max 256) in
+  `server/adapters/minimax-api/byok.ts`. Stores per-submit `ByokSubmitTrace`
+  records with stage, outcome, modeCandidate, requestId, ISO timestamp,
+  `liveAttemptConsumed` boolean, `terminal` boolean, and `responseCode`.
+- **Silent-consume guard** in `recordByokSubmit()`. When a
+  `liveAttemptConsumed: true` stage is followed (same `requestId`) by a
+  stage NOT in the `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` whitelist, the
+  guard increments `silentConsumeCount` and emits a synthetic
+  `live_attempt_consumed_without_terminal_stage` trace entry.
+- **Terminal-stage whitelist** expanded to cover all reachable terminal
+  outcomes after a live consume:
+  `live_relay_ok`, `live_relay_failed`, `provider_error`,
+  `direct_live_relay_ok`, `direct_live_provider_error`,
+  `byok_live_audio_cap_reached`, `internal_error`, `unhandled_error`,
+  `killswitch_off`, `live_attempt_blocked`, `live_confirmation_mismatch`,
+  `live_mode_required`, `direct_live_not_enabled`,
+  `direct_live_confirmation_mismatch`.
+- **Health trace fields** exposed on `/api/health`:
+  - `byokSubmitTraceCount` — total number of trace entries
+  - `byokSubmitTraceRecent` — most recent N entries (default 8)
+  - `byokSilentConsumeCount` — counter of detected silent consumes
+- **No raw key/token/prompt/provider response** is stored. Trace payloads
+  are booleans, enums, ISO timestamps, and `requestId` only. The whitelist
+  check is per-stage string compare, never user-controlled.
+- **`live_attempt_consumed` is explicitly non-terminal** in
+  `server/index.ts`:
+  `liveAttemptConsumed: true, terminal: false, responseCode: 'in_progress'`.
+  The next recordByokSubmit() for the same `requestId` (a gate rejection,
+  a relay ok, or a provider error) clears the open consume.
+
+### Future Retries Must
+
+- Inspect `byokSubmitTraceRecent` (or `byokSubmitTraceCount`) on the
+  health endpoint after a submit — not only `byokLastSubmitStage`, which
+  is last-write and can be overwritten by later submits.
+- If `byokSilentConsumeCount` increments across a window, the relay chain
+  after `consumeByokLiveAttempt()` has a missing terminal-stage code
+  path. Investigate before any further live retry.
+- For per-request terminal verification, the trace now exposes
+  `requestId` so a followup can isolate one submit from the buffer.
+
+### This Phase Did Not
+
+- Re-open live generation.
+- Call MiniMax.
+- Generate music.
+- Use any real MiniMax user key.
+- Broaden the public launch gate.
+
+**Final口径:** BYOK-H3B-SILENT-CONSUME-FOLLOWUP adds submit trace
+observability and terminal-stage guards so consumed BYOK live attempts
+cannot disappear without a final relay/provider/error stage. It does not
+execute BYOK live generation or broaden public launch.

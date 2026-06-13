@@ -127,6 +127,12 @@ import {
   recordByokLiveAudioGenerated,
   recordByokSubmit,
   getByokSubmitObservability,
+  // Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Trace ring buffer + silent consume
+  // detection. Booleans / enums / ISO timestamp only — NEVER apiKey, token,
+  // prompt, lyrics, or raw provider response.
+  getByokSubmitTraceRecent,
+  getByokSubmitTraceCount,
+  getByokSilentConsumeCount,
   type ByokSubmitStage,
   type ByokSubmitOutcome,
   type ByokModel,
@@ -802,6 +808,13 @@ async function handleHealth(
         byokLastSubmitTurnstilePresent: so.lastSubmitTurnstilePresent,
         byokLastSubmitApiKeyPresent: so.lastSubmitApiKeyPresent,
         byokLastSubmitPromptPresent: so.lastSubmitPromptPresent,
+        // Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Per-request trace ring
+        // (newest first, default 8) + counters. Booleans / enums / ISO /
+        // requestId / responseCode ONLY — NEVER apiKey, token, prompt,
+        // lyrics, Authorization, or raw provider response.
+        byokSubmitTraceCount: getByokSubmitTraceCount(),
+        byokSubmitTraceRecent: getByokSubmitTraceRecent(8),
+        byokSilentConsumeCount: getByokSilentConsumeCount(),
       };
     })(),
     // Phase Deploy-CF-D: Turnstile (boolean only, never secret value)
@@ -2200,6 +2213,13 @@ recordByokSubmit({
   turnstilePresent: true,
   apiKeyPresent: submitApiKeyPresent,
   promptPresent: true,
+  // Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Flag this stage as the live
+  // attempt consume so the silent-consume guard checks the next terminal
+  // stage for this requestId. The consume itself is NOT terminal — the
+  // response that follows is.
+  liveAttemptConsumed: true,
+  terminal: false,
+  responseCode: 'in_progress',
 });
 console.info(
   `[byok] live attempt consumed [${requestId}]: window=${liveAttemptConsumedStats.windowId} used=${liveAttemptConsumedStats.attemptsUsed}/${liveAttemptConsumedStats.maxAttempts}`,

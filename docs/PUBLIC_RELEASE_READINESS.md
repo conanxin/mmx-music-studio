@@ -673,3 +673,36 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-7 — T1 submitted, frontend direct-live verif
 * Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md`
 * Smoke: `scripts/byok-h3b-live-t1-micropilot-retry7-smoke-test.sh` — 20/20 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_SMOKE_PASS`.
 * Next: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP` before Retry-8. No T2–T5.
+
+BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume guard; no live, no MiniMax, no music
+
+* Resolves the Retry-7 silent-consume gap (`first consumed live attempt produced no terminal relay/provider stage`).
+* `server/adapters/minimax-api/byok.ts`:
+  * `ByokSubmitTrace` ring buffer (default 32, max 256).
+  * `getByokSubmitTraceRecent(n)`, `getByokSubmitTraceCount()`,
+    `getByokSilentConsumeCount()` accessors.
+  * `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` whitelist covering all
+    reachable terminal outcomes after a live consume.
+  * Silent-consume guard: increments `silentConsumeCount` and emits a
+    synthetic `live_attempt_consumed_without_terminal_stage` trace entry
+    when an open consume is followed by a non-whitelisted stage.
+* `server/index.ts`:
+  * Imports the three new accessors.
+  * `/api/health` exposes `byokSubmitTraceCount`, `byokSubmitTraceRecent`,
+    `byokSilentConsumeCount` next to the existing observability counters.
+  * `live_attempt_consumed` recordByokSubmit block now carries
+    `liveAttemptConsumed: true, terminal: false, responseCode: 'in_progress'`.
+* Trace payloads contain booleans, enums, ISO timestamps, and `requestId`
+  only — never raw key, token, prompt, lyrics, or provider response.
+* No live call, no MiniMax call, no music generation, no real MiniMax
+  user key, no tester PII, no raw secret/env/runtime/log/audio.
+* `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`,
+  `BYOK_LIVE_ENABLED=false`, `BYOK_LIVE_CONFIRMATION=` — production env
+  safe default preserved.
+* No release tag. No tag move. No broad public launch.
+* Smoke: `scripts/byok-h3b-silent-consume-followup-smoke-test.sh` —
+  38/38 PASS, `BYOK_H3B_SILENT_CONSUME_FOLLOWUP_SMOKE_PASS`.
+* Next: Retry-8 only after `byokSubmitTraceRecent` shows a clean
+  consume → terminal pairing for the first submit in the window.
+  `byokSilentConsumeCount` must remain 0 for the entire window. No
+  T2–T5 until `live_relay_ok` is observed.

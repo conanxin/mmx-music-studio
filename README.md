@@ -1212,3 +1212,30 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-7 — T1 submitted, frontend direct-live verif
 * Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md`
 * Smoke: `scripts/byok-h3b-live-t1-micropilot-retry7-smoke-test.sh` — 20/20 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_SMOKE_PASS`.
 * Next: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP` before Retry-8. No T2–T5.
+
+### BYOK-H3B-SILENT-CONSUME-FOLLOWUP (resolved)
+
+The silent-consume gap surfaced in
+`docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md` is now closed:
+
+* `server/adapters/minimax-api/byok.ts` adds a submit-trace ring buffer
+  (default 32, max 256) and a silent-consume guard that increments
+  `silentConsumeCount` when a `liveAttemptConsumed: true` stage is not
+  followed by a stage in `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` for
+  the same `requestId`. A synthetic `live_attempt_consumed_without_terminal_stage`
+  trace entry is emitted on detection.
+* `server/index.ts` imports the three new accessors, exposes
+  `byokSubmitTraceCount` / `byokSubmitTraceRecent` / `byokSilentConsumeCount`
+  on `/api/health`, and marks `live_attempt_consumed` as
+  `liveAttemptConsumed: true, terminal: false, responseCode: 'in_progress'`.
+* Trace payloads are booleans, enums, ISO timestamps, and `requestId` only
+  — no raw key, token, prompt, lyrics, or provider response.
+* This phase does **not** open live, does not call MiniMax, does not
+  generate music, does not use a real MiniMax user key, and does not
+  broaden the public launch gate.
+* Smoke: `scripts/byok-h3b-silent-consume-followup-smoke-test.sh` —
+  38/38 PASS, `BYOK_H3B_SILENT_CONSUME_FOLLOWUP_SMOKE_PASS`.
+* Next: Retry-8 only after the new health trace fields are observed live,
+  with `byokSubmitTraceRecent` showing a clean consume → terminal pairing
+  for the first submit in the window. No T2–T5 until `live_relay_ok` is
+  observed.

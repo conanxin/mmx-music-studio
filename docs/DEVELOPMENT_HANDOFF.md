@@ -1384,3 +1384,35 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-7 — T1 submitted, frontend direct-live verif
 * Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md`
 * Smoke: `scripts/byok-h3b-live-t1-micropilot-retry7-smoke-test.sh` — 20/20 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_SMOKE_PASS`.
 * Next: `BYOK-H3B-SILENT-CONSUME-FOLLOWUP` before Retry-8. No T2–T5.
+
+### BYOK-H3B-SILENT-CONSUME-FOLLOWUP (resolved)
+
+The silent-consume followup for the Retry-7 evidence gap is in place.
+Key changes for the next engineer / operator:
+
+* `server/adapters/minimax-api/byok.ts`:
+  * `ByokSubmitTrace` interface (requestId, ISO at, stage, outcome,
+    modeCandidate, turnstilePresent, apiKeyPresent, promptPresent,
+    liveAttemptConsumed, terminal, responseCode).
+  * `submitTrace` ring buffer + `pushByokSubmitTrace()` helper.
+  * `getByokSubmitTraceRecent(n)`, `getByokSubmitTraceCount()`,
+    `getByokSilentConsumeCount()` accessors.
+  * `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` whitelist (covers all
+    reachable terminal outcomes: relay ok, relay failed, provider error,
+    direct-live variants, audio cap, internal error, killswitch, attempt
+    blocked, confirmation mismatch, mode required).
+  * `recordByokSubmit()` extension with `liveAttemptConsumed`,
+    `terminal`, `responseCode` and silent-consume guard.
+* `server/index.ts`:
+  * Imports the three new accessors.
+  * `/api/health` exposes `byokSubmitTraceCount`, `byokSubmitTraceRecent`,
+    `byokSilentConsumeCount` (next to existing observability counters).
+  * `live_attempt_consumed` recordByokSubmit block now carries
+    `liveAttemptConsumed: true, terminal: false, responseCode: 'in_progress'`.
+* `scripts/byok-h3b-silent-consume-followup-smoke-test.sh` — 38/38 PASS.
+* No live call, no MiniMax, no music. No env change. No public launch.
+* Next: Retry-8 only after `byokSubmitTraceRecent` shows a clean
+  consume → terminal pairing for the first submit in the window. Inspect
+  `byokSilentConsumeCount`; if > 0, do not retry — investigate the
+  post-`consumeByokLiveAttempt()` relay chain first. No T2–T5 until
+  `live_relay_ok` is observed.

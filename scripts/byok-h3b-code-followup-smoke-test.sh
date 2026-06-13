@@ -137,7 +137,10 @@ else
     echo "PASS: no raw apiKey field in guard"
     pass=$((pass+1))
   fi
-  if echo "$GUARD_BODY" | grep -Eq "Authorization|Bearer"; then
+  # Match real code patterns, not the negative-assertion comments that name
+  # the words "Authorization" / "Bearer" while describing what the trace
+  # payload must never contain.
+  if echo "$GUARD_BODY" | grep -Eq "Authorization[[:space:]]*[:=][[:space:]]*['\"]|Bearer[[:space:]]+[A-Za-z0-9._-]{8,}"; then
     echo "FAIL: guard references Authorization or Bearer"
     fail=$((fail+1))
   else

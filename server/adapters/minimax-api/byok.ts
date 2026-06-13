@@ -564,9 +564,16 @@ export type ByokSubmitStage =
   | 'live_attempt_consumed'
   | 'live_confirmation_mismatch'
   | 'live_mode_required'
+  | 'direct_live_not_enabled'
+  | 'direct_live_confirmation_mismatch'
+  | 'direct_live_provider_error'
+  | 'direct_live_relay_ok'
   | 'fake_relay_ok'
   | 'live_relay_ok'
+  | 'live_relay_failed'
   | 'provider_error'
+  | 'internal_error'
+  | 'live_attempt_consumed_without_terminal_stage'
   | 'invalid_input'
   | 'unhandled_error';
 
@@ -582,9 +589,15 @@ export type ByokSubmitOutcome =
   | 'live_attempt_consumed'
   | 'blocked_live_confirmation_mismatch'
   | 'blocked_live_mode_required'
+  | 'blocked_direct_live_not_enabled'
+  | 'blocked_direct_live_confirmation_mismatch'
+  | 'direct_live_relay_ok'
   | 'fake_relay_ok'
   | 'live_relay_ok'
+  | 'live_relay_failed'
   | 'live_relay_provider_error'
+  | 'internal_error'
+  | 'silent_consume_detected'
   | 'invalid_input';
 
 export interface ByokSubmitObservabilityStats {
@@ -627,6 +640,61 @@ let submitObservabilityState: ByokSubmitObservabilityStats = {
   ...SUBMIT_OBSERVABILITY_EMPTY,
 };
 
+// ── Per-request submit trace ring buffer (Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP) ──
+//
+// Records the last N submit events with a per-request stage chain so that
+// "live attempt consumed → no terminal stage" gaps are detectable in /api/health
+// and in evidence docs. The ring buffer NEVER stores apiKey, token, prompt,
+// lyrics, raw provider response, or any Authorization value — only booleans,
+// enums, the request id, and the response code.
+//
+// State is in-memory only; lost on restart. Default ring size is 32, configurable
+// via BYOK_SUBMIT_TRACE_RING_SIZE env (positive integer, capped at 256).
+
+const SUBMIT_TRACE_RING_SIZE_DEFAULT = 32;
+const SUBMIT_TRACE_RING_SIZE_MAX = 256;
+
+function readSubmitTraceRingSize(): number {
+  const raw = (process.env.BYOK_SUBMIT_TRACE_RING_SIZE ?? '').trim();
+  if (!/^\d+$/.test(raw)) return SUBMIT_TRACE_RING_SIZE_DEFAULT;
+  const n = parseInt(raw, 10);
+  if (n < 1) return SUBMIT_TRACE_RING_SIZE_DEFAULT;
+  if (n > SUBMIT_TRACE_RING_SIZE_MAX) return SUBMIT_TRACE_RING_SIZE_MAX;
+  return n;
+}
+
+export interface ByokSubmitTrace {
+  /** Request id of this submit (redacted — never includes a key). */
+  requestId: string;
+  /** ISO timestamp of the trace event. */
+  at: string;
+  /** Pipeline stage at this point in the submit's lifecycle. */
+  stage: ByokSubmitStage;
+  /** Outcome classification at this point. */
+  outcome: ByokSubmitOutcome;
+  /** Whether the request looked like a live-mode attempt. */
+  modeCandidate: 'live' | 'fake' | 'unknown' | 'blocked';
+  /** Whether the request carried a Turnstile token (length only). */
+  turnstilePresent: boolean;
+  /** Whether the request included an apiKey field (length only). */
+  apiKeyPresent: boolean;
+  /** Whether the request included a non-empty prompt (length only). */
+  promptPresent: boolean;
+  /** Whether the submit consumed a live attempt slot in this stage. */
+  liveAttemptConsumed: boolean;
+  /** Whether this trace entry is a terminal stage (final outcome of the submit). */
+  terminal: boolean;
+  /** Response code that was returned to the client (or 'in_progress' if not yet sent). */
+  responseCode: string;
+}
+
+export interface ByokSubmitTraceSummary extends ByokSubmitTrace {
+  /** Index of this trace in the ring buffer (0 = oldest, N-1 = newest). */
+  index: number;
+}
+
+let submitTraceRing: ByokSubmitTrace[] = [];
+
 export interface RecordByokSubmitInput {
   requestId: string;
   stage: ByokSubmitStage;
@@ -636,13 +704,91 @@ export interface RecordByokSubmitInput {
   apiKeyPresent: boolean;
   promptPresent: boolean;
   timestamp?: number;
+  /**
+   * Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Whether this stage consumed a live
+   * attempt slot (i.e. `consumeByokLiveAttempt` was called for this submit).
+   * Default: false. When true, the trace entry is flagged so the next
+   * terminal stage for the same requestId is matched against it.
+   */
+  liveAttemptConsumed?: boolean;
+  /**
+   * Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Whether this entry is the terminal
+   * stage of the submit (response has been sent to the client). Default: true
+   * (most calls are terminal). Set to false for in-progress / chained calls
+   * like the provisional `received` recording.
+   */
+  terminal?: boolean;
+  /**
+   * Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. The response code that was
+   * returned to the client (e.g. 'byok_direct_live_ok', 'byok_generation_disabled').
+   * Use 'in_progress' if the response has not yet been sent. Default: '' (empty).
+   */
+  responseCode?: string;
 }
+
+/**
+ * Terminal stages that close a live attempt consume cycle. After a stage
+ * with `liveAttemptConsumed=true` is recorded, the next call to
+ * `recordByokSubmit` for the same requestId MUST have a stage in this set;
+ * otherwise the silent-consume guard fires.
+ */
+export const BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME: ReadonlySet<ByokSubmitStage> =
+  new Set<ByokSubmitStage>([
+    // Successful relay / provider-error — actual live attempt produced a result.
+    'live_relay_ok',
+    'live_relay_failed',
+    'provider_error',
+    'direct_live_relay_ok',
+    'direct_live_provider_error',
+    'byok_live_audio_cap_reached',
+    'internal_error',
+    'unhandled_error',
+    // Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Gate-rejection stages also
+    // qualify as terminal: a blocked submit after a live consume is a
+    // known final outcome, not a silent consume. The list is exhaustive
+    // enough that any stage NOT in this set, recorded AFTER a
+    // liveAttemptConsumed=true stage for the same requestId, will fire
+    // the silent-consume guard.
+    'killswitch_off',
+    'live_attempt_blocked',
+    'live_confirmation_mismatch',
+    'live_mode_required',
+    'direct_live_not_enabled',
+    'direct_live_confirmation_mismatch',
+  ]);
+
+/**
+ * Per-request "last stage seen" map used by the silent-consume guard.
+ * Cleared on process restart. NEVER stores apiKey, token, prompt, lyrics,
+ * or raw provider response — only the boolean `liveAttemptConsumed` flag
+ * and the requestId key.
+ */
+const liveAttemptConsumedByRequest: Map<string, { consumedAt: number; consumedStage: ByokSubmitStage }> =
+  new Map();
+
+/**
+ * Count of submit requests that consumed a live attempt slot but never
+ * produced a terminal stage from BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME.
+ * Increments atomically each time `recordByokSubmit` notices the gap.
+ */
+let silentConsumeCount = 0;
 
 /**
  * Record a single submit event. In-memory only. NEVER logs the apiKey, token,
  * prompt, lyrics, or any provider raw response — only booleans + enums.
+ *
+ * Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Also pushes a `ByokSubmitTrace` entry
+ * into the per-request ring buffer and runs the silent-consume guard: if
+ * `liveAttemptConsumed=true` was set for this stage AND the same requestId
+ * has not yet produced a terminal stage in BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME,
+ * the silent-consume counter is incremented and a synthetic trace entry with
+ * stage `live_attempt_consumed_without_terminal_stage` is recorded.
  */
 export function recordByokSubmit(input: RecordByokSubmitInput): void {
+  const liveAttemptConsumed = input.liveAttemptConsumed === true;
+  const terminal = input.terminal !== false; // default: true
+  const responseCode = input.responseCode ?? '';
+
   submitObservabilityState = {
     submitsReceived: submitObservabilityState.submitsReceived + 1,
     lastSubmitAt: new Date().toISOString(),
@@ -654,6 +800,93 @@ export function recordByokSubmit(input: RecordByokSubmitInput): void {
     lastSubmitApiKeyPresent: input.apiKeyPresent,
     lastSubmitPromptPresent: input.promptPresent,
   };
+
+  // Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Push the trace entry.
+  pushByokSubmitTrace({
+    requestId: input.requestId,
+    at: new Date().toISOString(),
+    stage: input.stage,
+    outcome: input.outcome,
+    modeCandidate: input.modeCandidate,
+    turnstilePresent: input.turnstilePresent,
+    apiKeyPresent: input.apiKeyPresent,
+    promptPresent: input.promptPresent,
+    liveAttemptConsumed,
+    terminal,
+    responseCode,
+  });
+
+  // Track consume → terminal pairing. A new live attempt consume for this
+  // requestId overwrites any prior state (only one slot per requestId).
+  if (liveAttemptConsumed) {
+    liveAttemptConsumedByRequest.set(input.requestId, {
+      consumedAt: Date.now(),
+      consumedStage: input.stage,
+    });
+  }
+
+  // Silent-consume guard. If a prior live attempt consume is still open and
+  // this stage is a known terminal stage, clear the consume state. If this
+  // stage is NOT a terminal stage but a live consume is still open, increment
+  // the silent-consume counter and emit a synthetic trace entry.
+  if (terminal) {
+    if (liveAttemptConsumedByRequest.has(input.requestId)) {
+      if (!BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME.has(input.stage)) {
+        silentConsumeCount += 1;
+        liveAttemptConsumedByRequest.delete(input.requestId);
+        // Synthetic trace entry — never logs raw data.
+        pushByokSubmitTrace({
+          requestId: input.requestId,
+          at: new Date().toISOString(),
+          stage: 'live_attempt_consumed_without_terminal_stage',
+          outcome: 'silent_consume_detected',
+          modeCandidate: input.modeCandidate,
+          turnstilePresent: input.turnstilePresent,
+          apiKeyPresent: input.apiKeyPresent,
+          promptPresent: input.promptPresent,
+          liveAttemptConsumed: false,
+          terminal: true,
+          responseCode: 'silent_consume_detected',
+        });
+        submitObservabilityState = {
+          ...submitObservabilityState,
+          lastSubmitAt: new Date().toISOString(),
+          lastSubmitStage: 'live_attempt_consumed_without_terminal_stage',
+          lastSubmitOutcome: 'silent_consume_detected',
+          lastSubmitRequestId: input.requestId,
+        };
+      } else {
+        // Proper terminal stage reached — clear the open consume.
+        liveAttemptConsumedByRequest.delete(input.requestId);
+      }
+    }
+  }
+}
+
+function pushByokSubmitTrace(trace: ByokSubmitTrace): void {
+  const size = readSubmitTraceRingSize();
+  if (submitTraceRing.length >= size) {
+    submitTraceRing = submitTraceRing.slice(submitTraceRing.length - size + 1);
+  }
+  submitTraceRing.push(trace);
+}
+
+/** Read-only snapshot of the submit trace ring (newest first). Pure. */
+export function getByokSubmitTraceRecent(limit?: number): ByokSubmitTraceSummary[] {
+  const slice = limit !== undefined && limit > 0
+    ? submitTraceRing.slice(Math.max(0, submitTraceRing.length - limit))
+    : submitTraceRing.slice();
+  return slice.map((t, i) => ({ ...t, index: i }));
+}
+
+/** Total number of submit traces currently in the ring buffer. */
+export function getByokSubmitTraceCount(): number {
+  return submitTraceRing.length;
+}
+
+/** Total number of detected silent-consume events since process start. */
+export function getByokSilentConsumeCount(): number {
+  return silentConsumeCount;
 }
 
 /** Read-only snapshot for /api/health. Pure. */
@@ -664,4 +897,7 @@ export function getByokSubmitObservability(): ByokSubmitObservabilityStats {
 /** Reset to empty (test-only convenience). */
 export function _resetByokSubmitObservabilityForTests(): void {
   submitObservabilityState = { ...SUBMIT_OBSERVABILITY_EMPTY };
+  submitTraceRing = [];
+  liveAttemptConsumedByRequest.clear();
+  silentConsumeCount = 0;
 }
