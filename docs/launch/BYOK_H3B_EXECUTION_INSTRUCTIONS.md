@@ -508,3 +508,58 @@ chain first. No T2–T5 until `live_relay_ok` is observed.
 See `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY7_20260613.md` §
 "Silent Consume Followup — RESOLVED in BYOK-H3B-SILENT-CONSUME-FOLLOWUP"
 for the full resolution summary.
+
+## BYOK-H3B-POST-CONSUME-HARDENING (lightweight, post-Retry-8)
+
+**Goal:** ensure a consumed BYOK live attempt cannot remain without a
+terminal trace entry, even if the request handler returns or throws
+silently (the Retry-8 `byok_0bf283b70815` failure mode).
+
+**Implementation (minimal — `server/adapters/minimax-api/byok.ts` only):**
+
+* New `pendingConsumedAttempts` map keyed by requestId.
+* `recordByokSubmit({ liveAttemptConsumed: true, terminal: false })` now
+  schedules a `setTimeout(BYOK_SILENT_CONSUME_TIMEOUT_MS)` (default 30s,
+  clamped to [5s, 5min]).
+* Timer expiry → `reapPendingConsumedAttempt(requestId)`:
+  1. delete pending entry, clear timer
+  2. increment `byokSilentConsumeCount`
+  3. push a synthetic trace entry with stage
+     `live_attempt_consumed_without_terminal_stage` and
+     `responseCode: "silent_consume_detected"`
+* Natural terminal stage arrival (same requestId) clears the timer and
+  removes the pending entry.
+* `_resetByokSubmitObservabilityForTests` clears all pending timers and
+  the pending map.
+* `getByokPendingConsumedAttemptCount()` exported; surfaced in
+  `/api/health` as `byokPendingConsumedAttempts` (diagnostic only).
+
+**Constraints honored:**
+
+* No raw key / token / Authorization / provider raw response / prompt /
+  lyrics in any trace entry (booleans, enums, ISO timestamps,
+  `requestId`, `responseCode` only).
+* No changes to live execution gate, provider selection, or production
+  env.
+* `server/index.ts` only adds one import + one health field.
+
+**Verification:**
+
+* `npm run typecheck:server` PASS.
+* `npm run typecheck` PASS.
+* `npm run build` PASS.
+* `npm run weapp:build` PASS.
+* `python3 scripts/ci-secret-scan.py` CLEAN.
+* `scripts/byok-h3b-post-consume-hardening-smoke-test.sh` PASS.
+* `scripts/byok-h3b-silent-consume-followup-smoke-test.sh` PASS.
+* `scripts/byok-h3b-live-t1-micropilot-retry8-smoke-test.sh` PASS.
+
+**Next:** Retry-9 only after the reaper fix is deployed and verified.
+Inspect `byokSubmitTraceRecent` for the first T1 submit in the new
+window. A row with `liveAttemptConsumed: true` that is not followed
+within `BYOK_SILENT_CONSUME_TIMEOUT_MS` ms by a row with
+`terminal: true` and a stage in
+`BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` will be replaced by a synthetic
+`live_attempt_consumed_without_terminal_stage` row and
+`byokSilentConsumeCount` will increment. If that fires in a window, halt
+and investigate the post-consume relay chain. No T2–T5.

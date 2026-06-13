@@ -217,3 +217,45 @@ Post-rollback probe (`POST /api/generate/byok` with a fake key):
 >
 > Outcome: **silent-consume reproduced; rollback executed; no audio generated; no
 > real API call landed; no public launch.**
+
+---
+
+## 11. Followup — BYOK-H3B-POST-CONSUME-HARDENING
+
+The post-consume gap surfaced by Retry-8 (`byok_0bf283b70815` → `live_attempt_consumed`
+with `terminal: false` and no follow-up event) is closed by a post-consume timeout
+reaper in `server/adapters/minimax-api/byok.ts`:
+
+* New `pendingConsumedAttempts` map (requestId, createdAt, timer handle) tracks
+  every open live-attempt consume.
+* When `recordByokSubmit` lands with `liveAttemptConsumed: true` and
+  `terminal: false`, a `setTimeout` is scheduled
+  (`BYOK_SILENT_CONSUME_TIMEOUT_MS`, default 30s, clamped to [5s, 5min]).
+* If a natural terminal stage arrives before the timer fires, the timer is
+  cleared.
+* If the timer fires first, it emits a synthetic
+  `live_attempt_consumed_without_terminal_stage` trace entry with
+  `responseCode: "silent_consume_detected"`, increments
+  `byokSilentConsumeCount`, and clears the pending entry.
+* `getByokPendingConsumedAttemptCount()` is exported and
+  `byokPendingConsumedAttempts` is exposed on `/api/health` for diagnostics.
+* Trace payloads remain booleans, enums, ISO timestamps, `requestId`,
+  `responseCode` only — never raw key, token, prompt, lyrics, or provider
+  response.
+* This phase does **not** open live, does not call MiniMax, does not
+  generate music, does not use a real MiniMax user key, does not broaden
+  the public launch gate.
+* Smoke: `scripts/byok-h3b-post-consume-hardening-smoke-test.sh` — asserts
+  the reaper code, the reset helper, and the documentation references are
+  present.
+
+**Next:** Retry-9 only after the reaper fix is merged, deployed, and
+verified by a smoke that exercises the post-consume crash path. Inspect
+`byokSubmitTraceRecent` for every T1 submit in the new window. A
+`liveAttemptConsumed: true` row that is **not** followed within
+`BYOK_SILENT_CONSUME_TIMEOUT_MS` ms by a row with
+`terminal: true` and a stage in `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME`
+will be auto-replaced by a `live_attempt_consumed_without_terminal_stage`
+synthetic row, and `byokSilentConsumeCount` will increment. If that ever
+fires in a window, do not retry — investigate the post-consume relay
+chain. No T2–T5.

@@ -133,6 +133,8 @@ import {
   getByokSubmitTraceRecent,
   getByokSubmitTraceCount,
   getByokSilentConsumeCount,
+  // Phase BYOK-H3B-POST-CONSUME-HARDENING. Diagnostic pending count.
+  getByokPendingConsumedAttemptCount,
   type ByokSubmitStage,
   type ByokSubmitOutcome,
   type ByokModel,
@@ -815,6 +817,10 @@ async function handleHealth(
         byokSubmitTraceCount: getByokSubmitTraceCount(),
         byokSubmitTraceRecent: getByokSubmitTraceRecent(8),
         byokSilentConsumeCount: getByokSilentConsumeCount(),
+        // Phase BYOK-H3B-POST-CONSUME-HARDENING. Diagnostic only:
+        // number of live attempts that are currently waiting on a natural
+        // terminal stage (have an active post-consume reaper timer).
+        byokPendingConsumedAttempts: getByokPendingConsumedAttemptCount(),
       };
     })(),
     // Phase Deploy-CF-D: Turnstile (boolean only, never secret value)

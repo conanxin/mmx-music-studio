@@ -1456,3 +1456,44 @@ Key changes for the next engineer / operator:
 * Files: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_20260613.md`,
   `scripts/byok-h3b-live-t1-micropilot-retry8-smoke-test.sh` (27/27
   PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_SMOKE_PASS`).
+
+## BYOK-H3B-POST-CONSUME-HARDENING (lightweight, post-Retry-8)
+
+* Root cause: in Retry-8, requestId `byok_0bf283b70815` reached
+  `recordByokSubmit({ stage: 'live_attempt_consumed',
+  liveAttemptConsumed: true, terminal: false, responseCode: 'in_progress' })`
+  but no follow-up `recordByokSubmit` call ever landed. The existing
+  silent-consume guard only fires on a *subsequent* `recordByokSubmit`,
+  so the gap was invisible to `byokSilentConsumeCount`.
+* Fix: a post-consume timeout reaper in
+  `server/adapters/minimax-api/byok.ts`. When `liveAttemptConsumed: true`
+  + `terminal: false` is recorded, a `setTimeout` (env
+  `BYOK_SILENT_CONSUME_TIMEOUT_MS`, default 30s, clamped [5s, 5min]) is
+  scheduled. On expiry the reaper:
+  1. deletes the pending entry and clears the timer;
+  2. increments `silentConsumeCount`;
+  3. pushes a synthetic
+     `live_attempt_consumed_without_terminal_stage` trace entry with
+     `responseCode: 'silent_consume_detected'`.
+* Natural terminal stage arrival (same requestId) clears the timer and
+  removes the pending entry.
+* `_resetByokSubmitObservabilityForTests` clears all pending timers
+  and the map.
+* `getByokPendingConsumedAttemptCount()` is exported. `server/index.ts`
+  imports it and exposes `byokPendingConsumedAttempts` on
+  `/api/health` (diagnostic only).
+* Trace payloads: booleans, enums, ISO timestamps, `requestId`,
+  `responseCode` only. NEVER raw key / token / Authorization / prompt /
+  lyrics / raw provider response.
+* No live execution change. No provider selection change. No
+  production env change. No public launch broadened.
+* Files: `server/adapters/minimax-api/byok.ts` (reaper code + new
+  accessor), `server/index.ts` (one import + one health field),
+  `scripts/byok-h3b-post-consume-hardening-smoke-test.sh` (new), doc
+  appends in `README.md`, `docs/DEVELOPMENT_HANDOFF.md`,
+  `docs/PUBLIC_RELEASE_READINESS.md`,
+  `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_20260613.md`,
+  `docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md`.
+* Next: Retry-9 only after this commit CI is green. Inspect
+  `byokSubmitTraceRecent` for the first T1 submit in the new window.
+  No T2–T5.

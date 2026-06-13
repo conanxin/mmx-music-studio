@@ -745,3 +745,38 @@ BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume g
   guard can detect a gap even when no follow-up event lands. Retry-9
   only after that fix is live and a successful T1 `live_relay_ok` is
   observed end-to-end. No T2–T5.
+
+## BYOK-H3B-POST-CONSUME-HARDENING (lightweight, post-Retry-8)
+
+* Status: **APPLIED, SAFE-DEFAULT VERIFIED, AWAITING RETRY-9**.
+* Scope: minimal — `server/adapters/minimax-api/byok.ts` adds a
+  post-consume timeout reaper; `server/index.ts` adds one import and
+  one health field; no live execution gate, no provider selection, no
+  production env change.
+* Reaper behavior: when `recordByokSubmit` records
+  `liveAttemptConsumed: true` with `terminal: false`, schedule a
+  `setTimeout(BYOK_SILENT_CONSUME_TIMEOUT_MS)` (default 30s, clamped
+  [5s, 5min]). On expiry emit a synthetic
+  `live_attempt_consumed_without_terminal_stage` trace entry and
+  increment `byokSilentConsumeCount`. Natural terminal stage arrival
+  clears the timer.
+* Diagnostic: `byokPendingConsumedAttempts` on `/api/health` (count of
+  pending entries, not the entries themselves).
+* Trace payloads: booleans, enums, ISO timestamps, `requestId`,
+  `responseCode` only. NEVER raw key, token, Authorization, prompt,
+  lyrics, or raw provider response.
+* No live call, no MiniMax call, no music generation, no real MiniMax
+  user key, no tester PII, no raw secret / env / runtime / log / audio.
+* `PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`,
+  `BYOK_LIVE_ENABLED=false`, `BYOK_LIVE_CONFIRMATION=` — production
+  env safe default preserved.
+* No release tag. No tag move. No broad public launch.
+* Smoke: `scripts/byok-h3b-post-consume-hardening-smoke-test.sh` —
+  `BYOK_H3B_POST_CONSUME_HARDENING_SMOKE_PASS`.
+* Next: Retry-9 only after this commit CI is green. Inspect
+  `byokSubmitTraceRecent` for every T1 submit; a `liveAttemptConsumed:
+  true` row not followed by a `terminal: true` row within
+  `BYOK_SILENT_CONSUME_TIMEOUT_MS` ms will be auto-replaced by a
+  `live_attempt_consumed_without_terminal_stage` synthetic row, and
+  `byokSilentConsumeCount` will increment. If that fires in a window,
+  halt and investigate the post-consume relay chain. No T2–T5.

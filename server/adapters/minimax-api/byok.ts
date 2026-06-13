@@ -774,6 +774,77 @@ const liveAttemptConsumedByRequest: Map<string, { consumedAt: number; consumedSt
 let silentConsumeCount = 0;
 
 /**
+ * Phase BYOK-H3B-POST-CONSUME-HARDENING.
+ *
+ * Tracks a `setTimeout` per open live-consume slot so that if no natural
+ * terminal stage ever arrives (i.e. the request handler returned or threw
+ * silently), we still emit a synthetic `live_attempt_consumed_without_terminal_stage`
+ * trace entry and increment `silentConsumeCount` after a bounded wait. The
+ * prior guard only fired on a *subsequent* `recordByokSubmit` call, which
+ * is exactly what was missing in Retry-8 (`byok_0bf283b70815`).
+ *
+ * Only stores: requestId, createdAt ISO string, and a NodeJS.Timeout
+ * handle. NEVER stores apiKey, token, prompt, lyrics, or raw provider
+ * response.
+ */
+type PendingConsumedAttempt = {
+  requestId: string;
+  createdAt: string;
+  consumedStage: ByokSubmitStage;
+  timer: ReturnType<typeof setTimeout> | null;
+};
+
+const pendingConsumedAttempts: Map<string, PendingConsumedAttempt> = new Map();
+
+/**
+ * Resolve the post-consume timeout from env, clamped to a safe range.
+ * Default 30s. Min 5s (so we never false-positive in normal handling).
+ * Max 5 min (so a forgotten entry still gets reaped eventually).
+ */
+function getSilentConsumeTimeoutMs(): number {
+  const raw = Number(process.env.BYOK_SILENT_CONSUME_TIMEOUT_MS ?? 30000);
+  if (!Number.isFinite(raw)) return 30000;
+  return Math.min(Math.max(raw, 5000), 300000);
+}
+
+/**
+ * Reap a pending consumed attempt: emit the synthetic terminal trace,
+ * increment the silent-consume counter, and clear the pending entry.
+ * Idempotent — if the entry is no longer pending, this is a no-op.
+ */
+function reapPendingConsumedAttempt(requestId: string): void {
+  const pending = pendingConsumedAttempts.get(requestId);
+  if (!pending) return;
+  pendingConsumedAttempts.delete(requestId);
+  if (pending.timer !== null) {
+    clearTimeout(pending.timer);
+  }
+  silentConsumeCount += 1;
+  // Synthetic trace entry — never logs raw data.
+  const at = new Date().toISOString();
+  pushByokSubmitTrace({
+    requestId,
+    at,
+    stage: 'live_attempt_consumed_without_terminal_stage',
+    outcome: 'silent_consume_detected',
+    modeCandidate: 'unknown',
+    turnstilePresent: false,
+    apiKeyPresent: false,
+    promptPresent: false,
+    liveAttemptConsumed: false,
+    terminal: true,
+    responseCode: 'silent_consume_detected',
+  });
+  submitObservabilityState = {
+    ...submitObservabilityState,
+    lastSubmitAt: at,
+    lastSubmitStage: 'live_attempt_consumed_without_terminal_stage',
+    lastSubmitOutcome: 'silent_consume_detected',
+    lastSubmitRequestId: requestId,
+  };
+}
+
+/**
  * Record a single submit event. In-memory only. NEVER logs the apiKey, token,
  * prompt, lyrics, or any provider raw response — only booleans + enums.
  *
@@ -823,6 +894,31 @@ export function recordByokSubmit(input: RecordByokSubmitInput): void {
       consumedAt: Date.now(),
       consumedStage: input.stage,
     });
+    // Phase BYOK-H3B-POST-CONSUME-HARDENING. Schedule a reaper timer: if no
+    // natural terminal stage arrives before it fires, synthesize a
+    // `live_attempt_consumed_without_terminal_stage` trace entry and bump
+    // `silentConsumeCount`. This catches the Retry-8 case where the request
+    // handler returned/threw without any subsequent `recordByokSubmit`.
+    if (!terminal) {
+      const existing = pendingConsumedAttempts.get(input.requestId);
+      if (existing && existing.timer !== null) {
+        clearTimeout(existing.timer);
+      }
+      const timer = setTimeout(() => {
+        reapPendingConsumedAttempt(input.requestId);
+      }, getSilentConsumeTimeoutMs());
+      // Allow the Node.js process to exit even if a timer is still pending.
+      // The pending entry is in-memory only and will be cleared on restart.
+      if (typeof (timer as { unref?: () => void }).unref === 'function') {
+        (timer as { unref?: () => void }).unref!();
+      }
+      pendingConsumedAttempts.set(input.requestId, {
+        requestId: input.requestId,
+        createdAt: new Date().toISOString(),
+        consumedStage: input.stage,
+        timer,
+      });
+    }
   }
 
   // Silent-consume guard. If a prior live attempt consume is still open and
@@ -860,6 +956,16 @@ export function recordByokSubmit(input: RecordByokSubmitInput): void {
         liveAttemptConsumedByRequest.delete(input.requestId);
       }
     }
+    // Phase BYOK-H3B-POST-CONSUME-HARDENING. Clear the post-consume reaper
+    // timer, if any. The natural terminal stage arrived before the timer
+    // fired, so the attempt is no longer pending.
+    const pending = pendingConsumedAttempts.get(input.requestId);
+    if (pending) {
+      pendingConsumedAttempts.delete(input.requestId);
+      if (pending.timer !== null) {
+        clearTimeout(pending.timer);
+      }
+    }
   }
 }
 
@@ -889,6 +995,16 @@ export function getByokSilentConsumeCount(): number {
   return silentConsumeCount;
 }
 
+/**
+ * Phase BYOK-H3B-POST-CONSUME-HARDENING.
+ * Number of live attempts that are currently open and waiting for a natural
+ * terminal stage (i.e. have an active reaper timer). Diagnostic / test
+ * helper. In-memory only. Process restart clears it.
+ */
+export function getByokPendingConsumedAttemptCount(): number {
+  return pendingConsumedAttempts.size;
+}
+
 /** Read-only snapshot for /api/health. Pure. */
 export function getByokSubmitObservability(): ByokSubmitObservabilityStats {
   return { ...submitObservabilityState };
@@ -900,4 +1016,12 @@ export function _resetByokSubmitObservabilityForTests(): void {
   submitTraceRing = [];
   liveAttemptConsumedByRequest.clear();
   silentConsumeCount = 0;
+  // Phase BYOK-H3B-POST-CONSUME-HARDENING. Clear any pending reaper timers
+  // and the pending map.
+  for (const pending of pendingConsumedAttempts.values()) {
+    if (pending.timer !== null) {
+      clearTimeout(pending.timer);
+    }
+  }
+  pendingConsumedAttempts.clear();
 }

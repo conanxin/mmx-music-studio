@@ -1265,3 +1265,40 @@ no audio was generated, no public launch was broadened.
   add a periodic reaper for stale `liveAttemptConsumedByRequest`
   entries). Retry-9 only after that fix is live and a successful T1
   `live_relay_ok` is observed end-to-end. No T2–T5.
+
+### BYOK-H3B-POST-CONSUME-HARDENING (lightweight, post-Retry-8)
+
+Closes the silent-consume gap reproduced in Retry-8 (requestId
+`byok_0bf283b70815` → `live_attempt_consumed` with `terminal: false` and
+no follow-up event). The fix is a **post-consume timeout reaper** in
+`server/adapters/minimax-api/byok.ts`:
+
+* `pendingConsumedAttempts` map tracks every open live-attempt consume
+  (requestId, createdAt ISO, timer handle). No raw data — booleans,
+  enums, timestamps, requestId only.
+* `recordByokSubmit({ liveAttemptConsumed: true, terminal: false })`
+  schedules a `setTimeout(BYOK_SILENT_CONSUME_TIMEOUT_MS)` (default
+  30s, clamped to [5s, 5min]).
+* Timer expiry → synthetic `live_attempt_consumed_without_terminal_stage`
+  trace entry + `byokSilentConsumeCount += 1`.
+* Natural terminal stage arrival → timer cleared, pending entry
+  removed.
+* `_resetByokSubmitObservabilityForTests` clears all pending timers and
+  the map.
+* `getByokPendingConsumedAttemptCount()` exported; surfaced on
+  `/api/health` as `byokPendingConsumedAttempts` (diagnostic only).
+* `server/index.ts` only adds one import + one health field. Live
+  execution gate, provider selection, and production env are
+  unchanged.
+* This phase does **not** call MiniMax, does not generate music, does
+  not use a real MiniMax user key, and does not broaden the public
+  launch gate.
+* Smoke: `scripts/byok-h3b-post-consume-hardening-smoke-test.sh` —
+  `BYOK_H3B_POST_CONSUME_HARDENING_SMOKE_PASS`.
+* Next: Retry-9 only after this commit CI is green. Inspect
+  `byokSubmitTraceRecent` for every T1 submit; a `liveAttemptConsumed:
+  true` row not followed within `BYOK_SILENT_CONSUME_TIMEOUT_MS` ms by
+  a `terminal: true` row will be auto-replaced by a
+  `live_attempt_consumed_without_terminal_stage` synthetic row, and
+  `byokSilentConsumeCount` will increment. No T2–T5 until
+  `live_relay_ok` is observed end-to-end.
