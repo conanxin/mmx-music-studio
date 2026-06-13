@@ -834,3 +834,29 @@ BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume g
   the full 12-smoke chain has no regressions.
 * No Retry-10, no T2–T5, no broad public launch, no MiniMax call,
   no audio. Awaiting operator confirmation to commit / push / CI.
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-10-PREFLIGHT
+
+* Status: **PREFLIGHT_PASS / SAFE-DEFAULT_VERIFIED / AWAITING_OPERATOR_FOR_RETRY_10**
+* Repo HEAD `1566134` is eligible for Retry-10 planning:
+  - Backend `63da013` post-consume natural terminal recordings are
+    in place.
+  - Frontend `1566134` direct-live confirmation field is in
+    place.
+  - Production health shows safe default (no live gate, no live
+    confirmation, no live attempts used, no real API used, no
+    audio generated, no new silent consume, no pending consumed
+    attempts).
+  - Production frontend bundle is the `1566134` build
+    (`/assets/index-CXA5vVvV.js`, 384.58 kB), and contains the
+    `byok-direct-live-confirmation` test hooks without leaking any
+    real phrase.
+* No live gate opened, no live window relocked, no
+  `BYOK_LIVE_CONFIRMATION` set, no `/api/generate/byok` submit, no
+  MiniMax call, no audio generated, no T2–T5, no broad public
+  launch.
+* New preflight smoke (29/29 PASS) and full BYOK H3B smoke chain
+  (5 relevant smokes, all PASS) confirm baseline.
+* Retry-10 execution plan is documented in
+  `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY10_PREFLIGHT_20260613.md`
+  §7. **Execution is operator-only and not automatic.**

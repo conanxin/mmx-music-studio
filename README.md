@@ -1364,3 +1364,10 @@ MiniMax call and no music generated, no public launch broadened.
 * Rendered only when `isByokLiveReady === true` (i.e. all server live health fields are positive).
 * Included in the `/api/generate/byok` body only when both `isByokLiveReady` and `directLiveConfirmation.length > 0` are true.
 * No real MiniMax call, no music generated, no Retry-10 yet, no T2-T5, no public launch broadened.
+
+### BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-10-PREFLIGHT (planning now safe; execution still operator-only)
+
+* HEAD `1566134` eligible for Retry-10 planning. Both preconditions met (post-consume natural terminal recording from `63da013`, frontend direct-live confirmation field from `1566134`).
+* Production health shows safe default. Production frontend bundle is the `1566134` build.
+* No live gate opened, no live window relocked, no MiniMax call, no audio generated, no T2-T5, no public launch broadened.
+* Suggested Retry-10 execution plan is in `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY10_PREFLIGHT_20260613.md` §7. Execution is operator-only.

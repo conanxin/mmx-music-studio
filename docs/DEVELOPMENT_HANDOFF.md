@@ -1558,3 +1558,37 @@ Key changes for the next engineer / operator:
   has 41 assertions; the full 12-smoke chain runs green.
 * No Retry-10, no T2–T5, no broad public launch. Awaiting operator
   confirmation to commit / push / CI.
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-10-PREFLIGHT
+
+* Status: **PREFLIGHT_PASS / SAFE-DEFAULT_VERIFIED / AWAITING_OPERATOR_FOR_RETRY_10**
+* HEAD `1566134` confirmed eligible for Retry-10 planning. Both
+  preconditions met:
+  - Backend natural terminal recordings present in `server/index.ts`
+    for `direct_live_not_enabled`,
+    `direct_live_confirmation_mismatch`,
+    `direct_live_provider_error`, `direct_live_relay_ok`. Reaper
+    defense-in-depth retained.
+  - Frontend supports the operator-supplied `directLiveConfirmation`
+    field in `ByokPanel.tsx`. Rendered only when `isByokLiveReady`,
+    included in the body only when non-empty, cleared immediately
+    after submit, never persisted, never logged.
+* Production health probe (read-only): `publicByokEnabled=false`,
+  `byokLiveEnabled=false`, `byokLiveConfirmationConfigured=false`,
+  `byokLiveAttemptsUsed=0`, `byokLiveAudioUsed=0`,
+  `realApiAttemptsUsed=0`, `byokSilentConsumeCount=0`,
+  `byokPendingConsumedAttempts=0`, last submit stage
+  `killswitch_off`.
+* Production frontend is up-to-date: served bundle is
+  `/assets/index-CXA5vVvV.js` (384.58 kB) with
+  `byok-direct-live-confirmation` test hooks present, no real
+  phrase leaked.
+* No live gate opened, no live window relocked, no
+  `BYOK_LIVE_CONFIRMATION` set, no `/api/generate/byok` submit, no
+  MiniMax call, no audio generated, no T2–T5, no broad public
+  launch.
+* Suggested Retry-10 execution plan documented in
+  `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY10_PREFLIGHT_20260613.md`
+  §7. **Execution is operator-only and not automatic.**
+* New smoke: `byok-h3b-live-t1-micropilot-retry10-preflight-smoke-test.sh`
+  (29/29 PASS).
