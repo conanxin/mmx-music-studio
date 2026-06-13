@@ -173,7 +173,40 @@ Staged changes contain 0 real secrets:
 - `storage/guard/public-generation-guard.json` untracked, NOT staged
 - `tsconfig.tsbuildinfo` auto-restored, NOT staged
 
-## 11. Prior phase reference
+## 11. Provider selection root cause (for follow-up)
+
+T1's submit reached the server, passed the launch-guard skip, passed the
+one-shot live-attempt guard (counter 0→1), and was correctly identified
+as a `live` candidate. However, the final recorded stage was
+`fake_relay_ok` and the adapter returned:
+
+* `code: 'byok_fake_relay_ok'`
+* `generationSource: 'byok-fake'`
+* `message: 'fake relay ok — no provider call was made'`
+
+This is **not** a quota or one-shot issue. It is a provider-selection
+issue inside the BYOK adapter. The route layer's `adapterMode` was
+selected as `requestedMode === 'live' && liveAllowed ? 'live' : 'fake'`,
+but T1 sent `requestedMode = 'direct-live'`, so `adapterMode` defaulted
+to `'fake'` and the adapter's `byok_fake_relay_ok` branch ran.
+
+The downstream fix is in commit TBD (Phase
+BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP) which:
+
+* adds an explicit `isConfirmedByokLiveProviderPath()` helper with every
+  gate condition (publicByok, dry-run, liveEnabled, liveConfirmation,
+  liveWindowId, directLiveEnabled, directLiveConfirmation, user key);
+* aligns the route's `adapterMode` selection with this helper (treats
+  `'live'` and `'direct-live'` as live candidates when conditions hold);
+* delegates the confirmed-live branch in `generateByokMusic` to the
+  HTTPS direct adapter (`generateByokDirectMusic`) so the request
+  actually reaches MiniMax;
+* keeps the fake relay for dry-run / fake / disabled / missing-gate
+  scenarios;
+* keeps the unconfirmed-live path fail-closed
+  (`byok_live_provider_path_disabled`) as defense in depth.
+
+## 12. Prior phase reference
 
 This run executes on top of the gate-ordering and audio-cap follow-up from commit `da4b16e` (Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP). That follow-up:
 

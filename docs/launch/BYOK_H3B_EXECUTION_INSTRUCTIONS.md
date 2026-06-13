@@ -358,3 +358,64 @@ following are true:
 * `byok_live_audio_cap_reached` — 429
   (BYOK-live window audio cap exceeded)
 
+## 4d. BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP — Code follow-up (no live call)
+
+This follow-up addresses the root cause recorded in
+`docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY4_20260613.md`
+(Provider selection root cause section): the BYOK adapter was returning
+`byok_fake_relay_ok` even when every live-gate condition was satisfied.
+
+### What this phase changes (code only)
+
+* `server/adapters/minimax-api/byok.ts`
+  * New helper `isConfirmedByokLiveProviderPath(env, userApiKey)` checks
+    every gate condition explicitly: `PUBLIC_BYOK_ENABLED=true`,
+    `BYOK_DRY_RUN_ONLY=false`, `BYOK_LIVE_ENABLED=true`,
+    `BYOK_LIVE_CONFIRMATION` matches, `BYOK_LIVE_WINDOW_ID` non-empty,
+    `BYOK_DIRECT_LIVE_ENABLED=true`, `BYOK_DIRECT_LIVE_CONFIRMATION`
+    matches, and the user provided a per-request apiKey of ≥ 20 chars.
+  * `generateByokMusic()` now has a **confirmed-live** branch that
+    delegates to `generateByokDirectMusic()` (HTTPS direct adapter)
+    when the route layer forwards a fresh `liveProviderEnv` snapshot
+    AND every condition holds. The result code is `byok_live_relay_ok`
+    and `generationSource = 'byok-live'`.
+  * The original fail-closed `byok_live_provider_path_disabled` is kept
+    for the **unconfirmed-live** path as defense in depth.
+  * Fake relay (`byok_fake_relay_ok`) is preserved for
+    `mode === 'fake'`, dry-run, disabled, and missing-gate scenarios.
+
+* `server/index.ts`
+  * Imports `isConfirmedByokLiveProviderPath` and forwards a single
+    `liveProviderEnv` snapshot to the adapter so it can re-verify.
+  * `adapterMode` selection is now `requestedMode === 'live' && liveAllowed
+    && isConfirmedLiveProviderPath(...) ? 'live' : 'fake'`. This treats
+    `'live'` and `'direct-live'` (the route's previous direct-live
+    short-circuit already early-returns for `direct-live`) as live
+    candidates and aligns the provider choice with the gate state.
+
+### What this phase does NOT do
+
+* No live call.
+* No MiniMax call.
+* No music generated.
+* No real MiniMax user key.
+* No tester PII, secret, env, runtime, log, or audio committed.
+* No `storage/guard/public-generation-guard.json` or
+  `tsconfig.tsbuildinfo` staged.
+* No release tag, no broad public launch.
+
+### Verification
+
+* New smoke: `scripts/byok-h3b-provider-selection-followup-smoke-test.sh`
+  asserts the helper exists, every gate condition is checked, the
+  adapter delegates to the HTTPS direct adapter, the fake relay is
+  preserved, the unconfirmed-live path remains fail-closed, and the
+  route forwards the env snapshot.
+* All previous H3B smokes continue to pass.
+
+### Out of scope for this phase
+
+* A live call (RETRY-5) is not scheduled in this follow-up. It is
+  blocked until the new code path has been reviewed and a fresh
+  `BYOK_LIVE_WINDOW_ID` is locked.
+

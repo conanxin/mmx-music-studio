@@ -1295,3 +1295,24 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-4 — one-shot T1 live micropilot (controlled)
 * This phase does NOT call MiniMax, does NOT generate music, does NOT broaden public launch.
 * Next phase recommendation: investigate why the live gate allows the call but the API adapter routes to fake relay (separate from gate ordering — this is a provider-selection issue). Until that is fixed, no future pilot will reach MiniMax.
 * Final口径: BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-4 executes at most one controlled BYOK live generation for T1 using the hardened live gate, one-shot guard, BYOK-live audio cap, and submit observability, then restores safe default. It does not broaden public launch.
+
+BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP — adapter alignment
+
+* Root cause: retry-4 reached the server, passed the live gate, but the
+  adapter's provider selection fell back to `byok_fake_relay_ok` because
+  `adapterMode` only switched to `'live'` when `requestedMode === 'live'`,
+  missing requests that named `'direct-live'` (or that satisfied the
+  gate but were demoted by the route's direct-live early-return).
+* Fix: new `isConfirmedByokLiveProviderPath(env, userApiKey)` helper
+  checks every gate condition (publicByok, dry-run, liveEnabled,
+  liveConfirmation, liveWindowId, directLiveEnabled,
+  directLiveConfirmation, user apiKey). The route now uses this
+  helper and forwards the env snapshot to `generateByokMusic`.
+* `generateByokMusic` adds a confirmed-live branch that delegates to
+  the HTTPS direct adapter (`generateByokDirectMusic`) so the live
+  call actually reaches MiniMax. Unconfirmed-live path remains
+  fail-closed (`byok_live_provider_path_disabled`).
+* Fake relay preserved for dry-run / fake / disabled / missing-gate.
+* No MiniMax call in this phase. No live pilot executed. No broad
+  public launch.
+* Smoke: scripts/byok-h3b-provider-selection-followup-smoke-test.sh — 27/27 PASS.

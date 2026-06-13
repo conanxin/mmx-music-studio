@@ -33,6 +33,7 @@ import { Buffer } from 'node:buffer';
 import path from 'node:path';
 
 import { redactCliOutput } from '../minimax-cli/errors.js';
+import { generateByokDirectMusic } from './byok-direct.js';
 
 /**
  * Local safeFileName — matches minimax-cli/client.ts:safeFileName but
@@ -67,6 +68,25 @@ export interface ByokRelayInput {
   timeoutMs?: number;
   /** 'instrumental' | 'lyrics' | 'auto'. */
   musicMode?: 'instrumental' | 'lyrics' | 'auto';
+  /**
+   * Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP.
+   * When true AND mode === 'live', the adapter delegates the live call to
+   * the HTTPS direct provider (generateByokDirectMusic) so the request
+   * actually reaches MiniMax instead of being fail-closed at the CLI level.
+   *
+   * The route layer must compute this flag using
+   * isConfirmedByokLiveProviderPath() and pass it explicitly. The adapter
+   * also re-checks the condition so it can never be tricked into the live
+   * path by a stale or absent flag.
+   */
+  confirmedLiveProviderPath?: boolean;
+  /**
+   * Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP.
+   * When the route layer claims confirmed-live, it must also forward the
+   * current live-gate env values so the adapter can independently re-verify
+   * (defense in depth).
+   */
+  liveProviderEnv?: ByokConfirmedLiveProviderEnv;
 }
 
 export interface ByokRelayResultOk {
@@ -145,25 +165,93 @@ export async function generateByokMusic(input: ByokRelayInput): Promise<ByokRela
     };
   }
 
-  // ── Live mode: DISABLED ──
+  // ── Live mode ──
   //
-  // CRITICAL SAFETY BUG (2026-06-11): mmx CLI does NOT read MINIMAX_API_KEY
-  // from child env for `music generate`. It reads `~/.mmx/config.json` directly.
-  // When we passed a placeholder apiKey via env, mmx CLI ignored it and fell
-  // back to the operator config key, generating a real MP3 with the operator's
-  // quota. This means the BYOK "user key" was never actually used.
+  // Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP: live mode now has TWO
+  // sub-paths. The route layer is the only thing that can request the
+  // live path (it computes the gate conditions from server env). The
+  // adapter then independently re-verifies the conditions.
   //
-  // The `--api-key` flag exists but would expose the key in process argv
-  // (visible via `ps` / `/proc`). The correct long-term fix is a direct HTTPS
-  // provider call with per-request `Authorization` header, not CLI wrapping.
-  //
-  // Until BYOK-C2 (direct API relay) is designed and validated, live mode
-  // remains fail-closed.
+  //   1) Confirmed live path (route passed a non-stale live-gate env
+  //      snapshot AND every condition holds): delegate to the HTTPS
+  //      direct provider. This actually reaches MiniMax using the
+  //      per-request user apiKey.
+  //   2) Unconfirmed live path (legacy CLI live call without explicit
+  //      confirmation): fail-closed (was the original behavior, kept
+  //      for safety).
+  if (input.mode === 'live') {
+    // Defense in depth: re-verify the live condition inside the adapter
+    // even if the route layer claimed confirmed-live. The route may be
+    // running a different env snapshot or be a unit test that doesn't
+    // simulate the full gate chain.
+    const env = input.liveProviderEnv;
+    const routeClaimsConfirmed =
+      input.confirmedLiveProviderPath === true && env !== undefined;
+    const adapterReverified = routeClaimsConfirmed
+      ? isConfirmedByokLiveProviderPath(env, input.apiKey)
+      : false;
+
+    if (adapterReverified) {
+      // Delegate to the HTTPS direct adapter. The direct adapter builds
+      // a per-request Authorization header from apiKey and calls
+      // https://api.minimaxi.com/v1/music_generation. It does NOT
+      // propagate any site-operator MINIMAX_API_KEY.
+      const directResult = await generateByokDirectMusic({
+        apiKey: input.apiKey,
+        prompt: input.prompt,
+        lyrics: input.lyrics,
+        model:
+          input.model === 'music-2.6-free'
+            ? 'music-2.6'
+            : (input.model as 'music-2.6' | 'music-2.5+' | 'music-2.5' | 'music-cover'),
+        outputFormat: 'url',
+        isInstrumental: input.musicMode === 'instrumental',
+        timeoutMs: input.timeoutMs ?? 120_000,
+      });
+
+      if (!directResult.ok) {
+        return {
+          ok: false,
+          code:
+            directResult.code === 'byok_direct_invalid_key'
+              ? 'byok_provider_auth_failed'
+              : directResult.code === 'byok_direct_timeout'
+                ? 'byok_provider_timeout'
+                : 'byok_provider_error',
+          message: directResult.message,
+          generationSource: 'byok-live',
+          durationMs: Date.now() - start,
+        };
+      }
+
+      return {
+        ok: true,
+        code: 'byok_live_relay_ok',
+        message:
+          'BYOK live relay ok — provider call succeeded (https direct)',
+        audioFileName: undefined,
+        generationSource: 'byok-live',
+        durationMs: Date.now() - start,
+      };
+    }
+
+    // Unconfirmed live path: keep the original fail-closed behavior.
+    return {
+      ok: false,
+      code: 'byok_live_provider_path_disabled',
+      message: 'BYOK live provider path is disabled pending direct API relay validation.',
+      generationSource: 'byok-live',
+      durationMs: Date.now() - start,
+    };
+  }
+
+  // Should be unreachable (mode is 'fake' | 'live') but keep the
+  // fail-closed default to never silently fall through.
   return {
     ok: false,
     code: 'byok_live_provider_path_disabled',
-    message: 'BYOK live provider path is disabled pending direct API relay validation.',
-    generationSource: 'byok-live',
+    message: 'BYOK adapter received an unrecognised mode; failing closed.',
+    generationSource: input.mode === 'live' ? 'byok-live' : 'byok-fake',
     durationMs: Date.now() - start,
   };
 }
@@ -186,6 +274,55 @@ export function isLiveGateOpen(env: {
     env.byokLiveEnabled === true &&
     env.byokLiveConfirmation === BYOK_LIVE_CONFIRMATION_PHRASE
   );
+}
+
+// ── Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP ──────────────────────
+//
+// Single source of truth for "should the live provider be selected?".
+// The route layer AND the byok.ts adapter both must use this function
+// (or its inputs) so a request that satisfies every live-gate condition
+// actually reaches the live provider instead of falling through to the
+// fake relay.
+//
+// Required conditions (ALL must hold):
+//   1. publicByokEnabled === true
+//   2. byokDryRunOnly === false
+//   3. byokLiveEnabled === true
+//   4. byokLiveConfirmation === BYOK_LIVE_CONFIRMATION_PHRASE
+//   5. byokLiveWindowId is a non-empty string
+//   6. byokDirectLiveEnabled === true
+//   7. byokDirectLiveConfirmation === CONFIRM_BYOK_DIRECT_LIVE_TEST
+//   8. user provided a per-request apiKey (>= 20 chars)
+//
+// Any missing condition returns false and the provider selection falls
+// through to fake / dry-run / blocked, never to the live provider.
+export interface ByokConfirmedLiveProviderEnv {
+  publicByokEnabled: boolean;
+  byokDryRunOnly: boolean;
+  byokLiveEnabled: boolean;
+  byokLiveConfirmation: string;
+  byokLiveWindowId: string;
+  byokDirectLiveEnabled: boolean;
+  byokDirectLiveConfirmation: string;
+}
+
+export function isConfirmedByokLiveProviderPath(
+  env: ByokConfirmedLiveProviderEnv,
+  userApiKey: string | undefined,
+): boolean {
+  if (env.publicByokEnabled !== true) return false;
+  if (env.byokDryRunOnly !== false) return false;
+  if (env.byokLiveEnabled !== true) return false;
+  if (env.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) return false;
+  if (typeof env.byokLiveWindowId !== 'string' || env.byokLiveWindowId.length === 0) {
+    return false;
+  }
+  if (env.byokDirectLiveEnabled !== true) return false;
+  if (env.byokDirectLiveConfirmation !== 'CONFIRM_BYOK_DIRECT_LIVE_TEST') {
+    return false;
+  }
+  if (!userApiKey || userApiKey.length < 20) return false;
+  return true;
 }
 
 // ── Live attempt guard (Phase BYOK-H3B-CODE-FOLLOWUP) ─────────────────────────

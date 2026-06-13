@@ -113,6 +113,7 @@ import {
 import {
   generateByokMusic,
   isLiveGateOpen,
+  isConfirmedByokLiveProviderPath,
   BYOK_LIVE_CONFIRMATION_PHRASE,
   buildByokLiveAttemptConfig,
   getByokLiveAttemptStats,
@@ -2286,8 +2287,43 @@ console.info(
  }
 
  // ── BYOK-B/C: CLI-based paths (fake / live) ──
- // CLI live is fail-closed; fake is the default safe path.
- const adapterMode: 'fake' | 'live' = requestedMode === 'live' && liveAllowed ? 'live' : 'fake';
+ // Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP: provider selection must
+ // use the explicit confirmed-live condition, not just the request's
+ // `mode` string. The previous code only switched to 'live' when
+ // requestedMode === 'live' && liveAllowed; this missed 'direct-live'
+ // requests (which earlier were short-circuited to the direct-live
+ // branch and never returned here) and any request that satisfied
+ // every gate condition but did not name 'live' explicitly.
+ //
+ // The new code builds a single boolean from isConfirmedByokLiveProviderPath
+ // and forwards the env snapshot to the adapter so it can re-verify.
+ const byokLiveWindowIdForProvider = (process.env.BYOK_LIVE_WINDOW_ID ?? '').trim();
+ const liveProviderEnvForAdapter = {
+   publicByokEnabled: config.publicByokEnabled,
+   byokDryRunOnly: config.byokDryRunOnly,
+   byokLiveEnabled: config.byokLiveEnabled,
+   byokLiveConfirmation: config.byokLiveConfirmation,
+   byokLiveWindowId: byokLiveWindowIdForProvider,
+   byokDirectLiveEnabled: config.byokDirectLiveEnabled,
+   byokDirectLiveConfirmation: config.byokDirectLiveConfirmation,
+ };
+ // The user key is required to confirm the live path (the live provider
+ // must use a per-request apiKey, never an operator key).
+ const userApiKeyForLive = body.apiKey ?? '';
+ const isConfirmedLiveProviderPath =
+   isConfirmedByokLiveProviderPath(liveProviderEnvForAdapter, userApiKeyForLive);
+
+ // 'live' is selected when:
+ //   1) The request explicitly asked for live OR direct-live, AND
+ //   2) The live gate is open (via isLiveGateOpen, which is the
+ //      pre-existing legacy check), AND
+ //   3) The new provider-selection check confirms every condition.
+ // Otherwise the request is 'fake' (default safe path).
+ const liveCandidateRequested = requestedMode === 'live';
+ const adapterMode: 'fake' | 'live' =
+   liveCandidateRequested && liveAllowed && isConfirmedLiveProviderPath
+     ? 'live'
+     : 'fake';
 
  const adapterResult = await generateByokMusic({
    apiKey: body.apiKey ?? '',
@@ -2297,6 +2333,11 @@ console.info(
    mode: adapterMode,
    requestId,
    musicMode: byokInput.mode ?? 'auto',
+   // Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP:
+   // forward the live-gate env snapshot to the adapter so it can
+   // independently re-verify the live condition.
+   confirmedLiveProviderPath: isConfirmedLiveProviderPath,
+   liveProviderEnv: liveProviderEnvForAdapter,
  });
 
  if (!adapterResult.ok) {
