@@ -1416,3 +1416,43 @@ Key changes for the next engineer / operator:
   `byokSilentConsumeCount`; if > 0, do not retry — investigate the
   post-`consumeByokLiveAttempt()` relay chain first. No T2–T5 until
   `live_relay_ok` is observed.
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-8
+
+* Window: `h3b-20260613-t1-retry8-165539`, Asia/Shanghai, 2026-06-13
+  16:55:39 → 17:55:39. Deployed commit `b7feb93`.
+* Live gate opened: `publicByokEnabled=true`, `byokLiveEnabled=true`,
+  `byokLiveConfirmationConfigured=true`, `byokLiveMaxAttemptsPerWindow=1`,
+  `byokLiveMaxAudioPerWindow=1`, `turnstileByokRequired=true`. Baseline
+  counters all 0; trace recent `[]`.
+* T1 submitted once with `mode: "direct-live"`. The frontend's
+  `modeCandidate` reached the server as `live` (the normalized form of
+  the `direct-live` mode for the gate check).
+* Trace ring buffer captured the live attempt `byok_0bf283b70815`:
+  `received` → `audio_quota_bypassed_for_byok_live` →
+  `live_attempt_consumed` (`terminal: false, liveAttemptConsumed: true,
+  responseCode: "in_progress"`). **No terminal stage recorded for this
+  requestId afterwards.** `byokSilentConsumeCount` stayed `0` because
+  the current guard requires a *subsequent* `recordByokSubmit` call to
+  land before it can detect the gap.
+* T1's second submit was correctly blocked by the live-attempt cap with
+  `responseCode: blocked_live_attempt_limit`.
+* `byokLiveAttemptsUsed=1`, `byokLiveAudioUsed=0`,
+  `realApiAttemptsUsed=0`. No real MiniMax call landed, no audio file
+  was produced, no public launch was broadened.
+* Per the strict spec ("silent consume 出现 → rollback"), unconditional
+  rollback to safe default was executed at 2026-06-13T17:11:45+08:00.
+  The override was preserved at
+  `/tmp/byok-test.conf.h3b-live-t1-retry8.20260613_165608.bak`. The
+  post-rollback probe returned `code: byok_generation_disabled`.
+* Defensive follow-up: the post-`consumeByokLiveAttempt()` block in
+  `server/index.ts` needs a `try/finally` (or a periodic reaper) so that
+  every code path emits at least one terminal `recordByokSubmit(...)`
+  call with a stage in `BYOK_TERMINAL_STAGES_AFTER_LIVE_CONSUME` (e.g.
+  `internal_error` on unexpected exits). This will let the existing
+  guard detect silent consumes even when no follow-up event ever lands.
+* T2–T5 not executed. Retry-9 only after the silent-consume fix is
+  live. No public launch.
+* Files: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_20260613.md`,
+  `scripts/byok-h3b-live-t1-micropilot-retry8-smoke-test.sh` (27/27
+  PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_SMOKE_PASS`).

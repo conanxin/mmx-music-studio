@@ -1239,3 +1239,29 @@ The silent-consume gap surfaced in
   with `byokSubmitTraceRecent` showing a clean consume → terminal pairing
   for the first submit in the window. No T2–T5 until `live_relay_ok` is
   observed.
+
+### BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-8 (silent consume reproduced → rollback)
+
+Retry-8 opened the hardened live gate under window
+`h3b-20260613-t1-retry8-165539` (Asia/Shanghai, 60 min) and T1 submitted
+once with `mode: "direct-live"`. The trace ring buffer captured the live
+attempt (`byok_0bf283b70815` → `received` →
+`audio_quota_bypassed_for_byok_live` → `live_attempt_consumed`,
+`terminal: false, liveAttemptConsumed: true`) but no terminal stage was
+recorded afterwards — `byokSilentConsumeCount` stayed `0` because the
+current guard requires a *subsequent* `recordByokSubmit` call to land,
+which it never did. Per the strict spec, this is a silent-consume
+reproduction and an unconditional rollback to safe default was executed.
+T1's second submit was correctly blocked by the live-attempt cap with
+`responseCode: blocked_live_attempt_limit`. The post-rollback probe
+returned `code: byok_generation_disabled`. No real MiniMax call landed,
+no audio was generated, no public launch was broadened.
+
+* Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_20260613.md`
+* Smoke: `scripts/byok-h3b-live-t1-micropilot-retry8-smoke-test.sh` —
+  27/27 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_SMOKE_PASS`.
+* Next: harden the post-`consumeByokLiveAttempt()` code path so every
+  exit is captured by a `recordByokSubmit(terminal: true, …)` call (or
+  add a periodic reaper for stale `liveAttemptConsumedByRequest`
+  entries). Retry-9 only after that fix is live and a successful T1
+  `live_relay_ok` is observed end-to-end. No T2–T5.

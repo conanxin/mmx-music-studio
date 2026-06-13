@@ -706,3 +706,42 @@ BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume g
   consume → terminal pairing for the first submit in the window.
   `byokSilentConsumeCount` must remain 0 for the entire window. No
   T2–T5 until `live_relay_ok` is observed.
+
+## BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-8
+
+* Status: **SILENT_CONSUME_REPRODUCED → ROLLBACK**.
+* Window `h3b-20260613-t1-retry8-165539` (Asia/Shanghai, 60 min) was
+  opened with hardened live gate, one-shot guard, attempt cap = 1, audio
+  cap = 1. Deployed commit `b7feb93`.
+* T1 submitted once with `mode: "direct-live"`. The trace ring buffer
+  captured the live attempt `byok_0bf283b70815`: `received` →
+  `audio_quota_bypassed_for_byok_live` → `live_attempt_consumed`
+  (`terminal: false, liveAttemptConsumed: true, responseCode:
+  "in_progress"`). **No terminal stage was recorded afterwards.**
+* `byokSilentConsumeCount` stayed `0` because the existing
+  silent-consume guard requires a *subsequent* `recordByokSubmit` call
+  to land for the same `requestId`; here no such call ever landed.
+* T1's second submit was correctly blocked by the live-attempt cap
+  with `responseCode: blocked_live_attempt_limit`.
+* `byokLiveAttemptsUsed=1`, `byokLiveAudioUsed=0`,
+  `realApiAttemptsUsed=0`. No real MiniMax call landed. No audio
+  generated. No public launch broadened.
+* Unconditional rollback to safe default was executed at
+  `2026-06-13T17:11:45+08:00`. The override was preserved at
+  `/tmp/byok-test.conf.h3b-live-t1-retry8.20260613_165608.bak`. The
+  post-rollback probe returned `code: byok_generation_disabled`.
+* No `.env` / raw key / raw token / Authorization / raw provider
+  response / tester PII / audio / runtime log / `tsconfig.tsbuildinfo` /
+  `dist/` / `node_modules` / `storage/guard/public-generation-guard.json`
+  was committed. `/api/health` snapshots were free of `TURNSTILE_SECRET_KEY`,
+  `Authorization`, `Bearer <token>`, `userApiKey`, `sk-…`, `apiKey`,
+  `token`, and the two confirmation phrases.
+* No release tag. No tag move. No broad public launch.
+* Smoke: `scripts/byok-h3b-live-t1-micropilot-retry8-smoke-test.sh` —
+  27/27 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY8_SMOKE_PASS`.
+* Next: harden the post-`consumeByokLiveAttempt()` code path (try/finally
+  + terminal `recordByokSubmit` on every exit, or a periodic reaper for
+  stale `liveAttemptConsumedByRequest` entries) so the silent-consume
+  guard can detect a gap even when no follow-up event lands. Retry-9
+  only after that fix is live and a successful T1 `live_relay_ok` is
+  observed end-to-end. No T2–T5.
