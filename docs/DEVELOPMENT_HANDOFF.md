@@ -1273,3 +1273,25 @@ BYOK-H3B-AUDIO-QUOTA-FOLLOWUP — gate ordering and live audio cap
   Follow-up plan: docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY3_20260613.md §11.
 * Gate order: see docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md §4c.
 * This phase does not execute BYOK live generation or broaden public launch.
+
+BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-4 — one-shot T1 live micropilot (controlled)
+
+* Status: code + docs + 1 new smoke (scripts/byok-h3b-live-t1-micropilot-retry4-smoke-test.sh, 40/40 PASS).
+* Commit: pending (this phase).
+* Evidence: docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY4_20260613.md.
+* Outcome: T1 attempted ONCE (1 unique requestId `byok_8d3713433de8`).
+  * `byokSubmitsReceived` 0 → 3 (`received` + `live_attempt_consumed` + `fake_relay_ok`).
+  * `byokLiveAttemptsUsed` 0 → 1 (one-shot guard consumed the slot).
+  * `byokLiveAudioUsed` 0 → 0 (no real audio produced; audio cap not exceeded).
+  * `dailyGenerationUsed` 0 (no quota consumed).
+  * `realApiAttemptsUsed` 0 (no MiniMax call).
+  * Generated audio count: 0.
+  * Final stage: `fake_relay_ok` (adapter demoted the call to fake relay after live gate allowed it; the live gate enforces slot + audio cap, not the actual provider selection).
+  * This does NOT execute BYOK live generation. The gate-ordering fix from `da4b16e` is verified end-to-end (live path no longer blocked by public quota), but the actual MiniMax call is not made because the API adapter does not yet route to the live provider under these conditions.
+* Rollback: completed (PID 701159 → 705613, env restored to safe default).
+  * Post-rollback POST returned `code: "byok_generation_disabled"`.
+  * Post-rollback health: `publicByokEnabled=false`, `byokLiveEnabled=false`, `byokLiveConfirmationConfigured=false`, `byokLiveAudioCapEnabled=true`, `byokLiveMaxAudioPerWindow=1`.
+  * `byokLiveAudioUsed` and `byokLiveAttemptsUsed` reset to 0 (in-memory by design).
+* This phase does NOT call MiniMax, does NOT generate music, does NOT broaden public launch.
+* Next phase recommendation: investigate why the live gate allows the call but the API adapter routes to fake relay (separate from gate ordering — this is a provider-selection issue). Until that is fixed, no future pilot will reach MiniMax.
+* Final口径: BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-4 executes at most one controlled BYOK live generation for T1 using the hardened live gate, one-shot guard, BYOK-live audio cap, and submit observability, then restores safe default. It does not broaden public launch.
