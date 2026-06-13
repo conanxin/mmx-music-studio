@@ -640,3 +640,20 @@ BYOK-H3B-FRONTEND-MODE-FOLLOWUP — frontend mode fix + server defensive block
   remains safe default.
 * Smoke: `scripts/byok-h3b-frontend-mode-followup-smoke-test.sh`
   (39/39 PASS, `BYOK_H3B_FRONTEND_MODE_FOLLOWUP_SMOKE_PASS`).
+
+BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-6 — controlled live pilot attempt after frontend mode fix
+
+* Window: `h3b-20260613-t1-retry6-121526` (Asia/Shanghai, 60 min)
+* Deployed commit: `5971185e1354c3de3c32b244f9e1304abe2b86be` (frontend mode fix)
+* Bundle: `dist/assets/index-DVNLT3kN.js`
+* Direct confirmation: `CONFIRM_BYOK_DIRECT_LIVE_TEST` (read from code constant)
+* Stage-level approval: `CONFIRM_BYOK_H3_CONTROLLED_LIVE_PILOT`
+* Health live gate: all 16/16 checks PASS before submit
+* T1 notification sent (Telegram `message_id: 15648`)
+* T1 did not submit during 5-7 min monitor window (7 polls, `byokSubmitsReceived=0`)
+* Provider result: `NO_SERVER_SUBMIT_OBSERVED`
+* `byokLiveAttemptsUsed=0`, `byokLiveAudioUsed=0`, `realApiAttemptsUsed=0`
+* No MiniMax call. No audio generated. Live gate expired unused.
+* Rollback verified: post-rollback `code: byok_generation_disabled`
+* Evidence: `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY6_20260613.md` (171 lines)
+* Smoke: `scripts/byok-h3b-live-t1-micropilot-retry6-smoke-test.sh` — 43/43 PASS, `BYOK_H3B_LIVE_T1_MICROPILOT_RETRY6_SMOKE_PASS`.
