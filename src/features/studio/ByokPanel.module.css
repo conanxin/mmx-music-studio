@@ -47,6 +47,26 @@
   max-width: 100%;
 }
 
+/* Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: live window badge.
+   Same shape as dryRunBadge but with warning palette so operators
+   can immediately see the panel is in live mode (not dry-run). */
+.liveWindowBadge {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 6px 0 0 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: 999px;
+  background: var(--warning-bg, #fff4d6);
+  border: 1px solid var(--warning-border, #d4a72c);
+  color: var(--warning-text, #6b4900);
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+}
+
 /* Phase BYOK-H2D: 通用 hint 文案（key 隐私 / turnstile 提示 / 敏感 prompt 提醒） */
 .hint {
   margin: 0;

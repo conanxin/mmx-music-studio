@@ -128,7 +128,7 @@ the client's mode choice and ran the fake relay.
 * `storage/guard/public-generation-guard.json` untracked, NOT staged.
 * `tsconfig.tsbuildinfo` auto-restored, NOT staged.
 
-## 11. Final口径
+## 11. Final口径 (retry-5 evidence)
 
 > BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-5 attempts one controlled MiniMax BYOK
 > live generation for T1 through the fixed provider-selection path, then
@@ -139,3 +139,107 @@ the client's mode choice and ran the fake relay.
 > `mode='live'` or `mode='direct-live'`. The server correctly honored the
 > client's mode choice. No MiniMax call was made. No audio was generated.
 > The system remains safe.
+
+## 12. Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: closing the fake-mode fall-through
+
+### 12.1 Root cause (consolidated)
+
+When T1 submitted in retry-5, the server-side live gate, confirmation gate,
+one-shot attempt guard, and confirmed-live provider-selection check **all
+passed** (the one-shot counter incremented from 0 to 1, confirming the
+request reached the live branch). The server's `adapterMode` selection then
+fell through to `'fake'` because **the client request body did not include
+`mode='live'` or `mode='direct-live'`** — the frontend `ByokPanel.tsx`
+submit handler had no code that sent an explicit `mode` field. The body
+comment at the time was:
+
+> The body never carries the explicit 'mode' — the route always defaults
+> to 'fake' for safety. A real 'live' request requires a separate
+> operator-only channel that this UI does not expose.
+
+In other words: the live gate was fully open and the server was ready to
+route to the live provider, but the client silently fell back to the
+default fake path. The server **honored the client's choice** rather than
+flagging the contradiction, which is the standard safe-default behavior
+for a "request says fake, run fake" pipeline.
+
+### 12.2 Fix (frontend)
+
+`src/lib/serverApi.ts` — `HealthInfo` interface now exposes the four live
+gate health fields (`byokLiveEnabled`, `byokLiveConfirmationConfigured`,
+`byokLiveAttemptsRemaining`, `byokLiveAudioRemaining`).
+
+`src/features/studio/Studio.tsx` — passes the four fields through to
+`<ByokPanel>` as props.
+
+`src/features/studio/ByokPanel.tsx` — computes a new derived flag
+`isByokLiveReady` that is true only when **all** of the following hold:
+
+* `props.publicByokEnabled === true`
+* `props.byokLiveEnabled === true`
+* `props.byokLiveConfirmationConfigured === true`
+* `props.byokLiveAttemptsRemaining > 0`
+* `props.byokLiveAudioRemaining > 0`
+
+The submit handler now sets `body.mode` to `'direct-live'` when
+`isByokLiveReady` is true, and to `'fake'` otherwise. The submit button
+text also switches: when live-ready it says "使用我的 Key 进行受控 live
+测试（仅本窗口一次）" instead of the dry-run wording.
+
+`src/features/studio/ByokPanel.module.css` — adds a new
+`.liveWindowBadge` class (warning palette) so the panel header visually
+switches from the dry-run blue badge to a live-ready amber badge.
+
+### 12.3 Server defense (defensive block)
+
+`server/index.ts` now contains a guard that runs **before** the
+`adapterMode` selection and **before** any adapter call:
+
+```
+if (requestedMode === 'fake' && isLiveGateSatisfied) {
+  recordByokSubmit({
+    stage: 'live_mode_required',
+    outcome: 'blocked_live_mode_required',
+    modeCandidate: 'blocked',
+    ...
+  });
+  sendJson(res, 400, {
+    ok: false,
+    code: 'byok_live_mode_required',
+    message: '当前为受控 BYOK live 窗口，客户端必须使用 live/direct-live mode。请刷新页面后重试。',
+    requestId,
+  });
+  return;
+}
+```
+
+The new stage `live_mode_required` and outcome `blocked_live_mode_required`
+are recorded into `ByokSubmitObservabilityStats` for downstream audit.
+`server/adapters/minimax-api/byok.ts` has been extended with both new
+`ByokSubmitStage` and `ByokSubmitOutcome` union members.
+
+The defensive block fires only when the live gate is fully satisfied AND
+the client requested `mode='fake'`. In the safe-default case (live gate
+closed), the block is a no-op and the existing fake relay runs unchanged.
+
+### 12.4 This phase does not call MiniMax and does not generate music
+
+This is a code-only followup. There is no live execution, no MiniMax
+call, no music generation in this phase. The H3B live window is still
+locked; the `byok_live_mode_required` defensive block is server-side
+gate logic, not a client command to "go live".
+
+Production env remains safe default:
+`PUBLIC_BYOK_ENABLED=false`, `BYOK_DRY_RUN_ONLY=true`,
+`BYOK_DIRECT_LIVE_ENABLED=false`, `BYOK_LIVE_ENABLED=false`,
+`BYOK_LIVE_CONFIRMATION` unset.
+
+No live call. No MiniMax call. No music generation. No broad public
+launch.
+
+### 12.5 Final口径 (consolidated)
+
+> BYOK-H3B-FRONTEND-MODE-FOLLOWUP fixes the BYOK client submit mode so
+> live-ready BYOK submissions do not fall back to fake mode. It does
+> not execute BYOK live generation or broaden public launch.
+

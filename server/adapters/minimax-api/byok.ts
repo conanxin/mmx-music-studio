@@ -563,6 +563,7 @@ export type ByokSubmitStage =
   | 'byok_live_audio_cap_reached'
   | 'live_attempt_consumed'
   | 'live_confirmation_mismatch'
+  | 'live_mode_required'
   | 'fake_relay_ok'
   | 'live_relay_ok'
   | 'provider_error'
@@ -580,6 +581,7 @@ export type ByokSubmitOutcome =
   | 'blocked_live_audio_cap'
   | 'live_attempt_consumed'
   | 'blocked_live_confirmation_mismatch'
+  | 'blocked_live_mode_required'
   | 'fake_relay_ok'
   | 'live_relay_ok'
   | 'live_relay_provider_error'
@@ -597,7 +599,7 @@ export interface ByokSubmitObservabilityStats {
   /** Request id of the last submit (already redacted — never includes a key). */
   lastSubmitRequestId: string;
   /** Whether the last submit's input looked like a live-mode attempt. */
-  lastSubmitModeCandidate: 'live' | 'fake' | 'unknown';
+  lastSubmitModeCandidate: 'live' | 'fake' | 'unknown' | 'blocked';
   /** Whether the last submit carried a Turnstile token. */
   lastSubmitTurnstilePresent: boolean;
   /** Whether the last submit included an apiKey field (length only; value NEVER logged). */
@@ -629,10 +631,11 @@ export interface RecordByokSubmitInput {
   requestId: string;
   stage: ByokSubmitStage;
   outcome: ByokSubmitOutcome;
-  modeCandidate: 'live' | 'fake' | 'unknown';
+  modeCandidate: 'live' | 'fake' | 'unknown' | 'blocked';
   turnstilePresent: boolean;
   apiKeyPresent: boolean;
   promptPresent: boolean;
+  timestamp?: number;
 }
 
 /**

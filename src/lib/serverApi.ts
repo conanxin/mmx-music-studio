@@ -83,6 +83,17 @@ export interface HealthInfo {
   publicByokEnabled?: boolean;
   serverKeyFallback?: boolean;
   byokKeyStorage?: string;
+  // Phase BYOK-H3B: Live gate fields (boolean/number only, no secrets)
+  byokLiveEnabled?: boolean;
+  byokLiveConfirmationConfigured?: boolean;
+  byokLiveAttemptLimitEnabled?: boolean;
+  byokLiveMaxAttemptsPerWindow?: number;
+  byokLiveAttemptsUsed?: number;
+  byokLiveAttemptsRemaining?: number;
+  byokLiveAudioCapEnabled?: boolean;
+  byokLiveMaxAudioPerWindow?: number;
+  byokLiveAudioUsed?: number;
+  byokLiveAudioRemaining?: number;
   // Phase 5B-C: Real API Attempt Guard
   realApiAttemptLimitEnabled?: boolean;
   realApiDailyAttemptLimit?: number;

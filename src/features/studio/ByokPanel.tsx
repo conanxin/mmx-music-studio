@@ -69,8 +69,10 @@ const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api
 // 这些是 user-facing copy，单独抽出便于阅读与未来微调。
 const COPY = {
   headerSubtitle:
+    'Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: 当受控 live 窗口就绪时，前端会自动发送 ' +
+    'mode=direct-live，让服务端路由到真实 MiniMax 提供商。' +
+    '当 live 窗口未就绪时，前端发送 mode=fake，走 dry-run 安全链路。' +
     'Key 仅在本次请求中发送到本站服务端，不写入浏览器本地存储或服务器持久化。' +
-    '当前为 dry-run 阶段，不会调用 MiniMax，不会生成音乐；' +
     '正式 BYOK 启用后，费用由你自己的 MiniMax 账户承担。',
   dryRunBadge: 'dry-run 阶段 · 不会生成音乐 · 不会调用 MiniMax',
   apiKeyLabel: 'MiniMax API Key',
@@ -85,7 +87,8 @@ const COPY = {
   turnstileTokenPrivacy: 'Token 不显示、不保存、不复用；每次提交后会自动重置。',
   confirmLabel: '我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。',
   confirmLabelDryRun: '（当前为 dry-run，不会产生真实费用）',
-  submitIdle: '使用我的 Key 试调一次（默认 fake / dry-run）',
+  submitIdleDryRun: '使用我的 Key 试调一次（默认 fake / dry-run）',
+  submitIdleLive: '使用我的 Key 进行受控 live 测试（仅本窗口一次）',
   resultDryRunExplain:
     '安全链路已通过（Turnstile + Key 形状校验）。当前为 dry-run，' +
     '所以没有调用 MiniMax，也没有生成音乐。',
@@ -148,6 +151,12 @@ interface ByokPanelProps {
   // Optional: parent can pass whether BYOK is currently allowed.
   // Default: treat as disabled (PUBLIC_BYOK_ENABLED=false) for safety.
   publicByokEnabled?: boolean;
+  // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: live gate health fields.
+  // When all are true/positive, the frontend sends mode='direct-live'.
+  byokLiveEnabled?: boolean;
+  byokLiveConfirmationConfigured?: boolean;
+  byokLiveAttemptsRemaining?: number;
+  byokLiveAudioRemaining?: number;
   // Phase Deploy-CF-D / Deploy-CF-E: Turnstile site key (safe to expose to frontend).
   // If not provided, UI shows "Turnstile 尚未配置" placeholder.
   turnstileSiteKey?: string;
@@ -293,6 +302,19 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // Default to DISABLED. Only enabled if parent explicitly says so.
   // This matches server's PUBLIC_BYOK_ENABLED=false default.
   const enabled = props.publicByokEnabled === true;
+
+  // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: live-ready check.
+  // When all live gate health fields are true/positive, the frontend
+  // sends mode='direct-live' so the server routes to the live provider.
+  // Otherwise it sends mode='fake' (default safe path).
+  const isByokLiveReady =
+    props.publicByokEnabled === true &&
+    props.byokLiveEnabled === true &&
+    props.byokLiveConfirmationConfigured === true &&
+    typeof props.byokLiveAttemptsRemaining === 'number' &&
+    props.byokLiveAttemptsRemaining > 0 &&
+    typeof props.byokLiveAudioRemaining === 'number' &&
+    props.byokLiveAudioRemaining > 0;
 
   const [apiKey, setApiKey] = useState<string>('');
   const [model, setModel] = useState<'music-2.6-free' | 'music-2.6'>(
@@ -463,9 +485,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             turnstileConfigured && turnstileToken
               ? turnstileToken
               : undefined,
-          // The body never carries the explicit 'mode' — the route always
-          // defaults to 'fake' for safety. A real 'live' request requires
-          // a separate operator-only channel that this UI does not expose.
+          // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: send explicit mode.
+          // When live-ready, send 'direct-live' so the server routes to
+          // the live provider. Otherwise send 'fake' (default safe path).
+          mode: isByokLiveReady ? 'direct-live' : 'fake',
         }),
       });
       const data = (await r.json()) as ByokResponse;
@@ -500,9 +523,17 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       <header className={styles.header}>
         <h2 className={styles.title}>使用自己的 MiniMax Key</h2>
         <p className={styles.subtitle}>{COPY.headerSubtitle}</p>
-        {/* Phase BYOK-H2D: 醒目 dry-run 状态徽章 */}
-        <p className={styles.dryRunBadge} role="status" data-h2d="dry-run-badge">
-          {COPY.dryRunBadge}
+        {/* Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: dynamic status badge.
+            When live-ready, show live window badge.
+            When not live-ready, show dry-run badge. */}
+        <p
+          className={isByokLiveReady ? styles.liveWindowBadge : styles.dryRunBadge}
+          role="status"
+          data-h2d={isByokLiveReady ? 'live-window-badge' : 'dry-run-badge'}
+        >
+          {isByokLiveReady
+            ? '受控 live 窗口已就绪 · 仅一次提交 · 费用由你的 MiniMax 账户承担'
+            : COPY.dryRunBadge}
         </p>
       </header>
 
@@ -680,7 +711,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             className={styles.submit}
             disabled={!canSubmit}
           >
-            {submitting ? '提交中…' : COPY.submitIdle}
+            {submitting ? '提交中…' : (isByokLiveReady ? COPY.submitIdleLive : COPY.submitIdleDryRun)}
           </button>
         )}
       </form>

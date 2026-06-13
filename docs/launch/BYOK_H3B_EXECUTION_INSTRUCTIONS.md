@@ -419,3 +419,40 @@ This follow-up addresses the root cause recorded in
   blocked until the new code path has been reviewed and a fresh
   `BYOK_LIVE_WINDOW_ID` is locked.
 
+### Companion: BYOK-H3B-FRONTEND-MODE-FOLLOWUP
+
+The `BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-5` evidence surfaced a
+secondary root cause: the BYOK client submit handler in
+`ByokPanel.tsx` did not send an explicit `mode` field. The body had
+a comment saying "The body never carries the explicit 'mode' — the
+route always defaults to 'fake' for safety". When T1 submitted, the
+server-side live gate was fully open but the request still landed on
+the fake path because the client silently defaulted to `mode='fake'`.
+
+The FRONTEND-MODE-FOLLOWUP phase closes this fall-through:
+
+* **Frontend fix** — `HealthInfo` now exposes 4 live gate fields;
+  `Studio.tsx` passes them through to `<ByokPanel>`; `ByokPanel`
+  computes `isByokLiveReady` (true only when all 5 conditions hold);
+  submit handler now sends `mode: isByokLiveReady ? 'direct-live' :
+  'fake'`. Button copy and the status badge switch between dry-run
+  and live-ready.
+* **Server defense** — `server/index.ts` adds a guard that runs
+  before the adapter call. When `requestedMode === 'fake' &&
+  isLiveGateSatisfied`, it returns `code: byok_live_mode_required`
+  (HTTP 400) and records `stage: live_mode_required`, `outcome:
+  blocked_live_mode_required` into submit observability. This is a
+  no-op when the live gate is closed, so the safe-default fake relay
+  still runs unchanged.
+* **This phase does not open live, does not call MiniMax, does not
+  generate music, does not broaden public launch.** Production env
+  remains safe default. Live window remains LOCKED. The
+  `byok_live_mode_required` block is server-side gate logic, not a
+  client command to "go live".
+* **Smoke**: `scripts/byok-h3b-frontend-mode-followup-smoke-test.sh`
+  (39/39 PASS, `BYOK_H3B_FRONTEND_MODE_FOLLOWUP_SMOKE_PASS`).
+
+See `docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY5_20260613.md` §12
+for the full evidence-doc enrichment (root cause, fix, server
+defense, this-phase boundary).
+

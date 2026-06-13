@@ -463,6 +463,17 @@ export default function Studio({
     turnstileSecretKeyConfigured?: boolean;
     turnstileSiteKeyConfigured?: boolean;
     turnstileSiteKey?: string;
+    // Phase BYOK-H3B: live gate health fields (mirrors HealthInfo).
+    byokLiveEnabled?: boolean;
+    byokLiveConfirmationConfigured?: boolean;
+    byokLiveAttemptLimitEnabled?: boolean;
+    byokLiveMaxAttemptsPerWindow?: number;
+    byokLiveAttemptsUsed?: number;
+    byokLiveAttemptsRemaining?: number;
+    byokLiveAudioCapEnabled?: boolean;
+    byokLiveMaxAudioPerWindow?: number;
+    byokLiveAudioUsed?: number;
+    byokLiveAudioRemaining?: number;
   } | null>(null);
 
   // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
@@ -916,6 +927,10 @@ export default function Studio({
               (boolean only, mirrors server config PUBLIC_BYOK_ENABLED). */}
           <ByokPanel
             publicByokEnabled={healthInfo?.publicByokEnabled}
+            byokLiveEnabled={healthInfo?.byokLiveEnabled}
+            byokLiveConfirmationConfigured={healthInfo?.byokLiveConfirmationConfigured}
+            byokLiveAttemptsRemaining={healthInfo?.byokLiveAttemptsRemaining}
+            byokLiveAudioRemaining={healthInfo?.byokLiveAudioRemaining}
             turnstileSiteKey={healthInfo?.turnstileSiteKey}
             turnstileByokRequired={healthInfo?.turnstileByokRequired}
           />

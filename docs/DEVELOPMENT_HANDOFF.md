@@ -1330,3 +1330,22 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-5 — controlled live pilot attempt
 * Rollback verified. Post-rollback byok_generation_disabled confirmed.
 * No secret/key/token/PII/audio/log committed.
 * Smoke: scripts/byok-h3b-live-t1-micropilot-retry5-smoke-test.sh — 26/26 PASS.
+
+BYOK-H3B-FRONTEND-MODE-FOLLOWUP — frontend mode fix + server defensive block
+
+* Retry-5 root cause: the BYOK client submit handler (`ByokPanel.tsx`) did
+  not send an explicit `mode` field. When T1 submitted, the server-side
+  live gate was fully open but the request still landed on the fake path
+  because the client silently defaulted to `mode='fake'`.
+* Frontend fix: `HealthInfo` exposes 4 live gate fields; `Studio.tsx`
+  passes them through; `ByokPanel` computes `isByokLiveReady`; submit
+  handler now sends `mode: isByokLiveReady ? 'direct-live' : 'fake'`.
+* Server defense: `server/index.ts` returns `code: byok_live_mode_required`
+  when `requestedMode === 'fake' && isLiveGateSatisfied`. Records
+  `stage: live_mode_required`, `outcome: blocked_live_mode_required` into
+  submit observability. No-op when live gate is closed.
+* This phase does not open live, does not call MiniMax, does not
+  generate music, does not broaden public launch. Production env
+  remains safe default. Live window remains LOCKED.
+* Smoke: `scripts/byok-h3b-frontend-mode-followup-smoke-test.sh`
+  (39/39 PASS, `BYOK_H3B_FRONTEND_MODE_FOLLOWUP_SMOKE_PASS`).

@@ -2319,11 +2319,36 @@ console.info(
  //      pre-existing legacy check), AND
  //   3) The new provider-selection check confirms every condition.
  // Otherwise the request is 'fake' (default safe path).
+ // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: defensive block.
+ // If the client sends mode='fake' but the live gate is fully satisfied,
+ // the server should NOT silently fall back to fake relay. Instead, it
+ // returns a clear error so the frontend can be fixed.
  const liveCandidateRequested = requestedMode === 'live';
+ const isLiveGateSatisfied = liveAllowed && isConfirmedLiveProviderPath;
+
+  if (requestedMode === 'fake' && isLiveGateSatisfied) {
+    recordByokSubmit({
+      requestId,
+      stage: 'live_mode_required',
+      outcome: 'blocked_live_mode_required',
+      modeCandidate: 'blocked',
+      turnstilePresent: submitTurnstilePresent,
+      apiKeyPresent: true,
+      promptPresent: true,
+    });
+    sendJson(res, 400, {
+      ok: false,
+      code: 'byok_live_mode_required',
+      message:
+        '当前为受控 BYOK live 窗口，客户端必须使用 live/direct-live mode。' +
+        '请刷新页面后重试。',
+      requestId,
+    });
+    return;
+  }
+
  const adapterMode: 'fake' | 'live' =
-   liveCandidateRequested && liveAllowed && isConfirmedLiveProviderPath
-     ? 'live'
-     : 'fake';
+   liveCandidateRequested && isLiveGateSatisfied ? 'live' : 'fake';
 
  const adapterResult = await generateByokMusic({
    apiKey: body.apiKey ?? '',
