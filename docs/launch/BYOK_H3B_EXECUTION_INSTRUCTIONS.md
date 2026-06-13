@@ -292,3 +292,69 @@ After any stop condition, the circuit breaker MUST be executed, the safe default
 ## 10. Final no-execution statement
 
 This document does not itself execute BYOK live generation. Live execution requires a separate operator action after reviewing this document and re-confirming the locked window is still valid.
+
+## 4c. Gate ordering: confirmed live requests skip the public audio cap
+
+The launch guard (cooldown + per-source daily cap) is the **public
+audio quota**. Confirmed BYOK live requests have their **own** audio
+cap (`BYOK_LIVE_MAX_AUDIO_PER_WINDOW`, default 1) scoped to the same
+window id as the one-shot attempt guard. Confirmed live requests must
+**NOT** be blocked by the public quota before they reach the
+one-shot attempt guard, because the operator's stated intent is
+"BYOK-live cap replaces public cap for this request".
+
+### 4c.1 Detection
+
+A request is treated as "confirmed BYOK live" if **all** of the
+following are true:
+
+* `body.mode === 'direct-live' || body.mode === 'live'`
+* `BYOK_LIVE_ENABLED === 'true'`
+* `BYOK_LIVE_CONFIRMATION` matches the expected phrase
+* `BYOK_DRY_RUN_ONLY === 'false'`
+
+### 4c.2 Order of gates for a confirmed live request
+
+1. submit-received observability record
+2. request body parse / validation
+3. Turnstile verify
+4. public BYOK enabled gate
+5. **launch guard BYPASSED** (recorded as
+   `audio_quota_bypassed_for_byok_live`)
+6. live candidate detection (`modeCandidate === 'live'`)
+7. `BYOK_LIVE_ENABLED` + `BYOK_LIVE_CONFIRMATION` gate
+8. one-shot attempt guard (`checkByokLiveAttemptLimit`)
+9. **BYOK-live audio cap** (`checkByokLiveAudioCap`)
+10. live attempt slot consumed (`consumeByokLiveAttempt`)
+11. direct-live or fake relay
+12. on success: `recordByokLiveAudioGenerated` (audio used += 1)
+
+### 4c.3 Order of gates for a non-live request
+
+1-4 same as above.
+5. **launch guard APPLIED** — public cooldown / per-source cap.
+   On rejection: `stage=audio_quota_rejected, code=429, Retry-After`.
+6. live gate (dry-run or fake mode)
+7. relay (fake)
+
+### 4c.4 New health fields (always present, never the key/token/phrase)
+
+* `byokLiveAudioCapEnabled` (boolean)
+* `byokLiveMaxAudioPerWindow` (number, default 1)
+* `byokLiveAudioUsed` (number, in-memory)
+* `byokLiveAudioRemaining` (number)
+
+### 4c.5 New submit observability stages / outcomes
+
+* stage: `audio_quota_bypassed_for_byok_live`,
+  outcome: `bypassed_audio_quota_for_byok_live`
+* stage: `byok_live_audio_cap_reached`,
+  outcome: `blocked_live_audio_cap`
+* stage: `live_attempt_consumed`,
+  outcome: `live_attempt_consumed`
+
+### 4c.6 New error response codes
+
+* `byok_live_audio_cap_reached` — 429
+  (BYOK-live window audio cap exceeded)
+

@@ -208,3 +208,53 @@ Post-rollback health: `publicByokEnabled=False`, `byokLiveEnabled=False`,
 > submit observability, then restored safe default. Both submits were
 > server-observed and rejected at the audio quota gate (no MiniMax
 > call, no music). It does not broaden public launch.
+
+## 11. Retry-3 root cause: launch guard fired before live-attempt guard
+
+Both T1 submits were rejected at the public **launch guard**
+(cooldown + per-source daily cap = 5 audio). The launch guard sits
+in the gate chain **before** the BYOK-live attempt guard, so the
+one-shot attempt counter (`byokLiveAttemptsUsed`) stayed at 0 —
+the live-attempt guard never had a chance to fire.
+
+The launch guard returned `per_source_daily_limit_exceeded`
+because the operator's earlier pre-pilot tests had already used
+up T1's per-source daily audio budget. The submit observability
+module dutifully recorded this as
+`stage=audio_quota_rejected, outcome=blocked_audio_quota`,
+which is correct for **public** traffic but **misleading** for
+confirmed BYOK-live traffic.
+
+### 11.1 What was fixed (Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP)
+
+1. Confirmed BYOK-live requests now **bypass** the launch guard.
+   The bypass is recorded as `audio_quota_bypassed_for_byok_live`
+   so it is auditable, not silent.
+2. A new **BYOK-live audio cap**
+   (`BYOK_LIVE_MAX_AUDIO_PER_WINDOW`, default 1) is checked
+   **after** the one-shot attempt guard.
+3. New health fields expose `byokLiveAudioCapEnabled`,
+   `byokLiveMaxAudioPerWindow`, `byokLiveAudioUsed`,
+   `byokLiveAudioRemaining`.
+4. New submit observability stages: `byok_live_audio_cap_reached`,
+   `live_attempt_consumed`, `audio_quota_bypassed_for_byok_live`.
+5. The one-shot attempt slot is now actually **consumed**
+   (previously `consumeByokLiveAttempt` was imported but never
+   called) at the moment the live attempt clears all gates.
+
+### 11.2 Public audio quota is still enforced
+
+The launch guard continues to apply to **all non-BYOK-live**
+traffic. This means a fake-mode or dry-run submit from the same
+source is still capped at 5 audio/day. Only confirmed live
+requests are exempted, and only because they are bounded by a
+separate, window-scoped cap.
+
+### 11.3 Future live pilots must use this gate order
+
+Future retry-4 / retry-5 windows MUST use the audio cap defined
+in `BYOK_LIVE_MAX_AUDIO_PER_WINDOW` rather than the public
+per-source daily cap. The default of 1 is intentional: a single
+T1 live generation per window, then a forced rollback to safe
+default.
+

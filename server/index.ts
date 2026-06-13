@@ -119,6 +119,11 @@ import {
   checkByokLiveAttemptLimit,
   consumeByokLiveAttempt,
   isByokLiveConfirmationConfigured,
+  // Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP
+  buildByokLiveAudioCapConfig,
+  getByokLiveAudioCapStats,
+  checkByokLiveAudioCap,
+  recordByokLiveAudioGenerated,
   recordByokSubmit,
   getByokSubmitObservability,
   type ByokSubmitStage,
@@ -710,6 +715,10 @@ async function handleHealth(
   const liveAttemptStats = getByokLiveAttemptStats(
     buildByokLiveAttemptConfig(),
   );
+  // Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: live audio cap (in-memory).
+  const liveAudioCapStats = getByokLiveAudioCapStats(
+    buildByokLiveAudioCapConfig(),
+  );
 
   sendJson(res, 200, {
     ok: true,
@@ -769,6 +778,14 @@ async function handleHealth(
     byokLiveMaxAttemptsPerWindow: liveAttemptStats.maxAttempts,
     byokLiveAttemptsUsed: liveAttemptStats.attemptsUsed,
     byokLiveAttemptsRemaining: liveAttemptStats.remaining,
+    // Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: live audio cap (in-memory,
+    // non-persistent). Booleans/numbers/window-id only; never the
+    // confirmation phrase, never the user key, never the prompt, never
+    // the lyrics, never the raw provider response.
+    byokLiveAudioCapEnabled: liveAudioCapStats.enabled,
+    byokLiveMaxAudioPerWindow: liveAudioCapStats.maxAudio,
+    byokLiveAudioUsed: liveAudioCapStats.audioUsed,
+    byokLiveAudioRemaining: liveAudioCapStats.remaining,
     // Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP: submit observability counters.
     // In-memory only; never persisted. Booleans/enums/ISO timestamp only —
     // NEVER include apiKey, token, prompt, lyrics, or Authorization.
@@ -2008,9 +2025,33 @@ async function handleByokGenerate(
     return;
   }
 
-  // 5. Launch Guard — cooldown + daily per-source limit
-  const guard = checkLaunchGuard(req, config.launchGuard);
-  if (!guard.allowed) {
+ // 5. Launch Guard — cooldown + daily per-source limit.
+ //    Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: confirmed BYOK live requests
+ //    skip the launch guard (which is the public/source audio cap). They
+ //    are bounded by the BYOK-live audio cap below instead. The skip is
+ //    deliberately recorded as `audio_quota_bypassed_for_byok_live` so it
+ //    is observable and auditable, not silent.
+ const requestedModeForGuard = (
+   body as { mode?: 'fake' | 'live' | 'direct-live' } | undefined
+ )?.mode ?? 'fake';
+ const isConfirmedByokLivePath =
+   (requestedModeForGuard === 'direct-live' || requestedModeForGuard === 'live') &&
+   config.byokLiveEnabled === true &&
+   isByokLiveConfirmationConfigured({ byokLiveConfirmation: config.byokLiveConfirmation }) &&
+   config.byokDryRunOnly === false;
+ if (isConfirmedByokLivePath) {
+   recordByokSubmit({
+     requestId: submitRequestId,
+     stage: 'audio_quota_bypassed_for_byok_live',
+     outcome: 'bypassed_audio_quota_for_byok_live',
+     modeCandidate: submitModeCandidate,
+     turnstilePresent: true,
+     apiKeyPresent: submitApiKeyPresent,
+     promptPresent: true,
+   });
+ } else {
+   const guard = checkLaunchGuard(req, config.launchGuard);
+   if (!guard.allowed) {
     // guard has a discriminated union: code+message+retryAfterSeconds|resetsAt
     const retryAfter = Math.max(
       1,
@@ -2043,6 +2084,7 @@ async function handleByokGenerate(
     );
     return;
   }
+  } // end else: launch guard applies to non-BYOK-live path
 
   // 6. Phase BYOK-B mode machine.
  // 6a. dry-run: PUBLIC_BYOK_ENABLED=true && BYOK_DRY_RUN_ONLY=true.
@@ -2117,6 +2159,51 @@ if (!liveAttemptCheck.allowed) {
   return;
 }
 
+// Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: live audio cap check (read-only).
+// Runs AFTER the live-attempt guard so a blocked attempt does not
+// consume a slot. Only successful generations record() against the cap.
+const liveAudioCapConfig = buildByokLiveAudioCapConfig();
+const liveAudioCapCheck = checkByokLiveAudioCap(liveAudioCapConfig);
+if (!liveAudioCapCheck.allowed) {
+  console.warn(
+    `[byok] live audio cap reached [${requestId}]: window=${liveAudioCapCheck.stats.windowId} used=${liveAudioCapCheck.stats.audioUsed}/${liveAudioCapCheck.stats.maxAudio}`,
+  );
+  recordByokSubmit({
+    requestId: submitRequestId,
+    stage: 'byok_live_audio_cap_reached',
+    outcome: 'blocked_live_audio_cap',
+    modeCandidate: 'live',
+    turnstilePresent: true,
+    apiKeyPresent: submitApiKeyPresent,
+    promptPresent: true,
+  });
+  sendJson(res, 429, {
+    ok: false,
+    code: 'byok_live_audio_cap_reached',
+    message: '受控 live 测试窗口已达到音频生成上限',
+    hint: `需要轮换 BYOK_LIVE_WINDOW_ID 或提高 BYOK_LIVE_MAX_AUDIO_PER_WINDOW`,
+  });
+  return;
+}
+
+// Consume the live-attempt slot now that the request has cleared the
+// attempt and audio-cap checks. Subsequent gates (provider error etc.)
+// still count as an attempt used — this matches the one-shot semantic
+// the operator approved in BYOK-H3B-CODE-FOLLOWUP.
+const liveAttemptConsumedStats = consumeByokLiveAttempt(liveAttemptConfig);
+recordByokSubmit({
+  requestId: submitRequestId,
+  stage: 'live_attempt_consumed',
+  outcome: 'live_attempt_consumed',
+  modeCandidate: 'live',
+  turnstilePresent: true,
+  apiKeyPresent: submitApiKeyPresent,
+  promptPresent: true,
+});
+console.info(
+  `[byok] live attempt consumed [${requestId}]: window=${liveAttemptConsumedStats.windowId} used=${liveAttemptConsumedStats.attemptsUsed}/${liveAttemptConsumedStats.maxAttempts}`,
+);
+
  // 6c. Decide adapter mode: 'fake' | 'live' (CLI — DISABLED) | 'direct-live' (BYOK-F)
  // Default to 'fake' for any caller that does not explicitly pass a live mode.
  const requestedMode = (body as { mode?: 'fake' | 'live' | 'direct-live' } | undefined)?.mode ?? 'fake';
@@ -2181,15 +2268,18 @@ if (!liveAttemptCheck.allowed) {
      return;
    }
 
-   // Success — return normalized direct result
-   sendJson(res, 200, {
-     ok: true,
-     code: 'byok_direct_live_ok',
-     message: 'BYOK direct API 测试通过',
-     audioUrl: directResult.audioUrl,
-     taskId: directResult.taskId,
-     model: directResult.model,
-     meta: directResult.meta,
+  // Success — return normalized direct result.
+  // Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: record successful audio
+  // generation against the BYOK-live audio cap.
+  recordByokLiveAudioGenerated(liveAudioCapConfig);
+  sendJson(res, 200, {
+    ok: true,
+    code: 'byok_direct_live_ok',
+    message: 'BYOK direct API 测试通过',
+    audioUrl: directResult.audioUrl,
+    taskId: directResult.taskId,
+    model: directResult.model,
+    meta: directResult.meta,
      requestId,
    });
    return;

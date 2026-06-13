@@ -306,6 +306,106 @@ export function consumeByokLiveAttempt(
   return getByokLiveAttemptStats(config);
 }
 
+// ── BYOK-live audio cap (Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP) ─────────────
+//
+// Confirmed BYOK live requests must NOT be blocked by the public/source
+// audio quota. Instead, they are bounded by a separate in-memory cap
+// scoped to the live window id. This module ONLY counts successful audio
+// generations; provider errors do not consume the cap.
+//
+// State is in-memory only; never persisted. Resets on process restart
+// or when the operator rotates BYOK_LIVE_WINDOW_ID. NEVER stores the
+// user key, token, prompt, lyrics, or raw provider response.
+
+export interface ByokLiveAudioCapConfig {
+  enabled: boolean;
+  maxAudioPerWindow: number;
+  windowId: string;
+}
+
+export interface ByokLiveAudioCapStats {
+  enabled: boolean;
+  windowId: string;
+  maxAudio: number;
+  audioUsed: number;
+  remaining: number;
+  reachedLimit: boolean;
+}
+
+export function buildByokLiveAudioCapConfig(): ByokLiveAudioCapConfig {
+  const envEnabled = process.env.BYOK_LIVE_AUDIO_CAP_ENABLED;
+  // Default true — defensive.
+  const enabled = envEnabled === undefined ? true : envEnabled === 'true';
+  const rawMax = Number(process.env.BYOK_LIVE_MAX_AUDIO_PER_WINDOW || 1);
+  const maxAudioPerWindow =
+    Number.isFinite(rawMax) && rawMax > 0 ? Math.floor(rawMax) : 1;
+  const windowId = (process.env.BYOK_LIVE_WINDOW_ID ?? '').trim() ||
+    `boot_${process.pid}_${Math.floor(Date.now() / 1000)}`;
+  return { enabled, maxAudioPerWindow, windowId };
+}
+
+let byokLiveAudioCapState: { windowId: string; audio: number } = {
+  windowId: '',
+  audio: 0,
+};
+
+function resetAudioCapIfWindowChanged(windowId: string): void {
+  if (byokLiveAudioCapState.windowId !== windowId) {
+    byokLiveAudioCapState = { windowId, audio: 0 };
+  }
+}
+
+export function getByokLiveAudioCapStats(
+  config: ByokLiveAudioCapConfig,
+): ByokLiveAudioCapStats {
+  resetAudioCapIfWindowChanged(config.windowId);
+  const used = byokLiveAudioCapState.audio;
+  const remaining = Math.max(0, config.maxAudioPerWindow - used);
+  return {
+    enabled: config.enabled,
+    windowId: config.windowId,
+    maxAudio: config.maxAudioPerWindow,
+    audioUsed: used,
+    remaining,
+    reachedLimit: used >= config.maxAudioPerWindow,
+  };
+}
+
+export interface ByokLiveAudioCapCheck {
+  allowed: boolean;
+  reason?:
+    | 'audio_cap_disabled'
+    | 'audio_cap_reached'
+    | 'audio_cap_not_configured';
+  stats: ByokLiveAudioCapStats;
+}
+
+export function checkByokLiveAudioCap(
+  config: ByokLiveAudioCapConfig,
+): ByokLiveAudioCapCheck {
+  const stats = getByokLiveAudioCapStats(config);
+  if (!config.enabled) {
+    return { allowed: true, reason: 'audio_cap_disabled', stats };
+  }
+  if (stats.reachedLimit) {
+    return { allowed: false, reason: 'audio_cap_reached', stats };
+  }
+  return { allowed: true, stats };
+}
+
+export function recordByokLiveAudioGenerated(
+  config: ByokLiveAudioCapConfig,
+): ByokLiveAudioCapStats {
+  resetAudioCapIfWindowChanged(config.windowId);
+  if (
+    config.enabled &&
+    byokLiveAudioCapState.audio < config.maxAudioPerWindow
+  ) {
+    byokLiveAudioCapState.audio += 1;
+  }
+  return getByokLiveAudioCapStats(config);
+}
+
 // ── Submit observability (in-memory, non-persistent) ────────────────────────
 //
 // Phase BYOK-H3B-OBSERVABILITY-FOLLOWUP. Records that a BYOK submit hit the
@@ -321,7 +421,10 @@ export type ByokSubmitStage =
   | 'turnstile_missing'
   | 'turnstile_failed'
   | 'audio_quota_rejected'
+  | 'audio_quota_bypassed_for_byok_live'
   | 'live_attempt_blocked'
+  | 'byok_live_audio_cap_reached'
+  | 'live_attempt_consumed'
   | 'live_confirmation_mismatch'
   | 'fake_relay_ok'
   | 'live_relay_ok'
@@ -335,7 +438,10 @@ export type ByokSubmitOutcome =
   | 'blocked_body_parse'
   | 'blocked_turnstile'
   | 'blocked_audio_quota'
+  | 'bypassed_audio_quota_for_byok_live'
   | 'blocked_live_attempt_limit'
+  | 'blocked_live_audio_cap'
+  | 'live_attempt_consumed'
   | 'blocked_live_confirmation_mismatch'
   | 'fake_relay_ok'
   | 'live_relay_ok'

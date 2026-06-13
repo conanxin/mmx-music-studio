@@ -549,3 +549,20 @@ BYOK-H3B-LIVE-T1-MICROPILOT-RETRY-3 — single-T1 controlled submit + unconditio
   controlled BYOK live generation for T1 using the hardened live gate,
   one-shot guard, and submit observability, then restored safe default.
   It does not broaden public launch.
+BYOK-H3B-AUDIO-QUOTA-FOLLOWUP — gate ordering and live audio cap
+
+* Status: code + docs + 1 new smoke + validation PASS; production still safe default.
+* What changed: confirmed BYOK-live requests now skip the public launch
+  guard and use a dedicated `BYOK_LIVE_MAX_AUDIO_PER_WINDOW` (default 1)
+  audio cap, window-scoped to the same id as the one-shot attempt guard.
+* What does NOT change: public/fake/dry-run traffic still hits the launch
+  guard exactly as before. No live call, no MiniMax, no music generation.
+* New health fields: `byokLiveAudioCapEnabled`, `byokLiveMaxAudioPerWindow`,
+  `byokLiveAudioUsed`, `byokLiveAudioRemaining` (booleans/numbers only).
+* New observability stages: `audio_quota_bypassed_for_byok_live`,
+  `byok_live_audio_cap_reached`, `live_attempt_consumed`.
+* Root cause of retry-3: the launch guard fired before the live-attempt
+  guard, blocking confirmed live requests with `per_source_daily_limit_exceeded`.
+  Follow-up plan: docs/launch/BYOK_H3B_LIVE_T1_MICROPILOT_RETRY3_20260613.md §11.
+* Gate order: see docs/launch/BYOK_H3B_EXECUTION_INSTRUCTIONS.md §4c.
+* This phase does not execute BYOK live generation or broaden public launch.
