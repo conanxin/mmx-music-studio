@@ -95,6 +95,16 @@ const COPY = {
   resultErrorPrefix: '请求未通过：',
   h2dFooterLine:
     'Phase BYOK-H2D · dry-run UX/copy polish · 未启用 BYOK live · 未发起 broad public launch',
+  // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the live
+  // confirmation phrase is operator-supplied. The frontend does NOT
+  // embed the phrase, never persists it, never logs it, and never
+  // auto-fills it. The field is rendered only when live mode is ready.
+  directLiveConfirmationLabel: '受控 live 确认短语（仅受控窗口期）',
+  directLiveConfirmationHint:
+    '此字段仅在服务端 live 窗口就绪时显示；' +
+    '确认短语由 operator 在受控窗口期内另行提供（例如通过 DevTools 注入），' +
+    '前端不会内置、不会自动填入、不会写入 localStorage / sessionStorage。',
+  directLiveConfirmationPlaceholder: '受控窗口期由 operator 提供',
 } as const;
 
 // All server-side response codes the UI is allowed to surface.
@@ -328,6 +338,16 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
 
+  // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the direct
+  // live confirmation phrase. Empty by default. Never persisted to
+  // localStorage / sessionStorage / IndexedDB. Never logged to
+  // console. Cleared after submit and when the panel is torn down.
+  // The phrase itself is operator-supplied during a controlled live
+  // window; this field only carries it from the operator's input to
+  // the request body during that one window.
+  const [directLiveConfirmation, setDirectLiveConfirmation] =
+    useState<string>('');
+
   // Phase Deploy-CF-E: Turnstile widget runtime state.
   // Token lives ONLY in React state and a ref — never persisted.
   const [turnstileToken, setTurnstileToken] = useState<string>('');
@@ -489,6 +509,19 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           // When live-ready, send 'direct-live' so the server routes to
           // the live provider. Otherwise send 'fake' (default safe path).
           mode: isByokLiveReady ? 'direct-live' : 'fake',
+          // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX:
+          // include the operator-supplied direct-live confirmation
+          // phrase ONLY when (a) the request mode is 'direct-live' and
+          // (b) the operator has actually typed something into the
+          // field. Empty / non-direct-live → field is omitted from
+          // the JSON body so the server sees an undefined confirmation
+          // and rejects with the standard 403, NOT a partial-credential
+          // leak in the body. The phrase itself is never logged and
+          // never persisted.
+          ...(isByokLiveReady &&
+          directLiveConfirmation.length > 0
+            ? { directLiveConfirmation }
+            : {}),
         }),
       });
       const data = (await r.json()) as ByokResponse;
@@ -510,6 +543,12 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       // SECURITY: clear local key reference immediately after submit so
       // it doesn't linger in component state if the parent re-renders.
       setApiKey('');
+      // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: clear
+      // the operator-supplied direct-live phrase after the request
+      // returns so it doesn't sit in component state across
+      // re-renders. The phrase was operator-supplied for this one
+      // window; we do not preserve it for any subsequent submit.
+      setDirectLiveConfirmation('');
       // SECURITY: reset the Turnstile widget + clear the token so a single-use
       // token cannot be replayed. The user must re-verify before next submit.
       if (turnstileConfigured) {
@@ -610,6 +649,44 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           required
           disabled={!enabled || submitting}
         />
+
+        {/* Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX:
+            Operator confirmation input. Rendered ONLY when the server
+            reports live-ready health fields. The field is empty by
+            default. The phrase is never auto-filled, never persisted,
+            never logged, and is cleared after submit. The field
+            itself does NOT include a defaultValue that matches any
+            real phrase; placeholder text describes the operator
+            contract, not the phrase value. */}
+        {isByokLiveReady && (
+          <>
+            <label
+              className={styles.label}
+              htmlFor="byok-direct-live-confirmation"
+            >
+              {COPY.directLiveConfirmationLabel}
+            </label>
+            <input
+              id="byok-direct-live-confirmation"
+              className={styles.input}
+              type="password"
+              value={directLiveConfirmation}
+              onChange={(e) => setDirectLiveConfirmation(e.target.value)}
+              placeholder={COPY.directLiveConfirmationPlaceholder}
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={128}
+              disabled={!enabled || submitting}
+              data-h2d="byok-direct-live-confirmation"
+            />
+            <p
+              className={styles.hint}
+              data-h2d="byok-direct-live-confirmation-hint"
+            >
+              {COPY.directLiveConfirmationHint}
+            </p>
+          </>
+        )}
 
         <label className={styles.checkboxLabel}>
           <input

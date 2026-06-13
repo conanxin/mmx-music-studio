@@ -1532,3 +1532,29 @@ Key changes for the next engineer / operator:
 
 * Status: **FIX_COMMITTED (pending operator push), SAFE-DEFAULT VERIFIED**
 * Root cause: `handleByokGenerate` consumed a live attempt slot upst...[truncated]
+
+## BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX
+
+* Status: **FIX_COMMITTED (pending operator push), SAFE-DEFAULT VERIFIED**
+* Root cause: `ByokPanel.handleSubmit` constructed the request body
+  with `mode: 'direct-live' | 'fake'` but never included
+  `directLiveConfirmation`, so the server's confirmation gate
+  (`byok_direct_live_confirmation_required` branch) would always
+  reject a live-ready submit. With the post-consume terminal fix
+  from `63da013`, the rejection would land a natural terminal trace
+  — but the direct-live relay path would remain unverified.
+* Fix: add a `directLiveConfirmation` React state, an
+  operator-controlled input field (rendered only when
+  `isByokLiveReady === true`), a payload-spread that includes
+  the field only when both `isByokLiveReady` and
+  `directLiveConfirmation.length > 0`, and a `finally`-block
+  clear that mirrors the existing `setApiKey('')` clear.
+* No phrase hardcoded in source or bundle. No persistence
+  (localStorage / sessionStorage / IndexedDB). No console log of
+  the phrase. Copy explicitly tells the operator that the phrase
+  is operator-supplied, not bundle-supplied.
+* `server/index.ts` deliberately not modified in this phase.
+* Smoke `byok-h3b-frontend-direct-live-confirmation-fix-smoke-test.sh`
+  has 41 assertions; the full 12-smoke chain runs green.
+* No Retry-10, no T2–T5, no broad public launch. Awaiting operator
+  confirmation to commit / push / CI.

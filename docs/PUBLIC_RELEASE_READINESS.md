@@ -811,3 +811,26 @@ BYOK-H3B-SILENT-CONSUME-FOLLOWUP — submit trace ring buffer + silent-consume g
   generated, no `.env*` change, no tag move.
 * Next step is operator-approved commit / push / CI; no Retry-10,
   no T2–T5, no broad public launch.
+
+## BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX
+
+* Status: **FIX_COMMITTED (pending operator push), SAFE-DEFAULT VERIFIED**
+* The frontend now supports the operator-supplied
+  `directLiveConfirmation` field. The field is rendered only when
+  the server reports `isByokLiveReady === true` (i.e. all live
+  health fields are positive). When rendered, the field's value is
+  included in the `/api/generate/byok` request body iff the value
+  is non-empty. Otherwise the field is omitted from the body
+  entirely.
+* The new state, new input, new payload spread, and new
+  `finally`-block clear are all in
+  `src/features/studio/ByokPanel.tsx`. `server/index.ts` was not
+  modified.
+* No hardcoded phrase in source or bundle. No persistence of the
+  phrase. No console log of the phrase. The phrase is operator-
+  supplied and operator-controlled at the moment of submit.
+* Smoke `byok-h3b-frontend-direct-live-confirmation-fix-smoke-test.sh`
+  is the new owner-side smoke. It has 41 assertions, all PASS, and
+  the full 12-smoke chain has no regressions.
+* No Retry-10, no T2–T5, no broad public launch, no MiniMax call,
+  no audio. Awaiting operator confirmation to commit / push / CI.

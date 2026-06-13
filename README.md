@@ -1357,3 +1357,10 @@ MiniMax call and no music generated, no public launch broadened.
   `getByokSilentConsumeCount` accessor remain in place.
 * No Retry-10, no T2–T5, no broad public launch. Awaiting operator
   confirmation to commit / push / CI.
+
+### BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX (frontend direct-live contract closed)
+
+* Frontend now supports the operator-supplied `directLiveConfirmation` field.
+* Rendered only when `isByokLiveReady === true` (i.e. all server live health fields are positive).
+* Included in the `/api/generate/byok` body only when both `isByokLiveReady` and `directLiveConfirmation.length > 0` are true.
+* No real MiniMax call, no music generated, no Retry-10 yet, no T2-T5, no public launch broadened.
