@@ -5,3 +5,6 @@ scripts/cli-adapter-smoke-test.sh text eol=lf
 scripts/verify-existing-cli-track.sh text eol=lf
 scripts/byok-h3b-r10-blocker-closeout-smoke-test.sh text eol=lf
 scripts/byok-h3b-live-t1-micropilot-retry10-smoke-test.sh text eol=lf
+scripts/studio-cli-submit-guard-smoke-test.sh text eol=lf
+scripts/audio-duration-display-smoke-test.sh text eol=lf
+scripts/weapp-byok-strategy-smoke-test.sh text eol=lf

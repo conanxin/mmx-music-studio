@@ -88,12 +88,16 @@ fi
 
 # 6. Confirm daily quota guard does NOT block CLI backend
 echo -n "[6] Daily quota guard has backend!=='cli' exemption: "
-# All remainingDailyGenerations <= 0 guards must have backend!=='cli' or backend==='cli' exemption
+# All remainingDailyGenerations <= 0 guards must be scoped away from CLI:
+# either the condition has backend!=='cli', or it lives inside an API-only block.
 FAIL_COUNT=0
 while read -r line; do
   linenum=$(echo "$line" | awk -F: '{print $1}')
-  start=$((linenum - 3))
-  end=$((linenum + 1))
+  start=$((linenum - 12))
+  if [ "$start" -lt 1 ]; then
+    start=1
+  fi
+  end=$((linenum + 2))
   context=$(sed -n "${start},${end}p" "$STUDIO")
   # Must have backend check in condition
   if ! echo "$context" | grep -q "backend"; then
@@ -101,7 +105,7 @@ while read -r line; do
   fi
   # Must NOT have remainingDailyGenerations guard without CLI exemption
   if echo "$context" | grep -q "remainingDailyGenerations.*0" && \
-     ! echo "$context" | grep -q "backend.*!==.*'cli'"; then
+     ! echo "$context" | grep -Eq "backend.*!==.*'cli'|backend.*===.*'api'"; then
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 done < <(grep -n "remainingDailyGenerations.*0" "$STUDIO")
