@@ -8,3 +8,4 @@ scripts/byok-h3b-live-t1-micropilot-retry10-smoke-test.sh text eol=lf
 scripts/studio-cli-submit-guard-smoke-test.sh text eol=lf
 scripts/audio-duration-display-smoke-test.sh text eol=lf
 scripts/weapp-byok-strategy-smoke-test.sh text eol=lf
+scripts/prod-byok-live-readiness-smoke-test.sh text eol=lf
