@@ -126,6 +126,7 @@ type ByokResponseCode =
   | 'byok_direct_live_not_enabled'
   | 'byok_direct_live_confirmation_required'
   | 'byok_direct_provider_error'
+  | 'byok_non_json_response'
   | 'byok_direct_live_ok'
   | 'byok_invalid_input'
   | 'turnstile_required'
@@ -145,6 +146,12 @@ const STATUS_MESSAGES: Record<string, string> = {
   byok_direct_live_not_enabled: 'BYOK direct live 尚未启用',
   byok_direct_live_confirmation_required: 'BYOK direct live 需要显式确认',
   byok_direct_provider_error: 'MiniMax direct API 返回错误，已隐藏敏感信息',
+  byok_direct_auth_failed: 'MiniMax direct API 认证失败，已隐藏敏感信息',
+  byok_direct_rate_limited: 'MiniMax direct API 返回限流',
+  byok_direct_timeout: 'MiniMax direct API 响应超时',
+  byok_direct_network_error: 'MiniMax direct API 网络错误',
+  byok_direct_unexpected: 'MiniMax direct API 返回异常响应',
+  byok_non_json_response: '服务端返回非 JSON 错误',
   byok_direct_live_ok: 'BYOK direct API 测试通过',
   byok_provider_error: 'MiniMax 返回错误，已隐藏敏感信息',
   byok_provider_auth_failed: 'MiniMax 拒绝了该 Key（认证失败）',
@@ -155,6 +162,7 @@ const STATUS_MESSAGES: Record<string, string> = {
   turnstile_required: '需要 Turnstile 验证',
   turnstile_invalid: 'Turnstile 验证失败，请重试',
   turnstile_verification_error: 'Turnstile 验证服务异常',
+  network_error: '网络请求失败',
 };
 
 interface ByokPanelProps {
@@ -199,6 +207,9 @@ interface ByokErrorResponse {
   message?: string;
   hint?: string;
   requestId?: string;
+  stage?: string;
+  httpStatus?: number;
+  responseContentType?: string;
 }
 
 type ByokResponse = ByokDryRunResponse | ByokOkResponse | ByokErrorResponse;
@@ -206,6 +217,34 @@ type ByokResponse = ByokDryRunResponse | ByokOkResponse | ByokErrorResponse;
 function statusMessage(code: ByokResponseCode | undefined): string {
   if (!code) return '请求未通过';
   return STATUS_MESSAGES[code] ?? `请求未通过（${code}）`;
+}
+
+async function readByokResponse(response: Response): Promise<ByokResponse> {
+  const contentType = response.headers.get('content-type') ?? '';
+  const raw = await response.text();
+  const isJson = contentType.toLowerCase().includes('application/json');
+  if (!isJson) {
+    return {
+      ok: false,
+      code: 'byok_non_json_response',
+      message: `服务端返回非 JSON 错误（HTTP ${response.status}）`,
+      hint: '请记录 HTTP status / requestId 后重试；不要重复提交 live 请求。',
+      httpStatus: response.status,
+      responseContentType: contentType || 'missing',
+    };
+  }
+  try {
+    return JSON.parse(raw) as ByokResponse;
+  } catch {
+    return {
+      ok: false,
+      code: 'byok_non_json_response',
+      message: `服务端 JSON 响应解析失败（HTTP ${response.status}）`,
+      hint: '请记录 HTTP status / requestId 后重试；不要重复提交 live 请求。',
+      httpStatus: response.status,
+      responseContentType: contentType || 'missing',
+    };
+  }
 }
 
 // ── Turnstile widget runtime ──────────────────────────────────────────────────
@@ -524,7 +563,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             : {}),
         }),
       });
-      const data = (await r.json()) as ByokResponse;
+      const data = await readByokResponse(r);
       setLastResult(data);
       if (!r.ok || data.ok === false) {
         props.onStatusChange?.(r.status === 403 ? 'disabled' : 'error');
@@ -535,7 +574,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       setLastResult({
         ok: false,
         code: 'network_error',
-        message: (err as Error)?.message || 'network error',
+        message: (err as Error)?.message || '网络请求失败',
       });
       props.onStatusChange?.('error');
     } finally {
@@ -863,6 +902,22 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                 <>
                   <br />
                   <small className={styles.resultHint}>{lastResult.hint}</small>
+                </>
+              )}
+              {(lastResult.requestId || lastResult.stage || lastResult.httpStatus) && (
+                <>
+                  <br />
+                  <small className={styles.resultHint}>
+                    {lastResult.requestId && (
+                      <>requestId: <code>{lastResult.requestId}</code> </>
+                    )}
+                    {lastResult.stage && (
+                      <>stage: <code>{lastResult.stage}</code> </>
+                    )}
+                    {typeof lastResult.httpStatus === 'number' && (
+                      <>HTTP: <code>{lastResult.httpStatus}</code> </>
+                    )}
+                  </small>
                 </>
               )}
             </>

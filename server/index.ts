@@ -141,6 +141,7 @@ import {
 } from './adapters/minimax-api/byok.js';
 import {
   generateByokDirectMusic,
+  type ByokDirectProviderErrorDiagnostics,
   type ByokDirectRequestOptions,
 } from './adapters/minimax-api/byok-direct.js';
 
@@ -1832,6 +1833,36 @@ function safeHeaderString(value: string | string[] | undefined): string {
   return typeof value === 'string' ? value : '';
 }
 
+function safeLogString(value: unknown, fallback = 'missing'): string {
+  if (typeof value !== 'string' || value.trim().length === 0) return fallback;
+  return redactSensitive(value).replace(/\s+/g, ' ').slice(0, 180);
+}
+
+function buildSafeProviderErrorLog(input: {
+  requestId: string;
+  stage: 'direct_live_provider_error' | 'provider_error';
+  code: string;
+  detail?: ByokDirectProviderErrorDiagnostics;
+}): Record<string, unknown> {
+  const d = input.detail;
+  return {
+    requestId: input.requestId,
+    stage: input.stage,
+    code: input.code,
+    providerStatusCode: d?.providerStatusCode ?? 'missing',
+    providerErrorCode: safeLogString(d?.providerErrorCode),
+    providerErrorMessageSummary: safeLogString(d?.providerErrorMessageSummary),
+    responseContentType: safeLogString(d?.responseContentType),
+    responseBodyShape: safeLogString(d?.responseBodyShape),
+    responseBodyKeys: Array.isArray(d?.responseBodyKeys)
+      ? d.responseBodyKeys.map((key) => safeLogString(key)).slice(0, 12)
+      : [],
+    responseBodyLength: typeof d?.responseBodyLength === 'number'
+      ? d.responseBodyLength
+      : 'missing',
+  };
+}
+
 interface ByokGenerateRequest {
   apiKey?: string;
   input?: unknown;
@@ -2334,13 +2365,13 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
    });
 
    if (!directResult.ok) {
-     // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
-     // The live attempt slot was already consumed upstream, so this
-     // provider-error rejection must record a natural terminal trace
-     // or the post-consume reaper will fire
-     // `live_attempt_consumed_without_terminal_stage` later. The
-     // `directResult.code` is a typed ByokDirectErrorCode; we forward
-     // it as the responseCode so the trace aligns with the HTTP body.
+     const providerErrorLog = buildSafeProviderErrorLog({
+       requestId,
+       stage: 'direct_live_provider_error',
+       code: directResult.code,
+       detail: directResult.detail,
+     });
+     console.warn('[byok-provider-error]', JSON.stringify(providerErrorLog));
      recordByokSubmit({
        requestId: submitRequestId,
         stage: 'direct_live_provider_error',
@@ -2356,6 +2387,13 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
        ok: false,
        code: directResult.code,
        message: redactSensitive(directResult.message),
+       stage: 'direct_live_provider_error',
+       providerStatusCode: directResult.detail?.providerStatusCode,
+       providerErrorCode: directResult.detail?.providerErrorCode,
+       providerErrorMessageSummary: directResult.detail?.providerErrorMessageSummary,
+       responseContentType: directResult.detail?.responseContentType,
+       responseBodyShape: directResult.detail?.responseBodyShape,
+       responseBodyKeys: directResult.detail?.responseBodyKeys,
        requestId,
      });
      return;

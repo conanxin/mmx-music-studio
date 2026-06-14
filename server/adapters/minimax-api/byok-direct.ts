@@ -141,8 +141,8 @@ export interface ByokDirectErrorResult {
   ok: false;
   code: ByokDirectErrorCode;
   message: string;
-  /** Redacted provider error detail (never includes key material) */
-  detail?: Record<string, unknown>;
+  /** Safe provider diagnostics; never includes key material or full response body. */
+  detail?: ByokDirectProviderErrorDiagnostics;
 }
 
 export type ByokDirectResult = ByokDirectSuccessResult | ByokDirectErrorResult;
@@ -157,6 +157,16 @@ export type ByokDirectErrorCode =
   | "byok_direct_auth_failed"
   | "byok_direct_unexpected";
 
+export interface ByokDirectProviderErrorDiagnostics {
+  providerStatusCode?: number;
+  providerErrorCode?: string;
+  providerErrorMessageSummary?: string;
+  responseContentType?: string;
+  responseBodyShape?: string;
+  responseBodyKeys?: string[];
+  responseBodyLength?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Redaction helpers
 // ---------------------------------------------------------------------------
@@ -167,6 +177,92 @@ export type ByokDirectErrorCode =
  */
 function redactProviderPayload(payload: unknown): unknown {
   return redactObject(payload);
+}
+
+function summarizeText(value: unknown, maxLength = 180): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const redacted = redactSensitive(value).replace(/\s+/g, " ").trim();
+  return redacted.length > maxLength ? `${redacted.slice(0, maxLength)}...` : redacted;
+}
+
+function summarizeScalar(value: unknown, maxLength = 80): string | undefined {
+  if (typeof value !== "string" && typeof value !== "number") return undefined;
+  return summarizeText(String(value), maxLength);
+}
+
+function objectKeys(value: unknown): string[] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return Object.keys(value as Record<string, unknown>).slice(0, 12);
+}
+
+function responseBodyShape(value: unknown): string {
+  if (Array.isArray(value)) return "array";
+  if (value === null) return "null";
+  return typeof value;
+}
+
+function providerErrorCodeFromBody(value: unknown): string | undefined {
+  const body = value as Record<string, unknown> | undefined;
+  if (!body || typeof body !== "object") return undefined;
+  const error = body.error as Record<string, unknown> | undefined;
+  const baseResp = body.base_resp as Record<string, unknown> | undefined;
+  return (
+    summarizeScalar(error?.type) ??
+    summarizeScalar(error?.http_code) ??
+    summarizeScalar(body.code) ??
+    summarizeScalar(baseResp?.status_code)
+  );
+}
+
+function providerErrorMessageFromBody(value: unknown): string | undefined {
+  const body = value as Record<string, unknown> | undefined;
+  if (!body || typeof body !== "object") return undefined;
+  const error = body.error as Record<string, unknown> | undefined;
+  const baseResp = body.base_resp as Record<string, unknown> | undefined;
+  return (
+    summarizeText(error?.message) ??
+    summarizeText(body.message) ??
+    summarizeText(baseResp?.status_msg)
+  );
+}
+
+function buildProviderDiagnostics(input: {
+  providerStatusCode?: number;
+  contentType?: string | null;
+  body?: unknown;
+  rawBodyLength?: number;
+  fallbackMessage?: string;
+}): ByokDirectProviderErrorDiagnostics {
+  const safeBody = redactProviderPayload(input.body);
+  return {
+    providerStatusCode: input.providerStatusCode,
+    providerErrorCode: providerErrorCodeFromBody(safeBody),
+    providerErrorMessageSummary:
+      providerErrorMessageFromBody(safeBody) ?? summarizeText(input.fallbackMessage),
+    responseContentType: input.contentType ?? undefined,
+    responseBodyShape: responseBodyShape(safeBody),
+    responseBodyKeys: objectKeys(safeBody),
+    responseBodyLength: input.rawBodyLength,
+  };
+}
+
+async function readProviderResponse(response: Response): Promise<{
+  body: unknown;
+  rawText: string;
+  contentType: string;
+  parseOk: boolean;
+}> {
+  const contentType = response.headers.get("content-type") ?? "";
+  const rawText = await response.text();
+  const trimmed = rawText.trim();
+  if (trimmed.length === 0) {
+    return { body: undefined, rawText, contentType, parseOk: false };
+  }
+  try {
+    return { body: JSON.parse(trimmed), rawText, contentType, parseOk: true };
+  } catch {
+    return { body: summarizeText(trimmed) ?? "non-json response", rawText, contentType, parseOk: false };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -241,9 +337,10 @@ export function normalizeByokDirectResponse(
       ok: false,
       code: "byok_direct_unexpected",
       message: "Provider returned an unexpected response format.",
-      detail: typeof redacted === "object" && redacted !== null
-        ? (redacted as Record<string, unknown>)
-        : undefined,
+      detail: buildProviderDiagnostics({
+        body: redacted,
+        fallbackMessage: "Provider returned an unexpected response format.",
+      }),
     };
   }
 
@@ -256,9 +353,10 @@ export function normalizeByokDirectResponse(
       ok: false,
       code: "byok_direct_provider_error",
       message: String(baseResp?.status_msg ?? "Provider returned an error."),
-      detail: typeof redacted === "object" && redacted !== null
-        ? (redacted as Record<string, unknown>)
-        : undefined,
+      detail: buildProviderDiagnostics({
+        body: redacted,
+        fallbackMessage: String(baseResp?.status_msg ?? "Provider returned an error."),
+      }),
     };
   }
 
@@ -310,9 +408,10 @@ export function normalizeByokDirectError(
       ok: false,
       code: fallbackCode,
       message: redactSensitive(error.message),
-      detail: typeof redacted === "object" && redacted !== null
-        ? (redacted as Record<string, unknown>)
-        : undefined,
+      detail: buildProviderDiagnostics({
+        body: { name: error.name },
+        fallbackMessage: error.message,
+      }),
     };
   }
 
@@ -337,9 +436,10 @@ export function normalizeByokDirectError(
       ok: false,
       code,
       message: redactSensitive(errorMessage ?? "Provider returned an error."),
-      detail: typeof redacted === "object" && redacted !== null
-        ? (redacted as Record<string, unknown>)
-        : undefined,
+      detail: buildProviderDiagnostics({
+        body: redacted,
+        fallbackMessage: errorMessage ?? "Provider returned an error.",
+      }),
     };
   }
 
@@ -347,9 +447,10 @@ export function normalizeByokDirectError(
     ok: false,
     code: fallbackCode,
     message: "An unexpected error occurred during BYOK direct API relay.",
-    detail: typeof redacted === "object" && redacted !== null
-      ? (redacted as Record<string, unknown>)
-      : undefined,
+    detail: buildProviderDiagnostics({
+      body: redacted,
+      fallbackMessage: "An unexpected error occurred during BYOK direct API relay.",
+    }),
   };
 }
 
@@ -404,18 +505,55 @@ export async function generateByokDirectMusic(
 
     if (!response.ok) {
       // HTTP error (4xx, 5xx)
-      const errorBody = await response.json().catch(() => ({}));
+      const providerResponse = await readProviderResponse(response);
       let errorCode: ByokDirectErrorCode = "byok_direct_provider_error";
       if (response.status === 401) {
         errorCode = "byok_direct_auth_failed";
       } else if (response.status === 429) {
         errorCode = "byok_direct_rate_limited";
       }
-      return normalizeByokDirectError(errorBody, errorCode);
+      const normalized = normalizeByokDirectError(providerResponse.body, errorCode);
+      return {
+        ...normalized,
+        detail: buildProviderDiagnostics({
+          providerStatusCode: response.status,
+          contentType: providerResponse.contentType,
+          body: providerResponse.body,
+          rawBodyLength: providerResponse.rawText.length,
+          fallbackMessage: normalized.message,
+        }),
+      };
     }
 
-    const data = await response.json();
-    return normalizeByokDirectResponse(data);
+    const providerResponse = await readProviderResponse(response);
+    if (!providerResponse.parseOk) {
+      return {
+        ok: false,
+        code: "byok_direct_unexpected",
+        message: "Provider returned a non-JSON response.",
+        detail: buildProviderDiagnostics({
+          providerStatusCode: response.status,
+          contentType: providerResponse.contentType,
+          body: providerResponse.body,
+          rawBodyLength: providerResponse.rawText.length,
+          fallbackMessage: "Provider returned a non-JSON response.",
+        }),
+      };
+    }
+    const normalized = normalizeByokDirectResponse(providerResponse.body);
+    if (!normalized.ok) {
+      return {
+        ...normalized,
+        detail: buildProviderDiagnostics({
+          providerStatusCode: response.status,
+          contentType: providerResponse.contentType,
+          body: providerResponse.body,
+          rawBodyLength: providerResponse.rawText.length,
+          fallbackMessage: normalized.message,
+        }),
+      };
+    }
+    return normalized;
   } catch (err) {
     if (err instanceof Error) {
       if (err.name === "AbortError") {
