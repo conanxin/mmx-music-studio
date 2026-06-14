@@ -40,7 +40,7 @@ jobs:
           echo "notes=docs/release/RELEASE_NOTES_${TAG}.md" >> "$GITHUB_OUTPUT"
 
       - name: Checkout tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ steps.vars.outputs.tag }}
           fetch-depth: 0
