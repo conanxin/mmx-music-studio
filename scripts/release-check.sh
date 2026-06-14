@@ -21,7 +21,7 @@ skip() { echo "  ⏭️  $1"; SKIP_COUNT=$((SKIP_COUNT+1)); }
 fail() { echo "  ❌ $1"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 
 # ── 1. TypeScript check ────────────────────────────────────────────────────
-echo "[1/12] TypeScript check..."
+echo "[1/13] TypeScript check..."
 if npm run typecheck > /tmp/typecheck.out 2>&1; then
   pass "TypeScript: no errors"
 else
@@ -30,7 +30,7 @@ else
 fi
 
 # ── 2. Build ──────────────────────────────────────────────────────────────
-echo "[2/12] Vite build..."
+echo "[2/13] Vite build..."
 if npm run build > /tmp/build.out 2>&1; then
   pass "Build: success"
 else
@@ -39,7 +39,7 @@ else
 fi
 
 # ── 3. Manifest audit ────────────────────────────────────────────────────
-echo "[3/12] Manifest audit..."
+echo "[3/13] Manifest audit..."
 if npm run manifest:audit > /tmp/manifest.out 2>&1; then
   pass "Manifest: 0 issues"
 else
@@ -48,7 +48,7 @@ else
 fi
 
 # ── 4. Config smoke test ───────────────────────────────────────────────────
-echo "[4/12] Config smoke test..."
+echo "[4/13] Config smoke test..."
 if bash scripts/config-smoke-test.sh > /tmp/config-smoke.out 2>&1; then
   pass "Config smoke test: PASS"
 else
@@ -57,7 +57,7 @@ else
 fi
 
 # ── 5. Safe-default UI copy smoke test ────────────────────────────────────
-echo "[5/12] Safe-default UI copy smoke test..."
+echo "[5/13] Safe-default UI copy smoke test..."
 if bash scripts/safe-default-ui-copy-smoke-test.sh > /tmp/safe-default-ui-copy.out 2>&1; then
   pass "Safe-default UI copy smoke test: PASS"
 else
@@ -66,7 +66,16 @@ else
 fi
 
 # ── 6. Server smoke test ──────────────────────────────────────────────────
-echo "[6/12] Server smoke test..."
+echo "[6/13] BYOK live attempt consume guard smoke test..."
+if bash scripts/byok-live-attempt-consume-guard-smoke-test.sh > /tmp/byok-live-attempt-consume-guard.out 2>&1; then
+  pass "BYOK live attempt consume guard smoke test: PASS"
+else
+  fail "BYOK live attempt consume guard smoke test: FAIL"
+  cat /tmp/byok-live-attempt-consume-guard.out | tail -10
+fi
+
+# ── 7. Server smoke test ────────────────────────────────────────────────
+echo "[7/13] Server smoke test..."
 export REAL_GENERATION_ENABLED=false
 export MOCK_GENERATION_ENABLED=true
 export PUBLIC_DEMO_MODE=false
@@ -91,7 +100,7 @@ else
 fi
 
 # ── 7. Web API smoke test ────────────────────────────────────────────────
-echo "[7/12] Web API smoke test..."
+echo "[8/13] Web API smoke test..."
 if bash scripts/web-api-smoke-test.sh > /tmp/web-api.out 2>&1; then
   pass "Web API smoke test: PASS"
 else
@@ -100,7 +109,7 @@ else
 fi
 
 # ── 8. CLI adapter smoke test ────────────────────────────────────────────
-echo "[8/12] CLI adapter smoke test..."
+echo "[9/13] CLI adapter smoke test..."
 if bash scripts/cli-adapter-smoke-test.sh > /tmp/cli-adapter.out 2>&1; then
   pass "CLI adapter smoke test: PASS"
 else
@@ -109,7 +118,7 @@ else
 fi
 
 # ── 9. Existing CLI track verification ────────────────────────────────────
-echo "[9/12] Existing CLI track verification..."
+echo "[10/13] Existing CLI track verification..."
 if bash scripts/verify-existing-cli-track.sh > /tmp/cli-track.out 2>&1; then
   pass "CLI track verification: PASS"
 elif grep -q "PARTIAL_NO_CLI_TRACK" /tmp/cli-track.out 2>/dev/null; then
@@ -121,7 +130,7 @@ else
 fi
 
 # ── 10. Secret scan ────────────────────────────────────────────────────────
-echo "[10/12] Secret scan..."
+echo "[11/13] Secret scan..."
 if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
@@ -130,7 +139,7 @@ else
 fi
 
 # ── 11. Git status ─────────────────────────────────────────────────────────
-echo "[11/12] Git status..."
+echo "[12/13] Git status..."
 # Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
 if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
@@ -145,7 +154,7 @@ else
 fi
 
 # ── 12. Required files ─────────────────────────────────────────────────────
-echo "[12/12] Required files..."
+echo "[13/13] Required files..."
 REQUIRED_FILES=(
   "Dockerfile"
   "docker-compose.yml"

@@ -1836,6 +1836,8 @@ interface ByokGenerateRequest {
   apiKey?: string;
   input?: unknown;
   region?: 'cn' | 'global';
+  mode?: 'fake' | 'live' | 'direct-live';
+  directLiveConfirmation?: string;
   /** Phase Deploy-CF-D: Turnstile token for abuse control */
   turnstileToken?: string;
 }
@@ -1928,8 +1930,9 @@ async function handleByokGenerate(
   // apiKey present (the sensitive field) and leave prompt to log-pending.
   // Use safeStringLength so body.apiKey = undefined does not throw.
   const submitApiKeyPresent = safeStringLength(body.apiKey) > 0;
+  const postParseTurnstilePresent = safeString(body.turnstileToken).trim().length > 0;
   console.log(
-    `[byok-submit-received] requestId=${submitRequestId} liveGateCandidate=${submitModeCandidate} turnstilePresent=${submitTurnstilePresent} apiKeyPresent=${submitApiKeyPresent} promptPresent=pending (post-parse)`,
+    `[byok-submit-received] requestId=${submitRequestId} liveGateCandidate=${submitModeCandidate} turnstilePresent=${postParseTurnstilePresent} apiKeyPresent=${submitApiKeyPresent} promptPresent=pending (post-parse)`,
   );
 
   const requestId = submitRequestId;
@@ -2051,9 +2054,15 @@ async function handleByokGenerate(
  //    are bounded by the BYOK-live audio cap below instead. The skip is
  //    deliberately recorded as `audio_quota_bypassed_for_byok_live` so it
  //    is observable and auditable, not silent.
- const requestedModeForGuard = (
-   body as { mode?: 'fake' | 'live' | 'direct-live' } | undefined
- )?.mode ?? 'fake';
+  const requestedMode = body.mode ?? 'fake';
+  const byokInput = (body.input ?? {}) as {
+    prompt?: string;
+    lyrics?: string;
+    model?: string;
+    mode?: 'instrumental' | 'lyrics' | 'auto';
+  };
+
+ const requestedModeForGuard = requestedMode;
  const isConfirmedByokLivePath =
    (requestedModeForGuard === 'direct-live' || requestedModeForGuard === 'live') &&
    config.byokLiveEnabled === true &&
@@ -2065,7 +2074,7 @@ async function handleByokGenerate(
      stage: 'audio_quota_bypassed_for_byok_live',
      outcome: 'bypassed_audio_quota_for_byok_live',
      modeCandidate: submitModeCandidate,
-     turnstilePresent: true,
+     turnstilePresent: postParseTurnstilePresent,
      apiKeyPresent: submitApiKeyPresent,
      promptPresent: true,
    });
@@ -2086,7 +2095,7 @@ async function handleByokGenerate(
       stage: 'audio_quota_rejected',
       outcome: 'blocked_audio_quota',
       modeCandidate: submitModeCandidate,
-      turnstilePresent: true,
+      turnstilePresent: postParseTurnstilePresent,
       apiKeyPresent: submitApiKeyPresent,
       promptPresent: true,
     });
@@ -2140,7 +2149,7 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
     stage: 'live_confirmation_mismatch',
     outcome: 'blocked_live_confirmation_mismatch',
     modeCandidate: 'live',
-    turnstilePresent: true,
+    turnstilePresent: postParseTurnstilePresent,
     apiKeyPresent: submitApiKeyPresent,
     promptPresent: true,
   });
@@ -2153,87 +2162,8 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
   return;
 }
 
-// Phase BYOK-H3B-CODE-FOLLOWUP: server-side one-shot guard.
-// Check first (read-only) so a blocked attempt does NOT consume a slot.
-const liveAttemptConfig = buildByokLiveAttemptConfig();
-const liveAttemptCheck = checkByokLiveAttemptLimit(liveAttemptConfig);
-if (!liveAttemptCheck.allowed) {
-  console.warn(
-    `[byok] live attempt limit reached [${requestId}]: window=${liveAttemptCheck.stats.windowId} used=${liveAttemptCheck.stats.attemptsUsed}/${liveAttemptCheck.stats.maxAttempts}`,
-  );
-  recordByokSubmit({
-    requestId: submitRequestId,
-    stage: 'live_attempt_blocked',
-    outcome: 'blocked_live_attempt_limit',
-    modeCandidate: 'live',
-    turnstilePresent: true,
-    apiKeyPresent: submitApiKeyPresent,
-    promptPresent: true,
-  });
-  sendJson(res, 403, {
-    ok: false,
-    code: 'byok_live_attempt_limit_reached',
-    message: '受控 live 测试窗口已达到提交次数上限',
-    hint: `需要轮换 BYOK_LIVE_WINDOW_ID 或提高 BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW`,
-  });
-  return;
-}
-
-// Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: live audio cap check (read-only).
-// Runs AFTER the live-attempt guard so a blocked attempt does not
-// consume a slot. Only successful generations record() against the cap.
-const liveAudioCapConfig = buildByokLiveAudioCapConfig();
-const liveAudioCapCheck = checkByokLiveAudioCap(liveAudioCapConfig);
-if (!liveAudioCapCheck.allowed) {
-  console.warn(
-    `[byok] live audio cap reached [${requestId}]: window=${liveAudioCapCheck.stats.windowId} used=${liveAudioCapCheck.stats.audioUsed}/${liveAudioCapCheck.stats.maxAudio}`,
-  );
-  recordByokSubmit({
-    requestId: submitRequestId,
-    stage: 'byok_live_audio_cap_reached',
-    outcome: 'blocked_live_audio_cap',
-    modeCandidate: 'live',
-    turnstilePresent: true,
-    apiKeyPresent: submitApiKeyPresent,
-    promptPresent: true,
-  });
-  sendJson(res, 429, {
-    ok: false,
-    code: 'byok_live_audio_cap_reached',
-    message: '受控 live 测试窗口已达到音频生成上限',
-    hint: `需要轮换 BYOK_LIVE_WINDOW_ID 或提高 BYOK_LIVE_MAX_AUDIO_PER_WINDOW`,
-  });
-  return;
-}
-
-// Consume the live-attempt slot now that the request has cleared the
-// attempt and audio-cap checks. Subsequent gates (provider error etc.)
-// still count as an attempt used — this matches the one-shot semantic
-// the operator approved in BYOK-H3B-CODE-FOLLOWUP.
-const liveAttemptConsumedStats = consumeByokLiveAttempt(liveAttemptConfig);
-recordByokSubmit({
-  requestId: submitRequestId,
-  stage: 'live_attempt_consumed',
-  outcome: 'live_attempt_consumed',
-  modeCandidate: 'live',
-  turnstilePresent: true,
-  apiKeyPresent: submitApiKeyPresent,
-  promptPresent: true,
-  // Phase BYOK-H3B-SILENT-CONSUME-FOLLOWUP. Flag this stage as the live
-  // attempt consume so the silent-consume guard checks the next terminal
-  // stage for this requestId. The consume itself is NOT terminal — the
-  // response that follows is.
-  liveAttemptConsumed: true,
-  terminal: false,
-  responseCode: 'in_progress',
-});
-console.info(
-  `[byok] live attempt consumed [${requestId}]: window=${liveAttemptConsumedStats.windowId} used=${liveAttemptConsumedStats.attemptsUsed}/${liveAttemptConsumedStats.maxAttempts}`,
-);
-
  // 6c. Decide adapter mode: 'fake' | 'live' (CLI — DISABLED) | 'direct-live' (BYOK-F)
  // Default to 'fake' for any caller that does not explicitly pass a live mode.
- const requestedMode = (body as { mode?: 'fake' | 'live' | 'direct-live' } | undefined)?.mode ?? 'fake';
  const liveAllowed = isLiveGateOpen({
    publicByokEnabled: config.publicByokEnabled,
    byokDryRunOnly: config.byokDryRunOnly,
@@ -2241,32 +2171,117 @@ console.info(
    byokLiveConfirmation: config.byokLiveConfirmation,
  });
 
- // body.input is `unknown`; narrow with a local alias.
- const byokInput = (body.input ?? {}) as {
-   prompt?: string;
-   lyrics?: string;
-   model?: string;
-   mode?: 'instrumental' | 'lyrics' | 'auto';
+ const requireVerifiedTurnstileForLive = (): boolean => {
+   if (config.turnstileByokRequired !== true || !postParseTurnstilePresent) {
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'turnstile_missing',
+       outcome: 'blocked_turnstile',
+       modeCandidate: 'live',
+       turnstilePresent: postParseTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+     });
+     sendJson(res, 403, {
+       ok: false,
+       code: 'turnstile_required',
+       message: '需要 Turnstile 验证',
+       hint: 'BYOK live provider requires a verified Turnstile token before any live attempt is consumed.',
+       requestId,
+     });
+     return false;
+   }
+   return true;
+ };
+
+ const consumeLiveAttemptBeforeProvider = ():
+   | { ok: true; liveAudioCapConfig: ReturnType<typeof buildByokLiveAudioCapConfig> }
+   | { ok: false } => {
+   // BYOK-LIVE-ATTEMPT-CONSUME-GUARD-FIX: this helper is called only
+   // after Turnstile, request validation, live confirmation, direct-live
+   // confirmation, provider selection, and read-only caps all pass.
+   const liveAttemptConfig = buildByokLiveAttemptConfig();
+   const liveAttemptCheck = checkByokLiveAttemptLimit(liveAttemptConfig);
+   if (!liveAttemptCheck.allowed) {
+     console.warn(
+       `[byok] live attempt limit reached [${requestId}]: window=${liveAttemptCheck.stats.windowId} used=${liveAttemptCheck.stats.attemptsUsed}/${liveAttemptCheck.stats.maxAttempts}`,
+     );
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'live_attempt_blocked',
+       outcome: 'blocked_live_attempt_limit',
+       modeCandidate: 'live',
+       turnstilePresent: postParseTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+     });
+     sendJson(res, 403, {
+       ok: false,
+       code: 'byok_live_attempt_limit_reached',
+       message: '受控 live 测试窗口已达到提交次数上限',
+       hint: `需要轮换 BYOK_LIVE_WINDOW_ID 或提高 BYOK_LIVE_MAX_ATTEMPTS_PER_WINDOW`,
+     });
+     return { ok: false };
+   }
+
+   const liveAudioCapConfig = buildByokLiveAudioCapConfig();
+   const liveAudioCapCheck = checkByokLiveAudioCap(liveAudioCapConfig);
+   if (!liveAudioCapCheck.allowed) {
+     console.warn(
+       `[byok] live audio cap reached [${requestId}]: window=${liveAudioCapCheck.stats.windowId} used=${liveAudioCapCheck.stats.audioUsed}/${liveAudioCapCheck.stats.maxAudio}`,
+     );
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'byok_live_audio_cap_reached',
+       outcome: 'blocked_live_audio_cap',
+       modeCandidate: 'live',
+       turnstilePresent: postParseTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+     });
+     sendJson(res, 429, {
+       ok: false,
+       code: 'byok_live_audio_cap_reached',
+       message: '受控 live 测试窗口已达到音频生成上限',
+       hint: `需要轮换 BYOK_LIVE_WINDOW_ID 或提高 BYOK_LIVE_MAX_AUDIO_PER_WINDOW`,
+     });
+     return { ok: false };
+   }
+
+   const liveAttemptConsumedStats = consumeByokLiveAttempt(liveAttemptConfig);
+   recordByokSubmit({
+     requestId: submitRequestId,
+     stage: 'live_attempt_consumed',
+     outcome: 'live_attempt_consumed',
+     modeCandidate: 'live',
+     turnstilePresent: postParseTurnstilePresent,
+     apiKeyPresent: submitApiKeyPresent,
+     promptPresent: true,
+     liveAttemptConsumed: true,
+     terminal: false,
+     responseCode: 'in_progress',
+   });
+   console.info(
+     `[byok] live attempt consumed [${requestId}]: window=${liveAttemptConsumedStats.windowId} used=${liveAttemptConsumedStats.attemptsUsed}/${liveAttemptConsumedStats.maxAttempts}`,
+   );
+   return { ok: true, liveAudioCapConfig };
  };
 
  // ── BYOK-F: Direct HTTPS API relay path ──
  if (requestedMode === 'direct-live') {
+   if (!requireVerifiedTurnstileForLive()) return;
+
    // 6f. Direct live gate check
    if (config.byokDirectLiveEnabled !== true) {
-     // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
-     // The live attempt slot was already consumed upstream
-     // (consumeByokLiveAttempt at step 6b), so this rejection must
-     // record a natural terminal trace or the post-consume reaper will
-     // fire `live_attempt_consumed_without_terminal_stage` later.
-     recordByokSubmit({
-       requestId: submitRequestId,
-       stage: 'direct_live_not_enabled',
-       outcome: 'blocked_direct_live_not_enabled',
-       modeCandidate: 'live',
-       turnstilePresent: submitTurnstilePresent,
-       apiKeyPresent: submitApiKeyPresent,
-       promptPresent: true,
-       terminal: true,
+      recordByokSubmit({
+        requestId: submitRequestId,
+        stage: 'direct_live_not_enabled',
+        outcome: 'blocked_direct_live_not_enabled',
+        modeCandidate: 'live',
+        turnstilePresent: postParseTurnstilePresent,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: true,
+        terminal: true,
        responseCode: 'byok_direct_live_not_enabled',
      });
      sendJson(res, 403, {
@@ -2275,29 +2290,24 @@ console.info(
        message: 'BYOK direct live 尚未启用',
        hint: '需要 BYOK_DIRECT_LIVE_ENABLED=true',
      });
-     return;
-   }
-   if (config.byokDirectLiveConfirmation !== 'CONFIRM_BYOK_DIRECT_LIVE_TEST') {
-     console.warn(
-       `[byok] direct live confirmation mismatch [${requestId}]: expected exact phrase, got length ${config.byokDirectLiveConfirmation.length}`,
-     );
-     // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
-     // The live attempt slot was already consumed upstream, so this
-     // rejection must record a natural terminal trace or the reaper
-     // will fire `live_attempt_consumed_without_terminal_stage`.
-     // This is the exact branch Retry-9 hit: T1 sent mode=direct-live,
-     // the request cleared all upstream gates, consumed the one-shot
-     // live attempt, then was rejected here because the direct-live
-     // confirmation phrase was not provided by the client.
-     recordByokSubmit({
-       requestId: submitRequestId,
-       stage: 'direct_live_confirmation_mismatch',
-       outcome: 'blocked_direct_live_confirmation_mismatch',
-       modeCandidate: 'live',
-       turnstilePresent: submitTurnstilePresent,
-       apiKeyPresent: submitApiKeyPresent,
-       promptPresent: true,
-       terminal: true,
+      return;
+    }
+    if (
+      config.byokDirectLiveConfirmation !== 'CONFIRM_BYOK_DIRECT_LIVE_TEST' ||
+      body.directLiveConfirmation !== 'CONFIRM_BYOK_DIRECT_LIVE_TEST'
+    ) {
+      console.warn(
+        `[byok] direct live confirmation mismatch [${requestId}]: envLength=${config.byokDirectLiveConfirmation.length} requestLength=${safeStringLength(body.directLiveConfirmation)}`,
+      );
+      recordByokSubmit({
+        requestId: submitRequestId,
+        stage: 'direct_live_confirmation_mismatch',
+        outcome: 'blocked_direct_live_confirmation_mismatch',
+        modeCandidate: 'live',
+        turnstilePresent: postParseTurnstilePresent,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: true,
+        terminal: true,
        responseCode: 'byok_direct_live_confirmation_required',
      });
      sendJson(res, 403, {
@@ -2306,11 +2316,14 @@ console.info(
        message: 'BYOK direct live 需要显式确认',
        hint: `需要 BYOK_DIRECT_LIVE_CONFIRMATION=CONFIRM_BYOK_DIRECT_LIVE_TEST`,
      });
-     return;
-   }
+      return;
+    }
 
-   // Direct live gates passed — call the HTTPS adapter
-   const directResult = await generateByokDirectMusic({
+    const directAttemptGuard = consumeLiveAttemptBeforeProvider();
+    if (!directAttemptGuard.ok) return;
+
+    // Direct live gates passed and attempt consumed — call the HTTPS adapter.
+    const directResult = await generateByokDirectMusic({
      apiKey: body.apiKey ?? '',
      prompt: byokInput.prompt ?? '',
      lyrics: byokInput.lyrics,
@@ -2330,13 +2343,13 @@ console.info(
      // it as the responseCode so the trace aligns with the HTTP body.
      recordByokSubmit({
        requestId: submitRequestId,
-       stage: 'direct_live_provider_error',
-       outcome: 'live_relay_provider_error',
-       modeCandidate: 'live',
-       turnstilePresent: submitTurnstilePresent,
-       apiKeyPresent: submitApiKeyPresent,
-       promptPresent: true,
-       terminal: true,
+        stage: 'direct_live_provider_error',
+        outcome: 'live_relay_provider_error',
+        modeCandidate: 'live',
+        turnstilePresent: postParseTurnstilePresent,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: true,
+        terminal: true,
        responseCode: directResult.code,
      });
      sendJson(res, 502, {
@@ -2351,7 +2364,7 @@ console.info(
   // Success — return normalized direct result.
   // Phase BYOK-H3B-AUDIO-QUOTA-FOLLOWUP: record successful audio
   // generation against the BYOK-live audio cap.
-  recordByokLiveAudioGenerated(liveAudioCapConfig);
+  recordByokLiveAudioGenerated(directAttemptGuard.liveAudioCapConfig);
   // Phase BYOK-H3B-DIRECT-LIVE-CONFIRMATION-TERMINAL-FIX.
   // Record a natural terminal trace for the success path. The live
   // attempt slot was consumed upstream, so without this the post-
@@ -2363,7 +2376,7 @@ console.info(
     stage: 'direct_live_relay_ok',
     outcome: 'direct_live_relay_ok',
     modeCandidate: 'live',
-    turnstilePresent: submitTurnstilePresent,
+    turnstilePresent: postParseTurnstilePresent,
     apiKeyPresent: submitApiKeyPresent,
     promptPresent: true,
     terminal: true,
@@ -2428,7 +2441,7 @@ console.info(
       stage: 'live_mode_required',
       outcome: 'blocked_live_mode_required',
       modeCandidate: 'blocked',
-      turnstilePresent: submitTurnstilePresent,
+      turnstilePresent: postParseTurnstilePresent,
       apiKeyPresent: true,
       promptPresent: true,
     });
@@ -2445,6 +2458,16 @@ console.info(
 
  const adapterMode: 'fake' | 'live' =
    liveCandidateRequested && isLiveGateSatisfied ? 'live' : 'fake';
+
+ let liveAttemptGuardForAdapter:
+   | { ok: true; liveAudioCapConfig: ReturnType<typeof buildByokLiveAudioCapConfig> }
+   | undefined;
+ if (adapterMode === 'live') {
+   if (!requireVerifiedTurnstileForLive()) return;
+   const liveAttemptGuard = consumeLiveAttemptBeforeProvider();
+   if (!liveAttemptGuard.ok) return;
+   liveAttemptGuardForAdapter = liveAttemptGuard;
+ }
 
  const adapterResult = await generateByokMusic({
    apiKey: body.apiKey ?? '',
@@ -2469,7 +2492,7 @@ console.info(
      stage: isLiveMode ? 'provider_error' : 'invalid_input',
      outcome: isLiveMode ? 'live_relay_provider_error' : 'invalid_input',
      modeCandidate: isLiveMode ? 'live' : 'fake',
-     turnstilePresent: true,
+     turnstilePresent: postParseTurnstilePresent,
      apiKeyPresent: submitApiKeyPresent,
      promptPresent: true,
    });
@@ -2484,12 +2507,15 @@ console.info(
 
 // 6e. Success. Return the relay result code. apiKey is never echoed.
 const isLiveSuccess = adapterResult.generationSource === 'byok-live';
+if (isLiveSuccess && liveAttemptGuardForAdapter) {
+  recordByokLiveAudioGenerated(liveAttemptGuardForAdapter.liveAudioCapConfig);
+}
 recordByokSubmit({
   requestId: submitRequestId,
   stage: isLiveSuccess ? 'live_relay_ok' : 'fake_relay_ok',
   outcome: isLiveSuccess ? 'live_relay_ok' : 'fake_relay_ok',
   modeCandidate: isLiveSuccess ? 'live' : 'fake',
-  turnstilePresent: true,
+  turnstilePresent: postParseTurnstilePresent,
   apiKeyPresent: submitApiKeyPresent,
   promptPresent: true,
 });
