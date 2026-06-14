@@ -9,13 +9,17 @@ export default function Home() {
         <div className={styles.heroContent}>
           <div className={styles.heroBadge}>
             <span className={styles.badgeDot} />
-            公网已启用 · 推荐 MMX CLI 模式
+            v0.4.32-alpha · safe-default baseline
           </div>
           <h1 className={styles.title}>MMX Music Studio</h1>
           <p className={styles.subtitle}>
-            一个自托管的 AI 音乐创作工作台：写下场景和情绪，生成、试听、
-            收藏并下载你的音乐。
+            一个自托管的 AI 音乐创作工作台。当前版本是 stability / hygiene alpha release，
+            默认处于安全预览模式。
           </p>
+          <div className={styles.safeDefaultNotice} data-safe-default-ui="home">
+            <strong>安全预览模式</strong>
+            <span>BYOK live 默认关闭，不是 broad public launch，不会调用 MiniMax，也不会生成真实音频。</span>
+          </div>
           <div className={styles.heroActions}>
             <Link to="/studio" className={styles.primaryBtn}>
               开始创作
@@ -46,8 +50,8 @@ export default function Home() {
           <div className={styles.step}>
             <div className={styles.stepNum}>2</div>
             <div className={styles.stepBody}>
-              <p className={styles.stepHeading}>点击生成，等待完成</p>
-              <p className={styles.stepHint}>MMX CLI 后端，本地运行，无需 API Key</p>
+              <p className={styles.stepHeading}>体验安全预览流程</p>
+              <p className={styles.stepHint}>默认 mock/demo，不需要 Key，不触发真实生成</p>
             </div>
           </div>
           <div className={styles.stepArrow}>
@@ -59,7 +63,7 @@ export default function Home() {
             <div className={styles.stepNum}>3</div>
             <div className={styles.stepBody}>
               <p className={styles.stepHeading}>播放、下载或收藏</p>
-              <p className={styles.stepHint}>MP3 直接下载，支持收藏到作品库</p>
+              <p className={styles.stepHint}>Library 会区分示例作品和真实作品</p>
             </div>
           </div>
         </div>
@@ -78,16 +82,16 @@ export default function Home() {
               </span>
             </div>
             <div className={styles.statusItem}>
-              <span className={styles.statusLabel}>推荐后端</span>
-              <span className={styles.statusValue}>MMX CLI</span>
+              <span className={styles.statusLabel}>发布类型</span>
+              <span className={styles.statusValue}>stability / hygiene alpha</span>
             </div>
             <div className={styles.statusItem}>
               <span className={styles.statusLabel}>当前版本</span>
-              <span className={styles.statusValue}>v0.4.12-alpha</span>
+              <span className={styles.statusValue}>v0.4.32-alpha</span>
             </div>
             <div className={styles.statusItem}>
-              <span className={styles.statusLabel}>API Adapter</span>
-              <span className={styles.statusValue}>BYOK · 已验证</span>
+              <span className={styles.statusLabel}>BYOK live</span>
+              <span className={styles.statusValue}>默认关闭</span>
             </div>
           </div>
         </div>
@@ -126,8 +130,8 @@ export default function Home() {
                 <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
             </div>
-            <h3>BYOK API Adapter</h3>
-            <p>自备 Token Plan Key · 实验性功能</p>
+            <h3>BYOK 受控链路</h3>
+            <p>live gate 默认关闭 · 需要 operator secret step</p>
           </div>
 
           <div className={styles.capCard}>
@@ -146,7 +150,7 @@ export default function Home() {
 
       {/* Public Launch Readiness */}
       <section className={styles.launchSection}>
-        <h2 className={styles.sectionTitle}>公开 Alpha · 可以开始试用</h2>
+        <h2 className={styles.sectionTitle}>安全预览 Alpha · 不是公开 live 发布</h2>
         <div className={styles.launchGrid}>
           <div className={styles.launchCard}>
             <div className={styles.launchCardIcon}>
@@ -154,8 +158,8 @@ export default function Home() {
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
               </svg>
             </div>
-            <h3>真实生成</h3>
-            <p>当前默认使用服务器 MMX CLI backend 生成音乐。</p>
+            <h3>安全预览</h3>
+            <p>默认不调用 MiniMax，不消耗真实额度，也不生成真实音频。</p>
           </div>
           <div className={styles.launchCard}>
             <div className={styles.launchCardIcon}>
@@ -165,7 +169,7 @@ export default function Home() {
               </svg>
             </div>
             <h3>作品库</h3>
-            <p>生成后的作品会进入 Library，可搜索、收藏、播放、导出。</p>
+            <p>示例作品用于体验筛选、收藏、播放队列和导出；真实作品会单独标明来源。</p>
           </div>
           <div className={styles.launchCard}>
             <div className={styles.launchCardIcon}>
@@ -184,8 +188,8 @@ export default function Home() {
                 <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
               </svg>
             </div>
-            <h3>实验能力</h3>
-            <p>BYOK API Adapter 已验证 direct_audio，async polling 已预备，仍属实验能力。</p>
+            <h3>受控能力</h3>
+            <p>BYOK live 仍需 operator secret step 确认后，才能进入下一轮受控 pilot。</p>
           </div>
         </div>
         <div className={styles.launchCta}>
@@ -205,11 +209,11 @@ export default function Home() {
           </div>
           <div className={styles.trustCard}>
             <h3>生成记录</h3>
-            <p>生成后的曲目信息由服务器保存，用于 Library 展示和播放。</p>
+            <p>safe-default 下可能没有真实生成记录；Library 会用示例作品帮助你先体验工作流。</p>
           </div>
           <div className={styles.trustCard}>
             <h3>API Key</h3>
-            <p>BYOK Key 仅用于一次生成请求的内存任务上下文，不写入磁盘；当前默认推荐 CLI backend。</p>
+            <p>BYOK Key 仅用于受控请求上下文；本版本不开放 broad public live 生成。</p>
           </div>
           <div className={styles.trustCard}>
             <h3>当前限制</h3>
@@ -217,8 +221,7 @@ export default function Home() {
           </div>
           <div className={styles.trustCard}>
             <h3>生成保护</h3>
-            <p>公开 Alpha 启用了轻量生成保护：同一访问来源每日有生成次数与冷却限制，用于保护服务器和额度。</p>
-            <p>运行状态可通过健康检查与公开状态摘要观察。</p>
+            <p>当前安全默认优先保护额度、密钥和真实生成链路。运行状态可通过健康检查与公开状态摘要观察。</p>
           </div>
         </div>
       </section>
@@ -228,7 +231,7 @@ export default function Home() {
         <div className={styles.feedbackCard}>
           <div className={styles.feedbackBadge}>
             <span className={styles.feedbackDot}/>
-            v0.4.16-alpha · Public Alpha
+            v0.4.32-alpha · safe-default alpha
           </div>
           <h2 className={styles.feedbackTitle}>反馈与参与</h2>
           <div className={styles.feedbackLinks}>
@@ -246,7 +249,7 @@ export default function Home() {
               </svg>
               查看源码
             </a>
-            <a href="https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.12-alpha" target="_blank" rel="noopener noreferrer" className={styles.feedbackLink}>
+            <a href="https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.32-alpha" target="_blank" rel="noopener noreferrer" className={styles.feedbackLink}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>

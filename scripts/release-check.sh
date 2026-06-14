@@ -21,7 +21,7 @@ skip() { echo "  ⏭️  $1"; SKIP_COUNT=$((SKIP_COUNT+1)); }
 fail() { echo "  ❌ $1"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 
 # ── 1. TypeScript check ────────────────────────────────────────────────────
-echo "[1/11] TypeScript check..."
+echo "[1/12] TypeScript check..."
 if npm run typecheck > /tmp/typecheck.out 2>&1; then
   pass "TypeScript: no errors"
 else
@@ -30,7 +30,7 @@ else
 fi
 
 # ── 2. Build ──────────────────────────────────────────────────────────────
-echo "[2/11] Vite build..."
+echo "[2/12] Vite build..."
 if npm run build > /tmp/build.out 2>&1; then
   pass "Build: success"
 else
@@ -39,7 +39,7 @@ else
 fi
 
 # ── 3. Manifest audit ────────────────────────────────────────────────────
-echo "[3/11] Manifest audit..."
+echo "[3/12] Manifest audit..."
 if npm run manifest:audit > /tmp/manifest.out 2>&1; then
   pass "Manifest: 0 issues"
 else
@@ -48,7 +48,7 @@ else
 fi
 
 # ── 4. Config smoke test ───────────────────────────────────────────────────
-echo "[4/11] Config smoke test..."
+echo "[4/12] Config smoke test..."
 if bash scripts/config-smoke-test.sh > /tmp/config-smoke.out 2>&1; then
   pass "Config smoke test: PASS"
 else
@@ -56,8 +56,17 @@ else
   cat /tmp/config-smoke.out | tail -5
 fi
 
-# ── 5. Server smoke test ──────────────────────────────────────────────────
-echo "[5/11] Server smoke test..."
+# ── 5. Safe-default UI copy smoke test ────────────────────────────────────
+echo "[5/12] Safe-default UI copy smoke test..."
+if bash scripts/safe-default-ui-copy-smoke-test.sh > /tmp/safe-default-ui-copy.out 2>&1; then
+  pass "Safe-default UI copy smoke test: PASS"
+else
+  fail "Safe-default UI copy smoke test: FAIL"
+  cat /tmp/safe-default-ui-copy.out | tail -10
+fi
+
+# ── 6. Server smoke test ──────────────────────────────────────────────────
+echo "[6/12] Server smoke test..."
 export REAL_GENERATION_ENABLED=false
 export MOCK_GENERATION_ENABLED=true
 export PUBLIC_DEMO_MODE=false
@@ -81,8 +90,8 @@ else
   echo "  ⏭️  Server smoke test: skipped (server not running, OK for handoff)"
 fi
 
-# ── 6. Web API smoke test ────────────────────────────────────────────────
-echo "[6/11] Web API smoke test..."
+# ── 7. Web API smoke test ────────────────────────────────────────────────
+echo "[7/12] Web API smoke test..."
 if bash scripts/web-api-smoke-test.sh > /tmp/web-api.out 2>&1; then
   pass "Web API smoke test: PASS"
 else
@@ -90,8 +99,8 @@ else
   cat /tmp/web-api.out | tail -5
 fi
 
-# ── 7. CLI adapter smoke test ────────────────────────────────────────────
-echo "[7/11] CLI adapter smoke test..."
+# ── 8. CLI adapter smoke test ────────────────────────────────────────────
+echo "[8/12] CLI adapter smoke test..."
 if bash scripts/cli-adapter-smoke-test.sh > /tmp/cli-adapter.out 2>&1; then
   pass "CLI adapter smoke test: PASS"
 else
@@ -99,8 +108,8 @@ else
   cat /tmp/cli-adapter.out | tail -5
 fi
 
-# ── 8. Existing CLI track verification ────────────────────────────────────
-echo "[8/11] Existing CLI track verification..."
+# ── 9. Existing CLI track verification ────────────────────────────────────
+echo "[9/12] Existing CLI track verification..."
 if bash scripts/verify-existing-cli-track.sh > /tmp/cli-track.out 2>&1; then
   pass "CLI track verification: PASS"
 elif grep -q "PARTIAL_NO_CLI_TRACK" /tmp/cli-track.out 2>/dev/null; then
@@ -111,8 +120,8 @@ else
   cat /tmp/cli-track.out | tail -5
 fi
 
-# ── 9. Secret scan ────────────────────────────────────────────────────────
-echo "[9/11] Secret scan..."
+# ── 10. Secret scan ────────────────────────────────────────────────────────
+echo "[10/12] Secret scan..."
 if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
@@ -120,8 +129,8 @@ else
   cat /tmp/secret-scan.out | tail -10
 fi
 
-# ── 10. Git status ─────────────────────────────────────────────────────────
-echo "[10/11] Git status..."
+# ── 11. Git status ─────────────────────────────────────────────────────────
+echo "[11/12] Git status..."
 # Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
 if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
@@ -135,8 +144,8 @@ else
   pass "No real audio files in git"
 fi
 
-# ── 11. Required files ─────────────────────────────────────────────────────
-echo "[11/11] Required files..."
+# ── 12. Required files ─────────────────────────────────────────────────────
+echo "[12/12] Required files..."
 REQUIRED_FILES=(
   "Dockerfile"
   "docker-compose.yml"

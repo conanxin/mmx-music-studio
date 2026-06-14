@@ -55,7 +55,27 @@
   font-size: 15px;
   color: var(--color-text-secondary);
   line-height: 1.75;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-5);
+}
+
+.safeDefaultNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 500px;
+  margin: 0 auto var(--space-8);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(184, 255, 106, 0.06);
+  border: 1px solid rgba(184, 255, 106, 0.18);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.safeDefaultNotice strong {
+  color: var(--color-accent);
+  font-size: 12px;
 }
 
 .heroActions {

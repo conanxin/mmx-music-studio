@@ -913,6 +913,10 @@ const handlePlay = (track: TrackItem) => {
     });
   }, [tracks, filterSource, favorites, smartCollection, tagFilter, searchQuery, annotations]);
 
+  const exampleTrackCount = tracks.filter(t => t.isMock).length;
+  const realTrackCount = tracks.length - exampleTrackCount;
+  const isShowingOnlyExamples = tracks.length > 0 && exampleTrackCount === tracks.length;
+
   const handleCloseDetail = () => setDetailTrack(null);
 
   if (loading) {
@@ -940,6 +944,28 @@ const handlePlay = (track: TrackItem) => {
                 ? `${tracks.length} 首作品`
                 : `${filteredTracks.length} / ${tracks.length} 首`}
             </p>
+          </div>
+
+          <div className={styles.safeDefaultLibraryStatus} data-safe-default-ui="library">
+            <div className={styles.safeDefaultLibraryText}>
+              <span className={styles.safeDefaultKicker}>v0.4.32-alpha · safe-default</span>
+              <strong>{isShowingOnlyExamples ? '当前显示示例作品' : '当前显示用户作品'}</strong>
+              <p>
+                {isShowingOnlyExamples
+                  ? 'safe-default 下可能没有真实生成记录；这些示例只用于体验 Library，不代表真实生成，不会调用 MiniMax。'
+                  : '真实作品会按来源标记；示例作品只在空库或本地服务不可用时用于安全预览。'}
+              </p>
+            </div>
+            <div className={styles.safeDefaultLibraryMeta}>
+              <span>示例 {exampleTrackCount} 首</span>
+              <span>真实 {realTrackCount} 首</span>
+              <span>BYOK live 默认关闭</span>
+              {isShowingOnlyExamples && (
+                <Link to="/studio" className={styles.safeDefaultLibraryCta}>
+                  去 Studio 体验 mock/demo
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Search */}

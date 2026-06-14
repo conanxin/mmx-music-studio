@@ -30,6 +30,62 @@
   color: var(--color-text-primary);
 }
 
+.safeDefaultStatus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4);
+  background: rgba(184, 255, 106, 0.06);
+  border: 1px solid rgba(184, 255, 106, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.safeDefaultStatusMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.safeDefaultKicker {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.safeDefaultStatusMain strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.safeDefaultStatusMain p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.safeDefaultStatusMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.safeDefaultStatusMeta span {
+  display: inline-flex;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /* Mode tabs */
 .modeTabs {
   display: flex;
@@ -1103,6 +1159,19 @@
 @media (max-width: 639px) {
   .page {
     padding: var(--space-4);
+  }
+
+  .safeDefaultStatus {
+    grid-template-columns: 1fr;
+  }
+
+  .safeDefaultStatusMeta {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .safeDefaultStatusMeta span {
+    white-space: normal;
   }
 
   .pageTitle {
