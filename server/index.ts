@@ -1883,6 +1883,45 @@ interface ByokDryRunResponse {
   // Intentionally NO apiKey, NO Authorization, NO raw provider error.
 }
 
+type ByokGenerationIntent = 'instrumental' | 'with_lyrics';
+type ByokMusicModeForProvider = 'instrumental' | 'lyrics';
+
+interface ByokProviderInput {
+  prompt?: string;
+  lyrics?: string;
+  model?: string;
+  mode?: 'instrumental' | 'lyrics' | 'with_lyrics' | 'auto';
+  generationIntent?: ByokGenerationIntent;
+}
+
+interface ByokProviderParams {
+  generationIntent: ByokGenerationIntent;
+  lyrics?: string;
+  isInstrumental: boolean;
+  musicModeForAdapter: ByokMusicModeForProvider;
+}
+
+function normalizeByokGenerationIntent(input: ByokProviderInput): ByokGenerationIntent {
+  if (input.generationIntent === 'with_lyrics') return 'with_lyrics';
+  if (input.generationIntent === 'instrumental') return 'instrumental';
+  if (input.mode === 'lyrics' || input.mode === 'with_lyrics') return 'with_lyrics';
+  return 'instrumental';
+}
+
+function normalizeByokProviderParams(input: ByokProviderInput): ByokProviderParams {
+  const generationIntent = normalizeByokGenerationIntent(input);
+  const lyrics =
+    typeof input.lyrics === 'string' && input.lyrics.trim().length > 0
+      ? input.lyrics.trim()
+      : undefined;
+  return {
+    generationIntent,
+    lyrics: generationIntent === 'with_lyrics' ? lyrics : undefined,
+    isInstrumental: generationIntent === 'instrumental',
+    musicModeForAdapter: generationIntent === 'with_lyrics' ? 'lyrics' : 'instrumental',
+  };
+}
+
 async function handleByokGenerate(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -2090,8 +2129,10 @@ async function handleByokGenerate(
     prompt?: string;
     lyrics?: string;
     model?: string;
-    mode?: 'instrumental' | 'lyrics' | 'auto';
+    mode?: 'instrumental' | 'lyrics' | 'with_lyrics' | 'auto';
+    generationIntent?: ByokGenerationIntent;
   };
+  const byokProviderParams = normalizeByokProviderParams(byokInput);
 
  const requestedModeForGuard = requestedMode;
  const isConfirmedByokLivePath =
@@ -2230,7 +2271,8 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
    | { ok: false } => {
    // BYOK-LIVE-ATTEMPT-CONSUME-GUARD-FIX: this helper is called only
    // after Turnstile, request validation, live confirmation, direct-live
-   // confirmation, provider selection, and read-only caps all pass.
+   // confirmation, music-2.6 lyrics/instrumental validation, provider
+   // selection, and read-only caps all pass.
    const liveAttemptConfig = buildByokLiveAttemptConfig();
    const liveAttemptCheck = checkByokLiveAttemptLimit(liveAttemptConfig);
    if (!liveAttemptCheck.allowed) {
@@ -2298,6 +2340,34 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
    return { ok: true, liveAudioCapConfig };
  };
 
+ const requireProviderReadyMusic26Params = (): boolean => {
+   if (
+     byokProviderParams.generationIntent === 'with_lyrics' &&
+     !byokProviderParams.lyrics
+   ) {
+     recordByokSubmit({
+       requestId: submitRequestId,
+       stage: 'lyrics_validation_failed',
+       outcome: 'blocked_lyrics_required',
+       modeCandidate: 'live',
+       turnstilePresent: postParseTurnstilePresent,
+       apiKeyPresent: submitApiKeyPresent,
+       promptPresent: true,
+       terminal: true,
+       responseCode: 'byok_lyrics_required',
+     });
+     sendJson(res, 400, {
+       ok: false,
+       code: 'byok_lyrics_required',
+       message: 'lyrics is required when generationIntent=with_lyrics.',
+       stage: 'lyrics_validation_failed',
+       requestId,
+     });
+     return false;
+   }
+   return true;
+ };
+
  // ── BYOK-F: Direct HTTPS API relay path ──
  if (requestedMode === 'direct-live') {
    if (!requireVerifiedTurnstileForLive()) return;
@@ -2350,6 +2420,8 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
       return;
     }
 
+    if (!requireProviderReadyMusic26Params()) return;
+
     const directAttemptGuard = consumeLiveAttemptBeforeProvider();
     if (!directAttemptGuard.ok) return;
 
@@ -2357,10 +2429,10 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
     const directResult = await generateByokDirectMusic({
      apiKey: body.apiKey ?? '',
      prompt: byokInput.prompt ?? '',
-     lyrics: byokInput.lyrics,
+     lyrics: byokProviderParams.lyrics,
      model: (byokInput.model as 'music-2.6' | 'music-2.5+' | 'music-2.5' | 'music-cover') ?? 'music-2.6',
      outputFormat: 'url',
-     isInstrumental: byokInput.mode === 'instrumental',
+     isInstrumental: byokProviderParams.isInstrumental,
      timeoutMs: 120_000,
    });
 
@@ -2502,6 +2574,7 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
    | undefined;
  if (adapterMode === 'live') {
    if (!requireVerifiedTurnstileForLive()) return;
+   if (!requireProviderReadyMusic26Params()) return;
    const liveAttemptGuard = consumeLiveAttemptBeforeProvider();
    if (!liveAttemptGuard.ok) return;
    liveAttemptGuardForAdapter = liveAttemptGuard;
@@ -2510,11 +2583,11 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
  const adapterResult = await generateByokMusic({
    apiKey: body.apiKey ?? '',
    prompt: byokInput.prompt ?? '',
-   lyrics: byokInput.lyrics,
+   lyrics: byokProviderParams.lyrics,
    model: (byokInput.model as ByokModel) ?? 'music-2.6-free',
    mode: adapterMode,
    requestId,
-   musicMode: byokInput.mode ?? 'auto',
+   musicMode: byokProviderParams.musicModeForAdapter,
    // Phase BYOK-H3B-PROVIDER-SELECTION-FOLLOWUP:
    // forward the live-gate env snapshot to the adapter so it can
    // independently re-verify the live condition.

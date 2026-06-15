@@ -150,6 +150,7 @@ export type ByokDirectResult = ByokDirectSuccessResult | ByokDirectErrorResult;
 export type ByokDirectErrorCode =
   | "byok_direct_api_not_verified"
   | "byok_direct_invalid_key"
+  | "byok_direct_lyrics_required"
   | "byok_direct_provider_error"
   | "byok_direct_timeout"
   | "byok_direct_network_error"
@@ -199,6 +200,10 @@ function responseBodyShape(value: unknown): string {
   if (Array.isArray(value)) return "array";
   if (value === null) return "null";
   return typeof value;
+}
+
+function normalizeDirectLyrics(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function providerErrorCodeFromBody(value: unknown): string | undefined {
@@ -293,12 +298,11 @@ export function buildByokDirectRequest(
     prompt: options.prompt,
   };
 
-  if (options.lyrics) {
-    body.lyrics = options.lyrics;
-  }
-
-  if (options.isInstrumental !== undefined) {
-    body.is_instrumental = options.isInstrumental;
+  const lyrics = normalizeDirectLyrics(options.lyrics);
+  if (options.isInstrumental === true) {
+    body.is_instrumental = true;
+  } else if (lyrics.length > 0) {
+    body.lyrics = lyrics;
   }
 
   if (options.outputFormat) {
@@ -482,6 +486,14 @@ export async function generateByokDirectMusic(
       ok: false,
       code: "byok_direct_invalid_key",
       message: "Invalid API key format.",
+    };
+  }
+
+  if (options.isInstrumental !== true && normalizeDirectLyrics(options.lyrics).length === 0) {
+    return {
+      ok: false,
+      code: "byok_direct_lyrics_required",
+      message: "lyrics is required unless is_instrumental=true.",
     };
   }
 

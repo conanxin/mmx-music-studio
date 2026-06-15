@@ -21,7 +21,7 @@ skip() { echo "  ⏭️  $1"; SKIP_COUNT=$((SKIP_COUNT+1)); }
 fail() { echo "  ❌ $1"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 
 # ── 1. TypeScript check ────────────────────────────────────────────────────
-echo "[1/14] TypeScript check..."
+echo "[1/15] TypeScript check..."
 if npm run typecheck > /tmp/typecheck.out 2>&1; then
   pass "TypeScript: no errors"
 else
@@ -30,7 +30,7 @@ else
 fi
 
 # ── 2. Build ──────────────────────────────────────────────────────────────
-echo "[2/14] Vite build..."
+echo "[2/15] Vite build..."
 if npm run build > /tmp/build.out 2>&1; then
   pass "Build: success"
 else
@@ -39,7 +39,7 @@ else
 fi
 
 # ── 3. Manifest audit ────────────────────────────────────────────────────
-echo "[3/14] Manifest audit..."
+echo "[3/15] Manifest audit..."
 if npm run manifest:audit > /tmp/manifest.out 2>&1; then
   pass "Manifest: 0 issues"
 else
@@ -48,7 +48,7 @@ else
 fi
 
 # ── 4. Config smoke test ───────────────────────────────────────────────────
-echo "[4/14] Config smoke test..."
+echo "[4/15] Config smoke test..."
 if bash scripts/config-smoke-test.sh > /tmp/config-smoke.out 2>&1; then
   pass "Config smoke test: PASS"
 else
@@ -57,7 +57,7 @@ else
 fi
 
 # ── 5. Safe-default UI copy smoke test ────────────────────────────────────
-echo "[5/14] Safe-default UI copy smoke test..."
+echo "[5/15] Safe-default UI copy smoke test..."
 if bash scripts/safe-default-ui-copy-smoke-test.sh > /tmp/safe-default-ui-copy.out 2>&1; then
   pass "Safe-default UI copy smoke test: PASS"
 else
@@ -66,7 +66,7 @@ else
 fi
 
 # ── 6. Server smoke test ──────────────────────────────────────────────────
-echo "[6/14] BYOK live attempt consume guard smoke test..."
+echo "[6/15] BYOK live attempt consume guard smoke test..."
 if bash scripts/byok-live-attempt-consume-guard-smoke-test.sh > /tmp/byok-live-attempt-consume-guard.out 2>&1; then
   pass "BYOK live attempt consume guard smoke test: PASS"
 else
@@ -74,7 +74,7 @@ else
   cat /tmp/byok-live-attempt-consume-guard.out | tail -10
 fi
 
-echo "[7/14] BYOK live provider error observability smoke test..."
+echo "[7/15] BYOK live provider error observability smoke test..."
 if bash scripts/byok-live-provider-error-observability-smoke-test.sh > /tmp/byok-live-provider-error-observability.out 2>&1; then
   pass "BYOK live provider error observability smoke test: PASS"
 else
@@ -83,7 +83,15 @@ else
 fi
 
 # ── 8. Server smoke test ────────────────────────────────────────────────
-echo "[8/14] Server smoke test..."
+echo "[8/15] BYOK music-2.6 lyrics/instrumental param smoke test..."
+if bash scripts/byok-music26-lyrics-or-instrumental-param-smoke-test.sh > /tmp/byok-music26-lyrics-or-instrumental-param.out 2>&1; then
+  pass "BYOK music-2.6 lyrics/instrumental param smoke test: PASS"
+else
+  fail "BYOK music-2.6 lyrics/instrumental param smoke test: FAIL"
+  cat /tmp/byok-music26-lyrics-or-instrumental-param.out | tail -10
+fi
+
+echo "[9/15] Server smoke test..."
 export REAL_GENERATION_ENABLED=false
 export MOCK_GENERATION_ENABLED=true
 export PUBLIC_DEMO_MODE=false
@@ -108,7 +116,7 @@ else
 fi
 
 # ── 7. Web API smoke test ────────────────────────────────────────────────
-echo "[9/14] Web API smoke test..."
+echo "[10/15] Web API smoke test..."
 if bash scripts/web-api-smoke-test.sh > /tmp/web-api.out 2>&1; then
   pass "Web API smoke test: PASS"
 else
@@ -117,7 +125,7 @@ else
 fi
 
 # ── 8. CLI adapter smoke test ────────────────────────────────────────────
-echo "[10/14] CLI adapter smoke test..."
+echo "[11/15] CLI adapter smoke test..."
 if bash scripts/cli-adapter-smoke-test.sh > /tmp/cli-adapter.out 2>&1; then
   pass "CLI adapter smoke test: PASS"
 else
@@ -126,7 +134,7 @@ else
 fi
 
 # ── 9. Existing CLI track verification ────────────────────────────────────
-echo "[11/14] Existing CLI track verification..."
+echo "[12/15] Existing CLI track verification..."
 if bash scripts/verify-existing-cli-track.sh > /tmp/cli-track.out 2>&1; then
   pass "CLI track verification: PASS"
 elif grep -q "PARTIAL_NO_CLI_TRACK" /tmp/cli-track.out 2>/dev/null; then
@@ -138,7 +146,7 @@ else
 fi
 
 # ── 10. Secret scan ────────────────────────────────────────────────────────
-echo "[12/14] Secret scan..."
+echo "[13/15] Secret scan..."
 if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
@@ -147,7 +155,7 @@ else
 fi
 
 # ── 11. Git status ─────────────────────────────────────────────────────────
-echo "[13/14] Git status..."
+echo "[14/15] Git status..."
 # Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
 if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
@@ -162,7 +170,7 @@ else
 fi
 
 # ── 12. Required files ─────────────────────────────────────────────────────
-echo "[14/14] Required files..."
+echo "[15/15] Required files..."
 REQUIRED_FILES=(
   "Dockerfile"
   "docker-compose.yml"

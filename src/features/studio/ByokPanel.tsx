@@ -126,6 +126,8 @@ type ByokResponseCode =
   | 'byok_direct_live_not_enabled'
   | 'byok_direct_live_confirmation_required'
   | 'byok_direct_provider_error'
+  | 'byok_direct_lyrics_required'
+  | 'byok_lyrics_required'
   | 'byok_non_json_response'
   | 'byok_direct_live_ok'
   | 'byok_invalid_input'
@@ -151,6 +153,8 @@ const STATUS_MESSAGES: Record<string, string> = {
   byok_direct_timeout: 'MiniMax direct API 响应超时',
   byok_direct_network_error: 'MiniMax direct API 网络错误',
   byok_direct_unexpected: 'MiniMax direct API 返回异常响应',
+  byok_direct_lyrics_required: 'Lyrics are required unless instrumental mode is selected',
+  byok_lyrics_required: 'Lyrics are required for with_lyrics mode',
   byok_non_json_response: '服务端返回非 JSON 错误',
   byok_direct_live_ok: 'BYOK direct API 测试通过',
   byok_provider_error: 'MiniMax 返回错误，已隐藏敏感信息',
@@ -347,6 +351,8 @@ type TurnstileUiState =
   | 'expired'
   | 'error';
 
+type ByokGenerationIntent = 'instrumental' | 'with_lyrics';
+
 export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // Default to DISABLED. Only enabled if parent explicitly says so.
   // This matches server's PUBLIC_BYOK_ENABLED=false default.
@@ -369,10 +375,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [model, setModel] = useState<'music-2.6-free' | 'music-2.6'>(
     'music-2.6-free',
   );
-  const [musicMode, setMusicMode] = useState<'auto' | 'instrumental' | 'lyrics'>(
-    'auto',
-  );
+  const [musicMode, setMusicMode] =
+    useState<ByokGenerationIntent>('instrumental');
   const [prompt, setPrompt] = useState<string>('');
+  const [lyrics, setLyrics] = useState<string>('');
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
@@ -494,11 +500,14 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     }
   }, [enabled]);
 
+  const lyricsRequired = musicMode === 'with_lyrics';
+  const trimmedLyrics = lyrics.trim();
   const canSubmit =
     enabled &&
     !submitting &&
     apiKey.length >= 20 &&
-    prompt.length > 0 &&
+    prompt.trim().length > 0 &&
+    (!lyricsRequired || trimmedLyrics.length > 0) &&
     confirmed &&
     // If Turnstile is enforced, the user must have a fresh verified token.
     (!turnstileEnforced || (turnstileUiState === 'verified' && turnstileToken.length > 0));
@@ -520,11 +529,28 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      if (enabled && !submitting && lyricsRequired && trimmedLyrics.length === 0) {
+        setLastResult({
+          ok: false,
+          code: 'byok_lyrics_required',
+          message: 'Lyrics are required for with_lyrics mode.',
+        });
+        props.onStatusChange?.('error');
+      }
+      return;
+    }
     setSubmitting(true);
     setLastResult(null);
     props.onStatusChange?.('submitting');
     try {
+      const input = {
+        prompt,
+        model,
+        generationIntent: musicMode,
+        mode: musicMode === 'with_lyrics' ? 'lyrics' : 'instrumental',
+        ...(musicMode === 'with_lyrics' ? { lyrics: trimmedLyrics } : {}),
+      };
       const r = await fetch(BYOK_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -533,11 +559,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           apiKey,
           // Phase BYOK-B: include prompt + musicMode so the fake / live
           // adapter can produce a deterministic / real response.
-          input: {
-            prompt,
-            model,
-            mode: musicMode,
-          },
+          input,
           // Phase Deploy-CF-E: include Turnstile token when configured.
           // The token is single-use; after the request we reset the widget.
           turnstileToken:
@@ -665,13 +687,12 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           className={styles.select}
           value={musicMode}
           onChange={(e) =>
-            setMusicMode(e.target.value as 'auto' | 'instrumental' | 'lyrics')
+            setMusicMode(e.target.value as ByokGenerationIntent)
           }
           disabled={!enabled || submitting}
         >
-          <option value="auto">auto（自动选择）</option>
           <option value="instrumental">instrumental（纯音乐）</option>
-          <option value="lyrics">lyrics（带歌词）</option>
+          <option value="with_lyrics">with_lyrics（带歌词）</option>
         </select>
 
         <label className={styles.label} htmlFor="byok-prompt">
@@ -688,6 +709,25 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           required
           disabled={!enabled || submitting}
         />
+
+        {musicMode === 'with_lyrics' && (
+          <>
+            <label className={styles.label} htmlFor="byok-lyrics">
+              Lyrics
+            </label>
+            <textarea
+              id="byok-lyrics"
+              className={styles.textarea}
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder="[Verse]\n..."
+              rows={4}
+              maxLength={3000}
+              required
+              disabled={!enabled || submitting}
+            />
+          </>
+        )}
 
         {/* Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX:
             Operator confirmation input. Rendered ONLY when the server
