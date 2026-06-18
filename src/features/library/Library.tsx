@@ -67,6 +67,9 @@ type TrackItem = {
   audioUrl?: string;
   downloadUrl?: string;
   generationSource?: TrackGenerationSource;
+  workspaceId?: string;
+  ownerUserId?: string;
+  visibility?: 'private' | 'workspace' | 'demo';
   isMock?: boolean;
 };
 
@@ -85,6 +88,9 @@ function serverTrackToItem(t: TrackLike): TrackItem {
     audioUrl: t.audioUrl,
     downloadUrl: t.downloadUrl,
     generationSource: t.generationSource,
+    workspaceId: t.workspaceId ?? 'default',
+    ownerUserId: t.ownerUserId,
+    visibility: t.visibility,
     isMock: false,
   };
 }
@@ -132,6 +138,12 @@ function sourceTagClass(s?: string): string {
   if (s === 'minimax') return styles.minimaxTag;
   if (s === 'byok-direct-live') return styles.byokTag;
   return styles.mockTag;
+}
+
+function workspaceLabel(workspaceId?: string, isMock?: boolean): string {
+  if (isMock) return 'Demo';
+  if (!workspaceId || workspaceId === 'default') return 'Default workspace';
+  return `Workspace ${workspaceId}`;
 }
 
 function useCopyToast() {
@@ -1448,6 +1460,9 @@ const handlePlay = (track: TrackItem) => {
                     </span>
                     <span className={`${styles.sourceTag} ${sourceTagClass(track.generationSource)}`}>
                       {sourceLabel(track.generationSource, track.isMock)}
+                    </span>
+                    <span className={styles.workspaceTag}>
+                      {workspaceLabel(track.workspaceId, track.isMock)}
                     </span>
                   </div>
                   {/* Phase Product Polish-P: search match hints (max 3 sources) */}

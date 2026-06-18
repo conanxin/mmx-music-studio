@@ -47,6 +47,8 @@ import {
   createTrackRecord,
   appendTrack,
   removeTrack,
+  DEFAULT_WORKSPACE_ID,
+  resolveTrackStoragePaths,
   generateTrackId,
   generateFileName,
   formatDuration,
@@ -505,6 +507,12 @@ function buildByokDirectLiveIdempotencyKey(requestId: string, taskId?: string): 
   return `byok-direct-live:${requestId}:${taskId || 'no-task'}`;
 }
 
+function resolveCurrentWorkspaceId(_req: http.IncomingMessage): string {
+  // P3B scaffolding only: do not trust client header/query/cookie workspace selectors.
+  // P3C will bind authenticated sessions to workspaceId server-side.
+  return DEFAULT_WORKSPACE_ID;
+}
+
 function isPrivateIpv4(ip: string): boolean {
   const parts = ip.split('.').map((part) => Number(part));
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
@@ -738,8 +746,9 @@ function findByokDirectLiveTrackByIdempotency(
   requestId: string,
   providerTaskId: string | undefined,
   idempotencyKey: string,
+  options: { workspaceId?: string } = {},
 ): TrackMetadata | null {
-  const manifest = loadManifest(outputDir);
+  const manifest = loadManifest(outputDir, options);
   return manifest.tracks.find((track) => (
     track.generationSource === BYOK_LIBRARY_PERSIST_SOURCE &&
     (
@@ -1432,6 +1441,8 @@ async function handleGenerateSync(
   const { input, keyMode, region } = body;
   const requestId = `req_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   const backend = config.backend;
+  const workspaceId = resolveCurrentWorkspaceId(req);
+  const trackStoragePaths = resolveTrackStoragePaths(config.outputDir, { workspaceId });
 
   const validation = validateMusicInput(input as Parameters<typeof validateMusicInput>[0]);
   if (!validation.ok) {
@@ -1445,7 +1456,7 @@ async function handleGenerateSync(
     let cliResult: Awaited<ReturnType<typeof generateWithMmxCli>>;
     try {
       cliResult = await generateWithMmxCli(input as MusicGenerationInput, {
-        outputDir: config.outputDir,
+        outputDir: trackStoragePaths.audioDir,
         audioFileName,
         timeoutMs: 240_000,
         audioUrl: input.audioUrl,
@@ -1484,9 +1495,11 @@ async function handleGenerateSync(
       sizeBytes: cliResult.sizeBytes,
       traceId: undefined,
       generationSource: 'mmx-cli',
+      workspaceId,
+      visibility: 'workspace',
     });
     try {
-      appendTrack(config.outputDir, track);
+      appendTrack(config.outputDir, track, { workspaceId });
     } catch { /* non-fatal */ }
     console.log(`[server] mmx-cli sync: id=${id} title="${track.title}" mode=${input.mode} generationSource=mmx-cli`);
     sendJson(res, 200, { ok: true, track: toTrackResponse(track), generationSource: 'mmx-cli' });
@@ -1534,14 +1547,14 @@ async function handleGenerateSync(
   }
 
   try {
-    ensureOutputDir(config.outputDir);
+    ensureOutputDir(trackStoragePaths.audioDir);
   } catch {
     sendError(res, 'storage', '无法创建存储目录', 500);
     return;
   }
 
   const fileName = generateFileName({ mode: input.mode, title: (input.prompt || 'untitled').slice(0, 40) });
-  const filePath = getTrackFilePath(config.outputDir, fileName);
+  const filePath = getTrackFilePath(config.outputDir, fileName, { workspaceId });
   try {
     fs.writeFileSync(filePath, audioBuffer);
   } catch {
@@ -1567,9 +1580,11 @@ async function handleGenerateSync(
     sizeBytes: apiResult.sizeBytes || audioBuffer.length,
     traceId: apiResult.traceId,
     generationSource: 'minimax',
+    workspaceId,
+    visibility: 'workspace',
   });
   try {
-    appendTrack(config.outputDir, track);
+    appendTrack(config.outputDir, track, { workspaceId });
   } catch { /* non-fatal */ }
   console.log(`[server] minimax sync: id=${id} title="${track.title}" mode=${input.mode} generationSource=minimax`);
   sendJson(res, 200, { ok: true, track: toTrackResponse(track), generationSource: 'minimax' });
@@ -1607,6 +1622,9 @@ async function handleByokDirectLiveSaveToLibrary(
     });
     return;
   }
+
+  const workspaceId = resolveCurrentWorkspaceId(req);
+  const trackStoragePaths = resolveTrackStoragePaths(config.outputDir, { workspaceId });
 
   let body: ByokDirectLiveSaveRequest;
   try {
@@ -1692,7 +1710,13 @@ async function handleByokDirectLiveSaveToLibrary(
   }
 
   const idempotencyKey = buildByokDirectLiveIdempotencyKey(requestId, providerTaskId);
-  const existingTrack = findByokDirectLiveTrackByIdempotency(config.outputDir, requestId, providerTaskId, idempotencyKey);
+  const existingTrack = findByokDirectLiveTrackByIdempotency(
+    config.outputDir,
+    requestId,
+    providerTaskId,
+    idempotencyKey,
+    { workspaceId },
+  );
   if (existingTrack) {
     sendJson(res, 200, {
       ok: true,
@@ -1729,7 +1753,7 @@ async function handleByokDirectLiveSaveToLibrary(
     downloaded = await downloadProviderAudio({
       url: validation.url,
       host: validation.host,
-      outputDir: config.outputDir,
+      outputDir: trackStoragePaths.audioDir,
       requestId,
       trackId,
     });
@@ -1778,6 +1802,8 @@ async function handleByokDirectLiveSaveToLibrary(
     requestId,
     providerTaskId,
     generationIntent,
+    workspaceId,
+    visibility: 'workspace',
     byok: {
       mode: 'direct-live',
       persistedFrom: 'provider-url',
@@ -1788,9 +1814,9 @@ async function handleByokDirectLiveSaveToLibrary(
   });
 
   try {
-    appendTrack(config.outputDir, track);
+    appendTrack(config.outputDir, track, { workspaceId });
   } catch (error) {
-    const finalPath = getTrackFilePath(config.outputDir, downloaded.audioFileName);
+    const finalPath = getTrackFilePath(config.outputDir, downloaded.audioFileName, { workspaceId });
     if (fs.existsSync(finalPath)) {
       fs.unlinkSync(finalPath);
     }
@@ -1828,9 +1854,11 @@ async function handleListTracks(
     return;
   }
   try {
-    const manifest = loadManifest(config.outputDir);
+    const workspaceId = resolveCurrentWorkspaceId(req);
+    const manifest = loadManifest(config.outputDir, { workspaceId });
     sendJson(res, 200, {
       ok: true,
+      workspaceId,
       tracks: manifest.tracks.map((t) => toTrackResponse(t)),
       total: manifest.tracks.length,
     });
@@ -1850,7 +1878,8 @@ async function handleGetTrack(
   }
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)$/);
   if (!match) return;
-  const track = findTrackById(config.outputDir, match[1]);
+  const workspaceId = resolveCurrentWorkspaceId(req);
+  const track = findTrackById(config.outputDir, match[1], { workspaceId });
   if (!track) {
     sendError(res, 'storage', '作品不存在', 404);
     return;
@@ -1865,9 +1894,10 @@ async function handleTrackAudio(
 ): Promise<void> {
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)\/audio$/);
   if (!match) return;
-  const track = findTrackById(config.outputDir, match[1]);
+  const workspaceId = resolveCurrentWorkspaceId(req);
+  const track = findTrackById(config.outputDir, match[1], { workspaceId });
   if (!track) { res.writeHead(404); res.end('Not found'); return; }
-  const filePath = getTrackFilePath(config.outputDir, track.audioFileName);
+  const filePath = getTrackFilePath(config.outputDir, track.audioFileName, { workspaceId });
   if (!fs.existsSync(filePath)) { res.writeHead(404); res.end('File not found'); return; }
   const stat = fs.statSync(filePath);
   const range = req.headers['range'];
@@ -1901,9 +1931,10 @@ async function handleTrackDownload(
 ): Promise<void> {
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)\/download$/);
   if (!match) return;
-  const track = findTrackById(config.outputDir, match[1]);
+  const workspaceId = resolveCurrentWorkspaceId(req);
+  const track = findTrackById(config.outputDir, match[1], { workspaceId });
   if (!track) { res.writeHead(404); res.end('Not found'); return; }
-  const filePath = getTrackFilePath(config.outputDir, track.audioFileName);
+  const filePath = getTrackFilePath(config.outputDir, track.audioFileName, { workspaceId });
   if (!fs.existsSync(filePath)) { res.writeHead(404); res.end('File not found'); return; }
   const safeName = track.title.replace(/[^\w\u4e00-\u9fff\-_. ]/g, '_') + `.${track.audioFormat || 'mp3'}`;
   try {
@@ -1935,14 +1966,15 @@ async function handleDeleteTrack(
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)$/);
   if (!match) return;
   const id = match[1];
-  const track = findTrackById(config.outputDir, id);
+  const workspaceId = resolveCurrentWorkspaceId(req);
+  const track = findTrackById(config.outputDir, id, { workspaceId });
   if (!track) {
     sendError(res, 'storage', '作品不存在', 404);
     return;
   }
 
   // Delete audio file
-  const filePath = getTrackFilePath(config.outputDir, track.audioFileName);
+  const filePath = getTrackFilePath(config.outputDir, track.audioFileName, { workspaceId });
   if (fs.existsSync(filePath)) {
     try {
       fs.unlinkSync(filePath);
@@ -1954,7 +1986,7 @@ async function handleDeleteTrack(
 
   // Remove from manifest
   try {
-    removeTrack(config.outputDir, id);
+    removeTrack(config.outputDir, id, { workspaceId });
   } catch {
     sendError(res, 'storage', '无法更新作品列表', 500);
     return;
@@ -1992,12 +2024,13 @@ async function handleListJobs(
 
   const result = listJobs(filters);
   const total = getTotalJobCount();
+  const workspaceId = resolveCurrentWorkspaceId(req);
 
   // Attach full track object for succeeded jobs (Studio player handoff)
   const jobsWithTracks = result.map(job => {
     const enriched = { ...job };
     if (job.trackId) {
-      const track = findTrackById(_config.outputDir, job.trackId);
+      const track = findTrackById(_config.outputDir, job.trackId, { workspaceId });
       if (track) {
         (enriched as Record<string, unknown>).track = toTrackResponse(track);
       }
@@ -2021,7 +2054,8 @@ async function handleGetJob(
   // Attach full track object if job has trackId (Studio player handoff)
   const jobWithTrack = { ...job };
   if (job.trackId) {
-    const track = findTrackById(_config.outputDir, job.trackId);
+    const workspaceId = resolveCurrentWorkspaceId(req);
+    const track = findTrackById(_config.outputDir, job.trackId, { workspaceId });
     if (track) {
       (jobWithTrack as Record<string, unknown>).track = toTrackResponse(track);
     }
@@ -2145,6 +2179,9 @@ function toTrackResponse(t: TrackMetadata): Record<string, unknown> {
     requestId: t.requestId,
     providerTaskId: t.providerTaskId,
     generationIntent: t.generationIntent,
+    workspaceId: t.workspaceId ?? DEFAULT_WORKSPACE_ID,
+    ownerUserId: t.ownerUserId,
+    visibility: t.visibility,
     byok: t.byok,
     audioMimeType: t.audioMimeType,
     audioFormat: t.audioFormat,

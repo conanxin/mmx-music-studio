@@ -34,6 +34,9 @@ interface TrackRecord {
   requestId?: string;
   providerTaskId?: string;
   generationIntent?: string;
+  workspaceId?: string;
+  ownerUserId?: string;
+  visibility?: 'private' | 'workspace' | 'demo';
   byok?: {
     mode?: string;
     persistedFrom?: string;
@@ -63,6 +66,7 @@ const MIMETYPE_MAP: Record<string, string> = {
 };
 
 const KNOWN_SOURCES = new Set(['mock', 'mmx-cli', 'minimax', 'minimax-api', 'byok-direct-live']);
+const SAFE_WORKSPACE_ID = /^[a-z0-9_-]{1,64}$/;
 
 const SENSITIVE_PATTERNS = [
   /sk-[A-Za-z0-9_-]{10,}/,
@@ -147,6 +151,14 @@ async function audit(): Promise<{ issues: string[]; fixed: number; total: number
     // 4. Check generationSource
     if (track.generationSource && !KNOWN_SOURCES.has(track.generationSource)) {
       issues.push(`[${i}] Unknown generationSource: ${track.generationSource} (id=${track.id})`);
+    }
+
+    // 4b. P3B workspace fields are optional for legacy tracks.
+    if (track.workspaceId && !SAFE_WORKSPACE_ID.test(track.workspaceId)) {
+      issues.push(`[${i}] Invalid workspaceId: ${track.workspaceId} (id=${track.id})`);
+    }
+    if (track.visibility && !['private', 'workspace', 'demo'].includes(track.visibility)) {
+      issues.push(`[${i}] Invalid visibility: ${track.visibility} (id=${track.id})`);
     }
 
     if (track.generationSource === 'byok-direct-live') {

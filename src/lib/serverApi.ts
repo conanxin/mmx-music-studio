@@ -137,6 +137,9 @@ export interface TrackLike {
   generationSource?: TrackGenerationSource;
   audioMimeType?: string;
   audioFormat?: string;
+  workspaceId?: string;
+  ownerUserId?: string;
+  visibility?: 'private' | 'workspace' | 'demo';
   createdAt?: string | number;
 }
 

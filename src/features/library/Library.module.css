@@ -499,6 +499,16 @@
   color: #52c4cd;
 }
 
+.workspaceTag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
 .cardTime {
   font-size: 12px;
   color: var(--color-text-secondary);

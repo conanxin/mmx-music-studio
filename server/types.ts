@@ -124,6 +124,9 @@ export interface TrackMetadata {
   requestId?: string;
   providerTaskId?: string;
   generationIntent?: 'instrumental' | 'with_lyrics';
+  workspaceId?: string;
+  ownerUserId?: string;
+  visibility?: 'private' | 'workspace' | 'demo';
   byok?: ByokDirectLiveProvenance;
   createdAt: string;
 }
