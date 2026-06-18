@@ -21,7 +21,7 @@ skip() { echo "  ⏭️  $1"; SKIP_COUNT=$((SKIP_COUNT+1)); }
 fail() { echo "  ❌ $1"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 
 # ── 1. TypeScript check ────────────────────────────────────────────────────
-echo "[1/17] TypeScript check..."
+echo "[1/18] TypeScript check..."
 if npm run typecheck > /tmp/typecheck.out 2>&1; then
   pass "TypeScript: no errors"
 else
@@ -30,7 +30,7 @@ else
 fi
 
 # ── 2. Build ──────────────────────────────────────────────────────────────
-echo "[2/17] Vite build..."
+echo "[2/18] Vite build..."
 if npm run build > /tmp/build.out 2>&1; then
   pass "Build: success"
 else
@@ -39,7 +39,7 @@ else
 fi
 
 # ── 3. Manifest audit ────────────────────────────────────────────────────
-echo "[3/17] Manifest audit..."
+echo "[3/18] Manifest audit..."
 if npm run manifest:audit > /tmp/manifest.out 2>&1; then
   pass "Manifest: 0 issues"
 else
@@ -48,7 +48,7 @@ else
 fi
 
 # ── 4. Config smoke test ───────────────────────────────────────────────────
-echo "[4/17] Config smoke test..."
+echo "[4/18] Config smoke test..."
 if bash scripts/config-smoke-test.sh > /tmp/config-smoke.out 2>&1; then
   pass "Config smoke test: PASS"
 else
@@ -57,7 +57,7 @@ else
 fi
 
 # ── 5. Safe-default UI copy smoke test ────────────────────────────────────
-echo "[5/17] Safe-default UI copy smoke test..."
+echo "[5/18] Safe-default UI copy smoke test..."
 if bash scripts/safe-default-ui-copy-smoke-test.sh > /tmp/safe-default-ui-copy.out 2>&1; then
   pass "Safe-default UI copy smoke test: PASS"
 else
@@ -66,7 +66,7 @@ else
 fi
 
 # ── 6. Server smoke test ──────────────────────────────────────────────────
-echo "[6/17] BYOK live attempt consume guard smoke test..."
+echo "[6/18] BYOK live attempt consume guard smoke test..."
 if bash scripts/byok-live-attempt-consume-guard-smoke-test.sh > /tmp/byok-live-attempt-consume-guard.out 2>&1; then
   pass "BYOK live attempt consume guard smoke test: PASS"
 else
@@ -74,7 +74,7 @@ else
   cat /tmp/byok-live-attempt-consume-guard.out | tail -10
 fi
 
-echo "[7/17] BYOK live provider error observability smoke test..."
+echo "[7/18] BYOK live provider error observability smoke test..."
 if bash scripts/byok-live-provider-error-observability-smoke-test.sh > /tmp/byok-live-provider-error-observability.out 2>&1; then
   pass "BYOK live provider error observability smoke test: PASS"
 else
@@ -83,7 +83,7 @@ else
 fi
 
 # ── 8. Server smoke test ────────────────────────────────────────────────
-echo "[8/17] BYOK music-2.6 lyrics/instrumental param smoke test..."
+echo "[8/18] BYOK music-2.6 lyrics/instrumental param smoke test..."
 if bash scripts/byok-music26-lyrics-or-instrumental-param-smoke-test.sh > /tmp/byok-music26-lyrics-or-instrumental-param.out 2>&1; then
   pass "BYOK music-2.6 lyrics/instrumental param smoke test: PASS"
 else
@@ -91,7 +91,7 @@ else
   cat /tmp/byok-music26-lyrics-or-instrumental-param.out | tail -10
 fi
 
-echo "[9/17] BYOK self-use live window script smoke test..."
+echo "[9/18] BYOK self-use live window script smoke test..."
 if bash scripts/byok-self-use-live-window-script-smoke-test.sh > /tmp/byok-self-use-live-window-script.out 2>&1; then
   pass "BYOK self-use live window script smoke test: PASS"
 else
@@ -99,7 +99,7 @@ else
   cat /tmp/byok-self-use-live-window-script.out | tail -10
 fi
 
-echo "[10/17] BYOK self-use Library result handling smoke test..."
+echo "[10/18] BYOK self-use Library result handling smoke test..."
 if bash scripts/byok-self-use-library-result-handling-smoke-test.sh > /tmp/byok-self-use-library-result-handling.out 2>&1; then
   pass "BYOK self-use Library result handling smoke test: PASS"
 else
@@ -107,7 +107,15 @@ else
   cat /tmp/byok-self-use-library-result-handling.out | tail -10
 fi
 
-echo "[11/17] Server smoke test..."
+echo "[11/18] BYOK self-use Library persistence design smoke test..."
+if bash scripts/byok-self-use-library-persistence-design-smoke-test.sh > /tmp/byok-self-use-library-persistence-design.out 2>&1; then
+  pass "BYOK self-use Library persistence design smoke test: PASS"
+else
+  fail "BYOK self-use Library persistence design smoke test: FAIL"
+  cat /tmp/byok-self-use-library-persistence-design.out | tail -10
+fi
+
+echo "[12/18] Server smoke test..."
 export REAL_GENERATION_ENABLED=false
 export MOCK_GENERATION_ENABLED=true
 export PUBLIC_DEMO_MODE=false
@@ -132,7 +140,7 @@ else
 fi
 
 # ── 7. Web API smoke test ────────────────────────────────────────────────
-echo "[12/17] Web API smoke test..."
+echo "[13/18] Web API smoke test..."
 if bash scripts/web-api-smoke-test.sh > /tmp/web-api.out 2>&1; then
   pass "Web API smoke test: PASS"
 else
@@ -141,7 +149,7 @@ else
 fi
 
 # ── 8. CLI adapter smoke test ────────────────────────────────────────────
-echo "[13/17] CLI adapter smoke test..."
+echo "[14/18] CLI adapter smoke test..."
 if bash scripts/cli-adapter-smoke-test.sh > /tmp/cli-adapter.out 2>&1; then
   pass "CLI adapter smoke test: PASS"
 else
@@ -150,7 +158,7 @@ else
 fi
 
 # ── 9. Existing CLI track verification ────────────────────────────────────
-echo "[14/17] Existing CLI track verification..."
+echo "[15/18] Existing CLI track verification..."
 if bash scripts/verify-existing-cli-track.sh > /tmp/cli-track.out 2>&1; then
   pass "CLI track verification: PASS"
 elif grep -q "PARTIAL_NO_CLI_TRACK" /tmp/cli-track.out 2>/dev/null; then
@@ -162,7 +170,7 @@ else
 fi
 
 # ── 10. Secret scan ────────────────────────────────────────────────────────
-echo "[15/17] Secret scan..."
+echo "[16/18] Secret scan..."
 if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
@@ -171,7 +179,7 @@ else
 fi
 
 # ── 11. Git status ─────────────────────────────────────────────────────────
-echo "[16/17] Git status..."
+echo "[17/18] Git status..."
 # Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
 if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
@@ -186,7 +194,7 @@ else
 fi
 
 # ── 12. Required files ─────────────────────────────────────────────────────
-echo "[17/17] Required files..."
+echo "[18/18] Required files..."
 REQUIRED_FILES=(
   "Dockerfile"
   "docker-compose.yml"
