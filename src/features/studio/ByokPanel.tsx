@@ -194,9 +194,29 @@ interface ByokOkResponse {
   ok: true;
   code: ByokResponseCode;
   message: string;
+  stage?: string;
   audioFileName?: string;
+  audioUrl?: string;
+  downloadUrl?: string;
   sizeBytes?: number;
   generationSource?: 'byok-fake' | 'byok-live';
+  taskId?: string;
+  model?: string;
+  generationIntent?: ByokGenerationIntent | string;
+  provider?: string;
+  audioResult?: {
+    available?: boolean;
+    audioUrl?: string;
+    downloadUrl?: string;
+    source?: string;
+    persistence?: string;
+    note?: string;
+  };
+  library?: {
+    saved?: boolean;
+    status?: string;
+    reason?: string;
+  };
   requestId?: string;
 }
 
@@ -618,6 +638,13 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     }
   }
 
+  const okResult = lastResult?.ok ? lastResult : null;
+  const directLiveAudioUrl =
+    okResult?.audioResult?.audioUrl ?? okResult?.audioUrl;
+  const directLiveDownloadUrl =
+    okResult?.audioResult?.downloadUrl ?? okResult?.downloadUrl ?? directLiveAudioUrl;
+  const isDirectLiveRelayResult = okResult?.code === 'byok_direct_live_ok';
+
   return (
     <section className={styles.byokPanel} aria-label="BYOK 自带 Key 模式">
       <header className={styles.header}>
@@ -888,6 +915,66 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
               <code>{lastResult.code}</code>
               <br />
               <span className={styles.resultMsg}>{lastResult.message}</span>
+              {isDirectLiveRelayResult && (
+                <>
+                  <br />
+                  <small
+                    className={styles.resultMeta}
+                    data-byok-direct-live-result="summary"
+                  >
+                    stage: <code>{okResult?.stage ?? 'direct_live_relay_ok'}</code>
+                    {okResult?.requestId && (
+                      <> · requestId: <code>{okResult.requestId}</code></>
+                    )}
+                    {okResult?.model && (
+                      <> · model: <code>{okResult.model}</code></>
+                    )}
+                    {okResult?.generationIntent && (
+                      <> · generationIntent: <code>{okResult.generationIntent}</code></>
+                    )}
+                    {okResult?.taskId && (
+                      <> · taskId: <code>{okResult.taskId}</code></>
+                    )}
+                  </small>
+                  {directLiveAudioUrl ? (
+                    <div
+                      className={styles.audioPreviewBlock}
+                      data-byok-direct-live-audio="available"
+                    >
+                      <audio
+                        className={styles.audioPreview}
+                        controls
+                        src={directLiveAudioUrl}
+                      />
+                      {directLiveDownloadUrl && (
+                        <a
+                          className={styles.resultLink}
+                          href={directLiveDownloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open / download audio
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <small
+                      className={styles.resultHint}
+                      data-byok-direct-live-audio="missing"
+                    >
+                      Direct-live relay succeeded, but no audio URL was returned.
+                    </small>
+                  )}
+                  <small
+                    className={styles.libraryState}
+                    data-byok-library-state={okResult?.library?.status ?? 'not_saved'}
+                  >
+                    {okResult?.library?.saved === true
+                      ? 'Saved to Library.'
+                      : 'Not saved to Library. This direct-live result is relay-only until a future local persistence step stores the audio file.'}
+                  </small>
+                </>
+              )}
               {/* Phase BYOK-H2D: dry-run 成功结果解释，明确「不是错误」「不会生成音乐」 */}
               {lastResult.code === 'byok_dry_run_only' && (
                 <>

@@ -227,6 +227,45 @@
   font-size: 12px;
 }
 
+.resultMeta {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary, #52606d);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.audioPreviewBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  max-width: 100%;
+}
+
+.audioPreview {
+  width: 100%;
+  max-width: 520px;
+}
+
+.resultLink {
+  color: var(--accent-color, #315fce);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.resultLink:hover {
+  text-decoration: underline;
+}
+
+.libraryState {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary, #52606d);
+  font-size: 12px;
+}
+
 /* Phase Deploy-CF-D: Turnstile placeholder styles */
 .turnstilePlaceholder {
   margin-top: 8px;
