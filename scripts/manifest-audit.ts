@@ -30,6 +30,20 @@ interface TrackRecord {
   bitrate?: number;
   sizeBytes?: number;
   generationSource?: string;
+  provider?: string;
+  requestId?: string;
+  providerTaskId?: string;
+  generationIntent?: string;
+  byok?: {
+    mode?: string;
+    persistedFrom?: string;
+    requestId?: string;
+    providerTaskId?: string;
+    idempotencyKey?: string;
+    [key: string]: unknown;
+  };
+  audioUrl?: string;
+  providerUrl?: string;
   createdAt?: string;
   legacyFileName?: boolean;
   [key: string]: unknown;
@@ -48,7 +62,7 @@ const MIMETYPE_MAP: Record<string, string> = {
   aac: 'audio/aac',
 };
 
-const KNOWN_SOURCES = new Set(['mock', 'mmx-cli', 'minimax-api']);
+const KNOWN_SOURCES = new Set(['mock', 'mmx-cli', 'minimax', 'minimax-api', 'byok-direct-live']);
 
 const SENSITIVE_PATTERNS = [
   /sk-[A-Za-z0-9_-]{10,}/,
@@ -133,6 +147,38 @@ async function audit(): Promise<{ issues: string[]; fixed: number; total: number
     // 4. Check generationSource
     if (track.generationSource && !KNOWN_SOURCES.has(track.generationSource)) {
       issues.push(`[${i}] Unknown generationSource: ${track.generationSource} (id=${track.id})`);
+    }
+
+    if (track.generationSource === 'byok-direct-live') {
+      if (track.provider !== 'minimax') {
+        issues.push(`[${i}] BYOK direct-live track must set provider=minimax (id=${track.id})`);
+      }
+      if (!track.requestId || !/^byok_[A-Za-z0-9]{8,40}$/.test(track.requestId)) {
+        issues.push(`[${i}] BYOK direct-live track has invalid requestId (id=${track.id})`);
+      }
+      if (track.providerTaskId && !/^[A-Za-z0-9_.:-]{1,128}$/.test(track.providerTaskId)) {
+        issues.push(`[${i}] BYOK direct-live track has invalid providerTaskId (id=${track.id})`);
+      }
+      if (track.generationIntent !== 'instrumental' && track.generationIntent !== 'with_lyrics') {
+        issues.push(`[${i}] BYOK direct-live track must set generationIntent (id=${track.id})`);
+      }
+      if (
+        !track.byok ||
+        track.byok.mode !== 'direct-live' ||
+        track.byok.persistedFrom !== 'provider-url' ||
+        !track.byok.idempotencyKey
+      ) {
+        issues.push(`[${i}] BYOK direct-live track missing byok provenance (id=${track.id})`);
+      }
+      const byokStr = JSON.stringify(track.byok ?? {});
+      if (
+        typeof track.audioUrl === 'string' ||
+        typeof track.providerUrl === 'string' ||
+        byokStr.includes('http://') ||
+        byokStr.includes('https://')
+      ) {
+        issues.push(`[${i}] BYOK direct-live track must not store raw provider URL (id=${track.id})`);
+      }
     }
 
     // 5. Check audioMimeType

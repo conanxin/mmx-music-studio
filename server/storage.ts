@@ -5,7 +5,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Manifest, TrackMetadata, GenerationSource } from './types.js';
+import type { Manifest, TrackMetadata, GenerationSource, ByokDirectLiveProvenance } from './types.js';
 
 const MANIFEST_NAME = 'manifest.json';
 
@@ -50,6 +50,11 @@ export function createTrackRecord(params: {
   sizeBytes?: number;
   traceId?: string;
   generationSource: GenerationSource;
+  provider?: 'minimax';
+  requestId?: string;
+  providerTaskId?: string;
+  generationIntent?: 'instrumental' | 'with_lyrics';
+  byok?: ByokDirectLiveProvenance;
 }): TrackMetadata {
   return {
     id: params.id,
@@ -69,6 +74,11 @@ export function createTrackRecord(params: {
     sizeBytes: params.sizeBytes,
     traceId: params.traceId,
     generationSource: params.generationSource,
+    provider: params.provider,
+    requestId: params.requestId,
+    providerTaskId: params.providerTaskId,
+    generationIntent: params.generationIntent,
+    byok: params.byok,
     createdAt: new Date().toISOString(),
   };
 }

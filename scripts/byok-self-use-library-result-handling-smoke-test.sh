@@ -130,12 +130,10 @@ need "$BYOK_PANEL_CSS" ".resultLink" \
 need "$BYOK_PANEL_CSS" ".libraryState" \
   "frontend styles Library state line"
 
-need "$SERVER_TYPES" "export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';" \
-  "server manifest source model remains explicit"
-reject "$SERVER_TYPES" "byok-direct-live" \
-  "server manifest type does not add an unsaved BYOK direct-live source"
+need "$SERVER_TYPES" "export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';" \
+  "server manifest source model explicitly includes persisted BYOK direct-live"
 reject "$LIBRARY_TSX" "byok-direct-live" \
-  "Library does not confuse relay result with a persisted track source"
+  "Library does not yet add P2E-specific BYOK direct-live source UI"
 need "$LIBRARY_TSX" "generationSource?: 'mock' | 'minimax' | 'mmx-cli';" \
   "Library continues to distinguish demo, CLI, and persisted API tracks"
 

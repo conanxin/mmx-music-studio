@@ -29,6 +29,9 @@
 import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { once } from 'node:events';
+import { promises as dns } from 'node:dns';
+import * as net from 'node:net';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -414,6 +417,344 @@ async function parseBody<T>(req: http.IncomingMessage, maxMb: number): Promise<T
 }
 
 // ── Route handlers ───────────────────────────────────────────────────────────
+
+// BYOK-SELF-USE-P2C-SERVER-PERSIST-API: direct-live Library persistence.
+// Safe-default route: no generation attempt is consumed here, and no MiniMax
+// provider API is called. This endpoint only persists an already-generated
+// direct-live audio URL after all gates and URL safety checks pass.
+const BYOK_LIBRARY_PERSIST_CONFIRMATION = 'CONFIRM_BYOK_DIRECT_LIVE_TEST';
+const BYOK_LIBRARY_PERSIST_SOURCE = 'byok-direct-live' as const;
+const BYOK_LIBRARY_PERSIST_MAX_BYTES = 25 * 1024 * 1024;
+const BYOK_LIBRARY_PERSIST_TIMEOUT_MS = 15_000;
+
+type ByokLibraryGenerationIntent = 'instrumental' | 'with_lyrics';
+
+type ByokLibraryPersistErrorCode =
+  | 'byok_library_persist_disabled'
+  | 'byok_library_persist_confirmation_required'
+  | 'byok_library_persist_confirmation_mismatch'
+  | 'byok_library_persist_invalid_request'
+  | 'byok_library_persist_invalid_url'
+  | 'byok_library_persist_blocked_url'
+  | 'byok_library_persist_download_failed'
+  | 'byok_library_persist_invalid_audio'
+  | 'byok_library_persist_too_large'
+  | 'byok_library_persist_manifest_failed';
+
+interface ByokDirectLiveSaveRequest {
+  requestId?: unknown;
+  taskId?: unknown;
+  audioUrl?: unknown;
+  model?: unknown;
+  generationIntent?: unknown;
+  prompt?: unknown;
+  title?: unknown;
+  provider?: unknown;
+  confirmation?: unknown;
+  durationMs?: unknown;
+  meta?: unknown;
+}
+
+class ByokLibraryPersistError extends Error {
+  code: ByokLibraryPersistErrorCode;
+  status: number;
+  stage: string;
+
+  constructor(code: ByokLibraryPersistErrorCode, message: string, status: number, stage: string) {
+    super(message);
+    this.code = code;
+    this.status = status;
+    this.stage = stage;
+  }
+}
+
+function sendByokLibraryPersistError(
+  res: http.ServerResponse,
+  params: {
+    status: number;
+    code: ByokLibraryPersistErrorCode;
+    message: string;
+    requestId?: string;
+    stage: string;
+    hint?: string;
+  },
+): void {
+  sendJson(res, params.status, {
+    ok: false,
+    code: params.code,
+    message: redactSensitive(params.message),
+    requestId: params.requestId,
+    stage: params.stage,
+    hint: params.hint,
+  });
+}
+
+function safeInputString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isSafeByokRequestId(value: string): boolean {
+  return /^byok_[A-Za-z0-9]{8,40}$/.test(value);
+}
+
+function isSafeProviderTaskId(value: string): boolean {
+  return /^[A-Za-z0-9_.:-]{1,128}$/.test(value);
+}
+
+function buildByokDirectLiveIdempotencyKey(requestId: string, taskId?: string): string {
+  return `byok-direct-live:${requestId}:${taskId || 'no-task'}`;
+}
+
+function isPrivateIpv4(ip: string): boolean {
+  const parts = ip.split('.').map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
+  const [a, b] = parts;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function isPrivateIpv6(ip: string): boolean {
+  const lower = ip.toLowerCase();
+  if (lower === '::' || lower === '::1') return true;
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // fc00::/7
+  if (/^fe[89ab]/.test(lower)) return true; // fe80::/10
+  const ipv4Mapped = lower.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  return Boolean(ipv4Mapped && isPrivateIpv4(ipv4Mapped[1]));
+}
+
+function isPublicIpAddress(ip: string): boolean {
+  const version = net.isIP(ip);
+  if (version === 4) return !isPrivateIpv4(ip);
+  if (version === 6) return !isPrivateIpv6(ip);
+  return false;
+}
+
+async function validateProviderAudioUrl(rawUrl: string): Promise<
+  | { ok: true; url: URL; host: string }
+  | { ok: false; code: ByokLibraryPersistErrorCode; status: number; message: string }
+> {
+  if (!rawUrl || rawUrl.length > 2048) {
+    return { ok: false, code: 'byok_library_persist_invalid_url', status: 400, message: 'Invalid provider audio URL.' };
+  }
+
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return { ok: false, code: 'byok_library_persist_invalid_url', status: 400, message: 'Invalid provider audio URL.' };
+  }
+
+  if (url.username || url.password) {
+    return { ok: false, code: 'byok_library_persist_blocked_url', status: 400, message: 'Provider audio URL userinfo is not allowed.' };
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return { ok: false, code: 'byok_library_persist_invalid_url', status: 400, message: 'Only http/https provider audio URLs are allowed.' };
+  }
+
+  const host = url.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost')) {
+    return { ok: false, code: 'byok_library_persist_blocked_url', status: 400, message: 'Localhost provider audio URLs are blocked.' };
+  }
+
+  if (net.isIP(host)) {
+    if (!isPublicIpAddress(host)) {
+      return { ok: false, code: 'byok_library_persist_blocked_url', status: 400, message: 'Private or link-local provider audio URLs are blocked.' };
+    }
+    return { ok: true, url, host };
+  }
+
+  let records: Array<{ address: string; family: number }>;
+  try {
+    records = await dns.lookup(host, { all: true, verbatim: true });
+  } catch {
+    return { ok: false, code: 'byok_library_persist_invalid_url', status: 400, message: 'Provider audio host could not be resolved.' };
+  }
+
+  if (records.length === 0 || records.some((record) => !isPublicIpAddress(record.address))) {
+    return { ok: false, code: 'byok_library_persist_blocked_url', status: 400, message: 'Provider audio host resolved to a blocked address.' };
+  }
+
+  return { ok: true, url, host };
+}
+
+function audioFormatFromContentType(contentType: string): { format: string; mime: string } | null {
+  const mime = contentType.split(';')[0].trim().toLowerCase();
+  const map: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/mp4': 'm4a',
+    'audio/aac': 'aac',
+    'audio/ogg': 'ogg',
+    'audio/flac': 'flac',
+    'audio/x-flac': 'flac',
+  };
+  if (!mime.startsWith('audio/')) return null;
+  return { format: map[mime] ?? 'mp3', mime };
+}
+
+async function downloadProviderAudio(params: {
+  url: URL;
+  host: string;
+  outputDir: string;
+  requestId: string;
+  trackId: string;
+}): Promise<{ audioFileName: string; audioMimeType: string; audioFormat: string; sizeBytes: number }> {
+  ensureOutputDir(params.outputDir);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BYOK_LIBRARY_PERSIST_TIMEOUT_MS);
+  let tempPath: string | undefined;
+  let finalPath: string | undefined;
+  let fileStream: fs.WriteStream | undefined;
+
+  try {
+    const response = await fetch(params.url, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: controller.signal,
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      throw new ByokLibraryPersistError(
+        'byok_library_persist_blocked_url',
+        'Provider audio redirects are disabled for SSRF safety.',
+        400,
+        'download_blocked_redirect',
+      );
+    }
+    if (!response.ok) {
+      throw new ByokLibraryPersistError(
+        'byok_library_persist_download_failed',
+        `Provider audio download failed with status ${response.status}.`,
+        502,
+        'download_failed',
+      );
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    const audioType = audioFormatFromContentType(contentType);
+    if (!audioType) {
+      throw new ByokLibraryPersistError(
+        'byok_library_persist_invalid_audio',
+        'Provider response content-type is not audio/*.',
+        415,
+        'invalid_audio',
+      );
+    }
+
+    const contentLength = Number(response.headers.get('content-length') ?? '0');
+    if (Number.isFinite(contentLength) && contentLength > BYOK_LIBRARY_PERSIST_MAX_BYTES) {
+      throw new ByokLibraryPersistError(
+        'byok_library_persist_too_large',
+        'Provider audio is larger than the save-to-library limit.',
+        413,
+        'download_too_large',
+      );
+    }
+    if (!response.body) {
+      throw new ByokLibraryPersistError(
+        'byok_library_persist_download_failed',
+        'Provider audio response body is empty.',
+        502,
+        'download_failed',
+      );
+    }
+
+    const audioFileName = `byok_direct_live_${params.trackId}.${audioType.format}`;
+    tempPath = path.join(params.outputDir, `${audioFileName}.tmp`);
+    finalPath = path.join(params.outputDir, audioFileName);
+    fileStream = fs.createWriteStream(tempPath, { flags: 'wx' });
+
+    let sizeBytes = 0;
+    const reader = response.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        sizeBytes += value.byteLength;
+        if (sizeBytes > BYOK_LIBRARY_PERSIST_MAX_BYTES) {
+          throw new ByokLibraryPersistError(
+            'byok_library_persist_too_large',
+            'Provider audio exceeded the save-to-library limit.',
+            413,
+            'download_too_large',
+          );
+        }
+        if (!fileStream.write(Buffer.from(value))) {
+          await once(fileStream, 'drain');
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    fileStream.end();
+    await once(fileStream, 'finish');
+    fs.renameSync(tempPath, finalPath);
+    tempPath = undefined;
+
+    console.info(
+      `[byok-library-persist] saved provider audio: requestId=${params.requestId} provider=minimax host=${params.host} contentType=${audioType.mime} bytes=${sizeBytes} trackId=${params.trackId}`,
+    );
+
+    return {
+      audioFileName,
+      audioMimeType: audioType.mime,
+      audioFormat: audioType.format,
+      sizeBytes,
+    };
+  } catch (error) {
+    if (fileStream && !fileStream.closed) {
+      fileStream.destroy();
+    }
+    if (tempPath && fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
+    if (finalPath && fs.existsSync(finalPath)) {
+      fs.unlinkSync(finalPath);
+    }
+    if (error instanceof ByokLibraryPersistError) throw error;
+    throw new ByokLibraryPersistError(
+      'byok_library_persist_download_failed',
+      error instanceof Error ? error.message : 'Provider audio download failed.',
+      502,
+      'download_failed',
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function findByokDirectLiveTrackByIdempotency(
+  outputDir: string,
+  requestId: string,
+  providerTaskId: string | undefined,
+  idempotencyKey: string,
+): TrackMetadata | null {
+  const manifest = loadManifest(outputDir);
+  return manifest.tracks.find((track) => (
+    track.generationSource === BYOK_LIBRARY_PERSIST_SOURCE &&
+    (
+      track.byok?.idempotencyKey === idempotencyKey ||
+      (
+        track.requestId === requestId &&
+        (providerTaskId ? track.providerTaskId === providerTaskId : !track.providerTaskId)
+      )
+    )
+  )) ?? null;
+}
+
+function positiveFiniteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+}
 
 /**
  * POST /api/debug/payload
@@ -1234,6 +1575,249 @@ async function handleGenerateSync(
   sendJson(res, 200, { ok: true, track: toTrackResponse(track), generationSource: 'minimax' });
 }
 
+async function handleByokDirectLiveSaveToLibrary(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    sendByokLibraryPersistError(res, {
+      status: 405,
+      code: 'byok_library_persist_invalid_request',
+      message: 'Only POST is supported.',
+      stage: 'method_not_allowed',
+    });
+    return;
+  }
+
+  const liveReady =
+    config.publicByokEnabled === true &&
+    config.byokLiveEnabled === true &&
+    config.byokDirectLiveEnabled === true &&
+    isByokLiveConfirmationConfigured({ byokLiveConfirmation: config.byokLiveConfirmation }) &&
+    config.byokDirectLiveConfirmation === BYOK_LIBRARY_PERSIST_CONFIRMATION;
+
+  if (!liveReady) {
+    sendByokLibraryPersistError(res, {
+      status: 403,
+      code: 'byok_library_persist_disabled',
+      message: 'BYOK direct-live Library persistence is disabled.',
+      stage: 'persist_disabled',
+      hint: 'Enable the controlled BYOK live window and direct-live confirmation before saving to Library.',
+    });
+    return;
+  }
+
+  let body: ByokDirectLiveSaveRequest;
+  try {
+    body = await parseBody<ByokDirectLiveSaveRequest>(req, config.maxRequestBodyMb);
+  } catch {
+    sendByokLibraryPersistError(res, {
+      status: 400,
+      code: 'byok_library_persist_invalid_request',
+      message: 'Invalid JSON request body.',
+      stage: 'invalid_request',
+    });
+    return;
+  }
+
+  const requestId = safeInputString(body.requestId);
+  if (!isSafeByokRequestId(requestId)) {
+    sendByokLibraryPersistError(res, {
+      status: 400,
+      code: 'byok_library_persist_invalid_request',
+      message: 'Invalid BYOK requestId.',
+      stage: 'invalid_request',
+    });
+    return;
+  }
+
+  const confirmation = safeInputString(body.confirmation);
+  if (!confirmation) {
+    sendByokLibraryPersistError(res, {
+      status: 403,
+      code: 'byok_library_persist_confirmation_required',
+      message: 'BYOK direct-live Library persistence confirmation is required.',
+      requestId,
+      stage: 'confirmation_required',
+    });
+    return;
+  }
+  if (confirmation !== config.byokDirectLiveConfirmation) {
+    sendByokLibraryPersistError(res, {
+      status: 403,
+      code: 'byok_library_persist_confirmation_mismatch',
+      message: 'BYOK direct-live Library persistence confirmation did not match.',
+      requestId,
+      stage: 'confirmation_mismatch',
+    });
+    return;
+  }
+
+  const provider = safeInputString(body.provider);
+  if (provider !== 'minimax') {
+    sendByokLibraryPersistError(res, {
+      status: 400,
+      code: 'byok_library_persist_invalid_request',
+      message: 'Provider must be minimax.',
+      requestId,
+      stage: 'invalid_request',
+    });
+    return;
+  }
+
+  const model = safeInputString(body.model);
+  const generationIntent = safeInputString(body.generationIntent) as ByokLibraryGenerationIntent;
+  if (!model || model.length > 80 || (generationIntent !== 'instrumental' && generationIntent !== 'with_lyrics')) {
+    sendByokLibraryPersistError(res, {
+      status: 400,
+      code: 'byok_library_persist_invalid_request',
+      message: 'model and generationIntent are required.',
+      requestId,
+      stage: 'invalid_request',
+    });
+    return;
+  }
+
+  const providerTaskId = safeInputString(body.taskId) || undefined;
+  if (providerTaskId && !isSafeProviderTaskId(providerTaskId)) {
+    sendByokLibraryPersistError(res, {
+      status: 400,
+      code: 'byok_library_persist_invalid_request',
+      message: 'Invalid provider taskId.',
+      requestId,
+      stage: 'invalid_request',
+    });
+    return;
+  }
+
+  const idempotencyKey = buildByokDirectLiveIdempotencyKey(requestId, providerTaskId);
+  const existingTrack = findByokDirectLiveTrackByIdempotency(config.outputDir, requestId, providerTaskId, idempotencyKey);
+  if (existingTrack) {
+    sendJson(res, 200, {
+      ok: true,
+      code: 'byok_library_persist_existing',
+      library: {
+        saved: true,
+        trackId: existingTrack.id,
+        source: BYOK_LIBRARY_PERSIST_SOURCE,
+        idempotent: true,
+      },
+      track: toTrackResponse(existingTrack),
+      requestId,
+      providerTaskId,
+    });
+    return;
+  }
+
+  const audioUrl = safeInputString(body.audioUrl);
+  const validation = await validateProviderAudioUrl(audioUrl);
+  if (!validation.ok) {
+    sendByokLibraryPersistError(res, {
+      status: validation.status,
+      code: validation.code,
+      message: validation.message,
+      requestId,
+      stage: validation.code === 'byok_library_persist_blocked_url' ? 'blocked_url' : 'invalid_url',
+    });
+    return;
+  }
+
+  const trackId = generateTrackId();
+  let downloaded: Awaited<ReturnType<typeof downloadProviderAudio>>;
+  try {
+    downloaded = await downloadProviderAudio({
+      url: validation.url,
+      host: validation.host,
+      outputDir: config.outputDir,
+      requestId,
+      trackId,
+    });
+  } catch (error) {
+    if (error instanceof ByokLibraryPersistError) {
+      sendByokLibraryPersistError(res, {
+        status: error.status,
+        code: error.code,
+        message: error.message,
+        requestId,
+        stage: error.stage,
+      });
+      return;
+    }
+    sendByokLibraryPersistError(res, {
+      status: 502,
+      code: 'byok_library_persist_download_failed',
+      message: 'Provider audio download failed.',
+      requestId,
+      stage: 'download_failed',
+    });
+    return;
+  }
+
+  const prompt = safeInputString(body.prompt).slice(0, 1000);
+  const title =
+    safeInputString(body.title).slice(0, 80) ||
+    prompt.slice(0, 80) ||
+    `BYOK direct-live ${requestId}`;
+  const durationMs = positiveFiniteNumber(body.durationMs);
+
+  const track = createTrackRecord({
+    id: trackId,
+    title,
+    mode: generationIntent,
+    model,
+    prompt,
+    audioFileName: downloaded.audioFileName,
+    audioMimeType: downloaded.audioMimeType,
+    audioFormat: downloaded.audioFormat,
+    durationMs,
+    durationText: durationMs ? formatDuration(durationMs) : undefined,
+    sizeBytes: downloaded.sizeBytes,
+    generationSource: BYOK_LIBRARY_PERSIST_SOURCE,
+    provider: 'minimax',
+    requestId,
+    providerTaskId,
+    generationIntent,
+    byok: {
+      mode: 'direct-live',
+      persistedFrom: 'provider-url',
+      requestId,
+      providerTaskId,
+      idempotencyKey,
+    },
+  });
+
+  try {
+    appendTrack(config.outputDir, track);
+  } catch (error) {
+    const finalPath = getTrackFilePath(config.outputDir, downloaded.audioFileName);
+    if (fs.existsSync(finalPath)) {
+      fs.unlinkSync(finalPath);
+    }
+    sendByokLibraryPersistError(res, {
+      status: 500,
+      code: 'byok_library_persist_manifest_failed',
+      message: error instanceof Error ? error.message : 'Manifest write failed.',
+      requestId,
+      stage: 'manifest_failed',
+    });
+    return;
+  }
+
+  sendJson(res, 200, {
+    ok: true,
+    code: 'byok_library_persist_ok',
+    library: {
+      saved: true,
+      trackId,
+      source: BYOK_LIBRARY_PERSIST_SOURCE,
+    },
+    track: toTrackResponse(track),
+    requestId,
+    providerTaskId,
+  });
+}
+
 async function handleListTracks(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -1557,6 +2141,11 @@ function toTrackResponse(t: TrackMetadata): Record<string, unknown> {
     durationText: t.durationText,
     durationMs: t.durationMs,
     generationSource: t.generationSource,
+    provider: t.provider,
+    requestId: t.requestId,
+    providerTaskId: t.providerTaskId,
+    generationIntent: t.generationIntent,
+    byok: t.byok,
     audioMimeType: t.audioMimeType,
     audioFormat: t.audioFormat,
     createdAt: t.createdAt,
@@ -1655,6 +2244,12 @@ async function routeHandler(
       return;
     }
     await handleByokGenerate(req, res, config);
+  } else if (url === '/api/byok/direct-live/save-to-library' && req.method === 'POST') {
+    if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
+      sendError(res, 'security', '璇峰厛瑙ｉ攣璁块棶', 401);
+      return;
+    }
+    await handleByokDirectLiveSaveToLibrary(req, res, config);
   } else if (url === '/api/tracks' && req.method === 'GET') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '请先解锁访问', 401);

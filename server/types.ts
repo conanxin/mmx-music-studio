@@ -92,7 +92,15 @@ export interface ServerConfig {
   turnstileSiteKey?: string;
 }
 
-export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli';
+export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';
+
+export interface ByokDirectLiveProvenance {
+  mode: 'direct-live';
+  persistedFrom: 'provider-url';
+  requestId: string;
+  providerTaskId?: string;
+  idempotencyKey: string;
+}
 
 export interface TrackMetadata {
   id: string;
@@ -112,6 +120,11 @@ export interface TrackMetadata {
   sizeBytes?: number;
   traceId?: string;
   generationSource: GenerationSource;
+  provider?: 'minimax';
+  requestId?: string;
+  providerTaskId?: string;
+  generationIntent?: 'instrumental' | 'with_lyrics';
+  byok?: ByokDirectLiveProvenance;
   createdAt: string;
 }
 
