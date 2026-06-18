@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import styles from './Library.module.css';
 import { MOCK_TASKS, formatDuration, formatRelativeTime, MODE_LABELS } from '../../mock/data';
 import { listTracks, deleteTrack } from '../../lib/serverApi';
-import type { TrackLike } from '../../lib/serverApi';
+import type { TrackGenerationSource, TrackLike } from '../../lib/serverApi';
 import type { GlobalPlayerTrack } from '../../lib/globalPlayerTrack';
 import {
   loadTrackAnnotations,
@@ -66,7 +66,7 @@ type TrackItem = {
   createdAt: Date;
   audioUrl?: string;
   downloadUrl?: string;
-  generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+  generationSource?: TrackGenerationSource;
   isMock?: boolean;
 };
 
@@ -123,7 +123,15 @@ function sourceLabel(s?: string, isMock?: boolean): string {
   if (isMock) return '示例';
   if (s === 'mmx-cli') return 'MMX CLI';
   if (s === 'minimax') return 'MiniMax API';
+  if (s === 'byok-direct-live') return 'BYOK direct-live';
   return s || '—';
+}
+
+function sourceTagClass(s?: string): string {
+  if (s === 'mmx-cli') return styles.cliTag;
+  if (s === 'minimax') return styles.minimaxTag;
+  if (s === 'byok-direct-live') return styles.byokTag;
+  return styles.mockTag;
 }
 
 function useCopyToast() {
@@ -1438,7 +1446,7 @@ const handlePlay = (track: TrackItem) => {
                     <span className={styles.cardMode}>
                       {MODE_LABELS[track.mode as keyof typeof MODE_LABELS] || track.mode}
                     </span>
-                    <span className={`${styles.sourceTag} ${track.generationSource === 'mmx-cli' ? styles.cliTag : track.generationSource === 'minimax' ? styles.minimaxTag : styles.mockTag}`}>
+                    <span className={`${styles.sourceTag} ${sourceTagClass(track.generationSource)}`}>
                       {sourceLabel(track.generationSource, track.isMock)}
                     </span>
                   </div>
@@ -1601,7 +1609,7 @@ const handlePlay = (track: TrackItem) => {
               <h3 className={styles.detailTitle}>{detailTrack.title}</h3>
 
               <div className={styles.detailMeta}>
-                <span className={`${styles.sourceTag} ${detailTrack.generationSource === 'mmx-cli' ? styles.cliTag : detailTrack.generationSource === 'minimax' ? styles.minimaxTag : styles.mockTag}`}>
+                <span className={`${styles.sourceTag} ${sourceTagClass(detailTrack.generationSource)}`}>
                   {sourceLabel(detailTrack.generationSource, detailTrack.isMock)}
                 </span>
                 <span className={styles.detailMode}>

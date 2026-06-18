@@ -259,6 +259,115 @@
   text-decoration: underline;
 }
 
+.saveToLibraryCard {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color, #cbd2d9);
+  border-radius: 6px;
+  background: var(--input-bg, #ffffff);
+  color: var(--text-primary, #1f2933);
+}
+
+.saveHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.saveDescription {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #52606d);
+  overflow-wrap: anywhere;
+}
+
+.saveStatusBadge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.saveStatusIdle {
+  background: var(--info-bg, #e6f0ff);
+  border: 1px solid var(--info-border, #a9c4ff);
+  color: var(--info-text, #1a3a7a);
+}
+
+.saveStatusSaved {
+  background: var(--success-bg, #e6f4ea);
+  border: 1px solid var(--success-border, #5cb874);
+  color: var(--success-text, #1a4d2a);
+}
+
+.saveStatusError {
+  background: var(--error-bg, #fdecea);
+  border: 1px solid var(--error-border, #e07268);
+  color: var(--error-text, #962d22);
+}
+
+.saveButton {
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent-color, #5b8def);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: var(--accent-color-hover, #4170d8);
+}
+
+.saveButton:disabled {
+  background: var(--button-disabled-bg, #cbd2d9);
+  cursor: not-allowed;
+}
+
+.saveError {
+  display: block;
+  margin-top: 8px;
+  color: var(--error-text, #962d22);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.localTrackMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #52606d);
+  overflow-wrap: anywhere;
+}
+
+.saveActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.localTrackLink {
+  color: var(--accent-color, #315fce);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.localTrackLink:hover {
+  text-decoration: underline;
+}
+
 .libraryState {
   display: block;
   margin-top: 6px;

@@ -494,6 +494,11 @@
   color: #FFB76B;
 }
 
+.byokTag {
+  background: rgba(82, 196, 205, 0.12);
+  color: #52c4cd;
+}
+
 .cardTime {
   font-size: 12px;
   color: var(--color-text-secondary);

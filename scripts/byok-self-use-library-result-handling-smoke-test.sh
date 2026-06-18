@@ -116,9 +116,9 @@ need "$BYOK_PANEL" "rel=\"noreferrer\"" \
   "frontend avoids leaking referrer to provider audio URL"
 need "$BYOK_PANEL" "data-byok-direct-live-audio=\"missing\"" \
   "frontend has explicit no-audio state"
-need "$BYOK_PANEL" "data-byok-library-state={okResult?.library?.status ?? 'not_saved'}" \
+need "$BYOK_PANEL" "data-byok-library-state={directLiveLibraryState}" \
   "frontend renders Library persistence state"
-need "$BYOK_PANEL" "Not saved to Library. This direct-live result is relay-only" \
+need "$BYOK_PANEL" "Not saved to Library. This result is currently a temporary provider relay link." \
   "frontend does not pretend relay result is a Library track"
 
 need "$BYOK_PANEL_CSS" ".audioPreviewBlock" \
@@ -132,10 +132,10 @@ need "$BYOK_PANEL_CSS" ".libraryState" \
 
 need "$SERVER_TYPES" "export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';" \
   "server manifest source model explicitly includes persisted BYOK direct-live"
-reject "$LIBRARY_TSX" "byok-direct-live" \
-  "Library does not yet add P2E-specific BYOK direct-live source UI"
-need "$LIBRARY_TSX" "generationSource?: 'mock' | 'minimax' | 'mmx-cli';" \
-  "Library continues to distinguish demo, CLI, and persisted API tracks"
+need "$LIBRARY_TSX" "if (s === 'byok-direct-live') return 'BYOK direct-live';" \
+  "Library can label persisted BYOK direct-live tracks without confusing them with demo tracks"
+need "$LIBRARY_TSX" "generationSource?: TrackGenerationSource;" \
+  "Library generation source type accepts persisted BYOK direct-live tracks"
 
 need "$RELEASE_CHECK" "byok-self-use-library-result-handling-smoke-test.sh" \
   "release:check includes this smoke"

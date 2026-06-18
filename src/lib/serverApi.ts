@@ -120,6 +120,8 @@ export interface CheckKeyResult {
   hasServerKey?: boolean;
 }
 
+export type TrackGenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';
+
 export interface TrackLike {
   id: string;
   title: string;
@@ -132,7 +134,7 @@ export interface TrackLike {
   durationMs?: number;
   audioUrl?: string;
   downloadUrl?: string;
-  generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+  generationSource?: TrackGenerationSource;
   audioMimeType?: string;
   audioFormat?: string;
   createdAt?: string | number;
@@ -141,7 +143,7 @@ export interface TrackLike {
 export interface GenerateResult {
   ok: boolean;
   track?: TrackLike;
-  generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+  generationSource?: TrackGenerationSource;
   error?: { type?: string; message: string };
 }
 
@@ -160,7 +162,7 @@ export interface GenerateJob {
   updatedAt?: string;
   startedAt?: string;
   completedAt?: string;
-  generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+  generationSource?: TrackGenerationSource;
   input?: { prompt?: string; mode?: string; lyrics?: string };
 }
 
@@ -168,6 +170,48 @@ export interface CreateJobResult {
   ok: boolean;
   job?: GenerateJob;
   error?: { type?: string; message: string };
+}
+
+export type ByokLibraryPersistCode =
+  | 'byok_library_persist_ok'
+  | 'byok_library_persist_existing'
+  | 'byok_library_persist_disabled'
+  | 'byok_library_persist_confirmation_required'
+  | 'byok_library_persist_confirmation_mismatch'
+  | 'byok_library_persist_invalid_request'
+  | 'byok_library_persist_invalid_url'
+  | 'byok_library_persist_blocked_url'
+  | 'byok_library_persist_download_failed'
+  | 'byok_library_persist_invalid_audio'
+  | 'byok_library_persist_too_large'
+  | 'byok_library_persist_manifest_failed';
+
+export interface SaveByokDirectLiveToLibraryPayload {
+  requestId: string;
+  taskId?: string;
+  audioUrl: string;
+  model: string;
+  generationIntent: 'instrumental' | 'with_lyrics' | string;
+  prompt?: string;
+  title?: string;
+  provider: 'minimax';
+  confirmation: string;
+}
+
+export interface SaveByokDirectLiveToLibraryResult {
+  ok: boolean;
+  code?: ByokLibraryPersistCode | string;
+  message?: string;
+  requestId?: string;
+  providerTaskId?: string;
+  stage?: string;
+  library?: {
+    saved?: boolean;
+    trackId?: string;
+    source?: string;
+    idempotent?: boolean;
+  };
+  track?: TrackLike;
 }
 
 export interface ListJobsResult {
@@ -387,7 +431,7 @@ export async function generateTrack(
     const result = await apiFetch<{
       ok: boolean;
       track?: TrackLike;
-      generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+      generationSource?: TrackGenerationSource;
     }>('/api/generate', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -428,6 +472,50 @@ export async function deleteTrack(trackId: string): Promise<{ ok: boolean; messa
     return { ok: true, message: result.deleted ? '已删除' : '删除完成' };
   } catch (err) {
     return { ok: false, message: safeApiError(err).message };
+  }
+}
+
+export async function saveByokDirectLiveToLibrary(
+  payload: SaveByokDirectLiveToLibraryPayload,
+): Promise<SaveByokDirectLiveToLibraryResult> {
+  try {
+    const res = await fetch(`${API_BASE}/api/byok/direct-live/save-to-library`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      return {
+        ok: false,
+        code: 'byok_library_persist_invalid_request',
+        message: `Server returned non-JSON response (HTTP ${res.status}).`,
+        stage: 'non_json_response',
+      };
+    }
+    const body = (await res.json()) as SaveByokDirectLiveToLibraryResult;
+    if (body.ok === true) {
+      return body;
+    }
+    return {
+      ok: false,
+      code: body.code ?? 'byok_library_persist_invalid_request',
+      message: redactSecrets(body.message ?? 'Save to Library failed.'),
+      requestId: body.requestId,
+      providerTaskId: body.providerTaskId,
+      stage: body.stage,
+      library: body.library,
+      track: body.track,
+    };
+  } catch (err) {
+    const safe = safeApiError(err);
+    return {
+      ok: false,
+      code: 'byok_library_persist_invalid_request',
+      message: safe.message,
+      stage: safe.type,
+    };
   }
 }
 
@@ -484,7 +572,7 @@ export async function createGenerateJob(
       job?: GenerateJob;
       jobId?: string;
       track?: TrackLike;
-      generationSource?: 'mock' | 'minimax' | 'mmx-cli';
+      generationSource?: TrackGenerationSource;
     }>('/api/generate', {
       method: 'POST',
       body: JSON.stringify(body),

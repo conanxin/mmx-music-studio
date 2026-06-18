@@ -60,6 +60,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './ByokPanel.module.css';
+import {
+  saveByokDirectLiveToLibrary,
+  type SaveByokDirectLiveToLibraryResult,
+} from '../../lib/serverApi';
 
 const BYOK_ENDPOINT = '/api/generate/byok';
 const DISABLED_MESSAGE = 'BYOK 暂未开放';
@@ -243,6 +247,37 @@ function statusMessage(code: ByokResponseCode | undefined): string {
   return STATUS_MESSAGES[code] ?? `请求未通过（${code}）`;
 }
 
+function byokLibrarySaveMessage(code?: string, fallback?: string): string {
+  if (code === 'byok_library_persist_disabled') {
+    return 'Safe preview mode: Library persistence is disabled until the controlled live window is opened.';
+  }
+  if (code === 'byok_library_persist_confirmation_required') {
+    return 'Save failed: controlled live confirmation is required.';
+  }
+  if (code === 'byok_library_persist_confirmation_mismatch') {
+    return 'Save failed: controlled live confirmation did not match.';
+  }
+  if (code === 'byok_library_persist_invalid_url') {
+    return 'Save failed: the provider audio link is invalid.';
+  }
+  if (code === 'byok_library_persist_blocked_url') {
+    return 'Save failed: the provider audio link was blocked by the server safety checks.';
+  }
+  if (code === 'byok_library_persist_download_failed') {
+    return 'Save failed: the server could not download the audio for Library storage.';
+  }
+  if (code === 'byok_library_persist_invalid_audio') {
+    return 'Save failed: the downloaded file was not accepted as audio.';
+  }
+  if (code === 'byok_library_persist_too_large') {
+    return 'Save failed: the audio file is larger than the server limit.';
+  }
+  if (code === 'byok_library_persist_manifest_failed') {
+    return 'Save failed: the server could not write the Library manifest.';
+  }
+  return fallback || 'Save failed: the server did not persist this result.';
+}
+
 async function readByokResponse(response: Response): Promise<ByokResponse> {
   const contentType = response.headers.get('content-type') ?? '';
   const raw = await response.text();
@@ -372,6 +407,7 @@ type TurnstileUiState =
   | 'error';
 
 type ByokGenerationIntent = 'instrumental' | 'with_lyrics';
+type ByokLibrarySaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // Default to DISABLED. Only enabled if parent explicitly says so.
@@ -402,6 +438,11 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
+  const [librarySaveState, setLibrarySaveState] =
+    useState<ByokLibrarySaveState>('idle');
+  const [librarySaveResult, setLibrarySaveResult] =
+    useState<SaveByokDirectLiveToLibraryResult | null>(null);
+  const [librarySaveError, setLibrarySaveError] = useState<string>('');
 
   // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the direct
   // live confirmation phrase. Empty by default. Never persisted to
@@ -562,6 +603,9 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     }
     setSubmitting(true);
     setLastResult(null);
+    setLibrarySaveState('idle');
+    setLibrarySaveResult(null);
+    setLibrarySaveError('');
     props.onStatusChange?.('submitting');
     try {
       const input = {
@@ -644,6 +688,63 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const directLiveDownloadUrl =
     okResult?.audioResult?.downloadUrl ?? okResult?.downloadUrl ?? directLiveAudioUrl;
   const isDirectLiveRelayResult = okResult?.code === 'byok_direct_live_ok';
+  const savedLibraryTrack =
+    librarySaveResult?.ok === true &&
+    librarySaveResult.library?.saved === true &&
+    librarySaveResult.track
+      ? librarySaveResult.track
+      : null;
+  const directLiveDisplayedAudioUrl = savedLibraryTrack?.audioUrl ?? directLiveAudioUrl;
+  const directLiveDisplayedDownloadUrl =
+    savedLibraryTrack?.downloadUrl ?? directLiveDownloadUrl;
+  const canSaveDirectLiveResult =
+    isDirectLiveRelayResult &&
+    Boolean(directLiveAudioUrl) &&
+    okResult?.library?.saved !== true &&
+    librarySaveState !== 'saved';
+  const directLiveLibraryState =
+    savedLibraryTrack
+      ? 'saved'
+      : okResult?.library?.status ?? (okResult?.library?.saved ? 'saved' : 'not_saved');
+
+  async function handleSaveToLibrary(): Promise<void> {
+    if (!okResult || !directLiveAudioUrl || !okResult.requestId) {
+      setLibrarySaveState('error');
+      setLibrarySaveError('Save failed: this result is missing a requestId or audio URL.');
+      return;
+    }
+
+    setLibrarySaveState('saving');
+    setLibrarySaveError('');
+
+    const result = await saveByokDirectLiveToLibrary({
+      requestId: okResult.requestId,
+      taskId: okResult.taskId,
+      audioUrl: directLiveAudioUrl,
+      model: okResult.model ?? model,
+      generationIntent: okResult.generationIntent ?? musicMode,
+      prompt,
+      title: prompt.trim() || 'BYOK direct-live result',
+      provider: 'minimax',
+      confirmation: directLiveConfirmation,
+    });
+
+    setLibrarySaveResult(result);
+    if (
+      result.ok === true &&
+      result.library?.saved === true &&
+      result.track &&
+      (result.code === 'byok_library_persist_ok' ||
+        result.code === 'byok_library_persist_existing' ||
+        typeof result.code === 'undefined')
+    ) {
+      setLibrarySaveState('saved');
+      return;
+    }
+
+    setLibrarySaveState('error');
+    setLibrarySaveError(byokLibrarySaveMessage(result.code, result.message));
+  }
 
   return (
     <section className={styles.byokPanel} aria-label="BYOK 自带 Key 模式">
@@ -944,16 +1045,16 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                       <audio
                         className={styles.audioPreview}
                         controls
-                        src={directLiveAudioUrl}
+                        src={directLiveDisplayedAudioUrl}
                       />
-                      {directLiveDownloadUrl && (
+                      {directLiveDisplayedDownloadUrl && (
                         <a
                           className={styles.resultLink}
-                          href={directLiveDownloadUrl}
+                          href={directLiveDisplayedDownloadUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          Open / download audio
+                          {savedLibraryTrack ? 'Open local track' : 'Open / download audio'}
                         </a>
                       )}
                     </div>
@@ -967,12 +1068,95 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                   )}
                   <small
                     className={styles.libraryState}
-                    data-byok-library-state={okResult?.library?.status ?? 'not_saved'}
+                    data-byok-library-state={directLiveLibraryState}
                   >
-                    {okResult?.library?.saved === true
+                    {savedLibraryTrack || okResult?.library?.saved === true
                       ? 'Saved to Library.'
-                      : 'Not saved to Library. This direct-live result is relay-only until a future local persistence step stores the audio file.'}
+                      : 'Not saved to Library. This result is currently a temporary provider relay link.'}
                   </small>
+                  {directLiveAudioUrl && (
+                    <div
+                      className={styles.saveToLibraryCard}
+                      data-byok-save-to-library="card"
+                      data-byok-save-state={librarySaveState}
+                    >
+                      <div className={styles.saveHeader}>
+                        <div>
+                          <strong>
+                            {librarySaveState === 'saved'
+                              ? 'Saved to Library'
+                              : 'Save to Library'}
+                          </strong>
+                          <p className={styles.saveDescription}>
+                            {savedLibraryTrack
+                              ? 'This result now uses a local Library-backed track.'
+                              : 'This result is currently a temporary provider relay link.'}
+                          </p>
+                        </div>
+                        <span
+                          className={`${styles.saveStatusBadge} ${
+                            librarySaveState === 'saved'
+                              ? styles.saveStatusSaved
+                              : librarySaveState === 'error'
+                              ? styles.saveStatusError
+                              : styles.saveStatusIdle
+                          }`}
+                        >
+                          {librarySaveState === 'saved'
+                            ? 'Saved'
+                            : librarySaveState === 'saving'
+                            ? 'Saving'
+                            : librarySaveState === 'error'
+                            ? 'Save failed'
+                            : 'Not saved'}
+                        </span>
+                      </div>
+                      {librarySaveState === 'saved' && savedLibraryTrack ? (
+                        <div className={styles.localTrackMeta}>
+                          <span>
+                            trackId: <code>{savedLibraryTrack.id}</code>
+                            {librarySaveResult?.library?.idempotent && (
+                              <> · existing/idempotent</>
+                            )}
+                          </span>
+                          <div className={styles.saveActions}>
+                            {savedLibraryTrack.audioUrl && (
+                              <a
+                                className={styles.localTrackLink}
+                                href={savedLibraryTrack.audioUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Open local track
+                              </a>
+                            )}
+                            <a
+                              className={styles.localTrackLink}
+                              href={`/library?track=${encodeURIComponent(savedLibraryTrack.id)}`}
+                            >
+                              Go to Library
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.saveButton}
+                          onClick={handleSaveToLibrary}
+                          disabled={!canSaveDirectLiveResult || librarySaveState === 'saving'}
+                        >
+                          {librarySaveState === 'saving'
+                            ? 'Saving to Library...'
+                            : 'Save to Library'}
+                        </button>
+                      )}
+                      {librarySaveState === 'error' && (
+                        <small className={styles.saveError}>
+                          {librarySaveError || 'Save failed'}
+                        </small>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
               {/* Phase BYOK-H2D: dry-run 成功结果解释，明确「不是错误」「不会生成音乐」 */}
