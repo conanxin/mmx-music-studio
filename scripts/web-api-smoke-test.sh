@@ -168,21 +168,47 @@ echo "$GEN_RESP" | grep -q '"ok":true' || {
 
 JOB_ID="$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('id',''))" 2>/dev/null)"
 TRACK_ID="$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('track',{}).get('id',''))" 2>/dev/null)"
+INITIAL_JOB_STATUS="$(echo "$GEN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status',''))" 2>/dev/null)"
 
 if [ -n "$JOB_ID" ]; then
   echo "  PASS: job.id=$JOB_ID"
-  for i in {1..15}; do
-    sleep 2
-    JOB_JSON="$(curl -sf "${API_BASE}/api/jobs/${JOB_ID}")"
+  case "$INITIAL_JOB_STATUS" in
+    queued|running|succeeded|completed)
+      echo "  PASS: job.status=$INITIAL_JOB_STATUS"
+      ;;
+    *)
+      echo "  FAIL: unexpected initial job.status=$INITIAL_JOB_STATUS"
+      exit 1
+      ;;
+  esac
+
+  for i in {1..30}; do
+    sleep 1
+    if ! JOB_JSON="$(curl -sS -f "${API_BASE}/api/jobs/${JOB_ID}" 2>/tmp/mmx-webapi-job-poll.err)"; then
+      echo "  [$i] job poll unavailable; retrying"
+      tail -3 /tmp/mmx-webapi-job-poll.err 2>/dev/null || true
+      continue
+    fi
+    if echo "$JOB_JSON" | grep -Ei "$SECRET_PATTERNS" >/dev/null 2>&1; then
+      echo "  FAIL: secret-like value found in /api/jobs response"
+      echo "$JOB_JSON" | grep -Ei "$SECRET_PATTERNS"
+      exit 1
+    fi
     JOB_STATUS="$(echo "$JOB_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('status','?'))" 2>/dev/null)"
     echo "  [$i] status=$JOB_STATUS"
     case "$JOB_STATUS" in
-      succeeded)
-        TRACK_ID="$(echo "$JOB_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('job',{}).get('trackId',''))" 2>/dev/null)"
+      queued|running)
+        ;;
+      succeeded|completed)
+        TRACK_ID="$(echo "$JOB_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); job=d.get('job',{}); print(job.get('trackId') or job.get('track',{}).get('id',''))" 2>/dev/null)"
         break
         ;;
       failed|cancelled)
         echo "  FAIL: job ended with status=$JOB_STATUS"
+        exit 1
+        ;;
+      *)
+        echo "  FAIL: unexpected polled job.status=$JOB_STATUS"
         exit 1
         ;;
     esac
