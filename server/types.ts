@@ -106,6 +106,11 @@ export interface ServerConfig {
    * Defaults to storage/access when explicitly enabled.
    */
   multiuserAccessStoreDir?: string;
+  /**
+   * P3C-4: invite session route gate for mutating/costly actions.
+   * Default false to preserve current production behavior.
+   */
+  multiuserRouteGateEnabled: boolean;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';

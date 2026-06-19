@@ -298,6 +298,15 @@ export function accessContextFromSession(session: SessionRecord): AccessContext 
   };
 }
 
+export function isInviteUserAccessContext(accessContext: AccessContext): boolean {
+  return accessContext.mode === 'invite_user'
+    && accessContext.isAuthenticated === true
+    && !!accessContext.userId
+    && !!accessContext.workspaceId
+    && !!accessContext.sessionId
+    && !!accessContext.inviteId;
+}
+
 export function resolveAccessContextFromRequest(
   req: http.IncomingMessage,
   options: ResolveAccessContextOptions,

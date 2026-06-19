@@ -151,6 +151,7 @@ import {
 } from './adapters/minimax-api/byok-direct.js';
 import {
   ANONYMOUS_ACCESS_CONTEXT,
+  isInviteUserAccessContext,
   resolveAccessContextFromRequest,
   type AccessContext,
 } from './access.js';
@@ -253,6 +254,7 @@ function loadConfig(): ServerConfig {
     multiuserAccessEnabled: readBoolEnv('MULTIUSER_ACCESS_ENABLED', false),
     multiuserSessionSecret: (process.env.MULTIUSER_SESSION_SECRET ?? '').trim() || undefined,
     multiuserAccessStoreDir: (process.env.MULTIUSER_ACCESS_STORE_DIR ?? '').trim() || undefined,
+    multiuserRouteGateEnabled: readBoolEnv('MULTIUSER_ROUTE_GATE_ENABLED', false),
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -548,6 +550,43 @@ function resolveCurrentWorkspaceId(req: http.IncomingMessage, config: ServerConf
   const accessContext = resolveRouteAccessContext(req, config);
   // P3B compatibility: anonymous/default access remains equivalent to return DEFAULT_WORKSPACE_ID.
   return accessContext.workspaceId ?? DEFAULT_WORKSPACE_ID;
+}
+
+type MultiuserProtectedAction = 'byok_generate' | 'byok_save_to_library' | 'track_delete';
+
+function isMultiuserRouteGateEnabled(config: ServerConfig): boolean {
+  return config.multiuserAccessEnabled === true && config.multiuserRouteGateEnabled === true;
+}
+
+function sendMultiuserInviteSessionRequired(
+  res: http.ServerResponse,
+  action: MultiuserProtectedAction,
+): void {
+  sendJson(res, 401, {
+    ok: false,
+    code: 'multiuser_invite_session_required',
+    stage: 'multiuser_invite_session_required',
+    action,
+    message: 'A valid invite session is required for this action.',
+  });
+}
+
+function requireInviteUserForAction(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+  action: MultiuserProtectedAction,
+): AccessContext | null {
+  const accessContext = resolveRouteAccessContext(req, config);
+  if (!isMultiuserRouteGateEnabled(config)) {
+    return accessContext;
+  }
+  if (isInviteUserAccessContext(accessContext)) {
+    return accessContext;
+  }
+  // Do not log or return cookies, signatures, session IDs, or secrets here.
+  sendMultiuserInviteSessionRequired(res, action);
+  return null;
 }
 
 function isPrivateIpv4(ip: string): boolean {
@@ -2317,10 +2356,16 @@ async function routeHandler(
       sendError(res, 'security', '请先解锁访问', 401);
       return;
     }
+    if (!requireInviteUserForAction(req, res, config, 'byok_generate')) {
+      return;
+    }
     await handleByokGenerate(req, res, config);
   } else if (url === '/api/byok/direct-live/save-to-library' && req.method === 'POST') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '璇峰厛瑙ｉ攣璁块棶', 401);
+      return;
+    }
+    if (!requireInviteUserForAction(req, res, config, 'byok_save_to_library')) {
       return;
     }
     await handleByokDirectLiveSaveToLibrary(req, res, config);
@@ -2351,6 +2396,9 @@ async function routeHandler(
   } else if (url.match(/^\/api\/tracks\/([^/]+)$/) && req.method === 'DELETE') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '请先解锁访问', 401);
+      return;
+    }
+    if (!requireInviteUserForAction(req, res, config, 'track_delete')) {
       return;
     }
     await handleDeleteTrack(req, res, config);
