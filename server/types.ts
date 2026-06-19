@@ -90,6 +90,22 @@ export interface ServerConfig {
    * Phase Deploy-CF-D: Turnstile site key (safe to expose to frontend).
    */
   turnstileSiteKey?: string;
+  /**
+   * P3C-3: five-user invite/session access gate.
+   * Default false. When false or when the secret is missing, routes keep the
+   * anonymous/default workspace behavior.
+   */
+  multiuserAccessEnabled: boolean;
+  /**
+   * P3C-3: server-only signing secret for invite session cookies.
+   * Never expose through health, logs, manifests, or client responses.
+   */
+  multiuserSessionSecret?: string;
+  /**
+   * P3C-3: optional local fixture/store directory for invite/session JSON.
+   * Defaults to storage/access when explicitly enabled.
+   */
+  multiuserAccessStoreDir?: string;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';

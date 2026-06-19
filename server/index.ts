@@ -151,6 +151,7 @@ import {
 } from './adapters/minimax-api/byok-direct.js';
 import {
   ANONYMOUS_ACCESS_CONTEXT,
+  resolveAccessContextFromRequest,
   type AccessContext,
 } from './access.js';
 
@@ -247,6 +248,11 @@ function loadConfig(): ServerConfig {
     turnstileByokRequired: readBoolEnv('TURNSTILE_BYOK_REQUIRED', false),
     turnstileSecretKeyConfigured: !!(process.env.TURNSTILE_SECRET_KEY ?? '').trim(),
     turnstileSiteKey: (process.env.TURNSTILE_SITE_KEY ?? '').trim() || undefined,
+    // P3C-3: five-user invite/session gate. Disabled by default; the secret is
+    // server-only and is never returned by health or logs.
+    multiuserAccessEnabled: readBoolEnv('MULTIUSER_ACCESS_ENABLED', false),
+    multiuserSessionSecret: (process.env.MULTIUSER_SESSION_SECRET ?? '').trim() || undefined,
+    multiuserAccessStoreDir: (process.env.MULTIUSER_ACCESS_STORE_DIR ?? '').trim() || undefined,
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -512,18 +518,29 @@ function buildByokDirectLiveIdempotencyKey(requestId: string, taskId?: string): 
 }
 
 function resolveRouteAccessContext(
-  _req: http.IncomingMessage,
-  _config: ServerConfig,
+  req: http.IncomingMessage,
+  config: ServerConfig,
 ): AccessContext {
-  // P3C-2 scaffolding only: route workspace resolution now flows through
-  // AccessContext, but real invite/session stores are not enabled yet.
+  // P3C-3: route workspace resolution flows through AccessContext. Real
+  // multi-user access remains off unless explicitly enabled and a server-only
+  // session secret is configured.
   // P3B compatibility: do not trust client header/query/cookie workspace selectors.
   // Do not trust client header/query/cookie/localStorage workspace selectors.
-  // Until a signed session store is wired in, anonymous requests remain on
-  // the default workspace, preserving current production behavior.
+  if (config.multiuserAccessEnabled && config.multiuserSessionSecret) {
+    return resolveAccessContextFromRequest(req, {
+      enabled: true,
+      sessionSecret: config.multiuserSessionSecret,
+      storeDir: config.multiuserAccessStoreDir,
+      defaultWorkspaceId: DEFAULT_WORKSPACE_ID,
+    });
+  }
+
+  // Anonymous requests remain on the default workspace, preserving current
+  // production behavior and single-workspace compatibility.
   return {
     ...ANONYMOUS_ACCESS_CONTEXT,
     workspaceId: DEFAULT_WORKSPACE_ID,
+    reason: config.multiuserAccessEnabled ? 'missing_session_secret' : 'multiuser_access_disabled',
   };
 }
 

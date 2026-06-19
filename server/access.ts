@@ -7,6 +7,9 @@
  */
 
 import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type * as http from 'node:http';
 
 export const MAX_ACTIVE_INVITES = 5;
 export const MAX_ACTIVE_SESSIONS = 5;
@@ -18,7 +21,7 @@ export const ACCESS_SESSIONS_FILE = 'storage/access/sessions.json';
 export const ACCESS_REVOCATIONS_FILE = 'storage/access/revocations.json';
 
 export type AccessRecordStatus = 'active' | 'revoked' | 'expired' | 'disabled';
-export type AccessMode = 'anonymous' | 'invite' | 'operator';
+export type AccessMode = 'anonymous' | 'invite_user' | 'operator';
 export type RevocationTargetType = 'invite' | 'session' | 'user' | 'workspace';
 
 export interface InviteRecord {
@@ -61,6 +64,7 @@ export interface AccessContext {
   workspaceId?: string;
   sessionId?: string;
   inviteId?: string;
+  reason?: string;
 }
 
 export interface SessionCookiePayload {
@@ -87,6 +91,24 @@ export const ANONYMOUS_ACCESS_CONTEXT: AccessContext = Object.freeze({
   mode: 'anonymous',
   isAuthenticated: false,
 });
+
+export interface AccessStoreReadOptions {
+  storeDir?: string;
+}
+
+export interface ResolveAccessContextOptions extends AccessStoreReadOptions {
+  enabled: boolean;
+  sessionSecret?: string;
+  defaultWorkspaceId?: string;
+  now?: Date;
+}
+
+export interface FiveUserAccessStoreValidationResult {
+  ok: boolean;
+  activeInvites: number;
+  activeSessions: number;
+  code?: 'active_invite_cap_exceeded' | 'active_session_cap_exceeded';
+}
 
 function base64UrlEncode(input: string | Buffer): string {
   return Buffer.from(input)
@@ -189,13 +211,149 @@ export function isFiveUserPilotWithinCap(
     && countActiveSessions(sessions, now) <= MAX_ACTIVE_SESSIONS;
 }
 
+function accessStorePath(fileName: 'invites.json' | 'sessions.json' | 'revocations.json', options: AccessStoreReadOptions = {}): string {
+  const storeDir = options.storeDir
+    ? path.resolve(options.storeDir)
+    : path.resolve(process.cwd(), ACCESS_STORE_DIR);
+  return path.join(storeDir, fileName);
+}
+
+function readJsonArray<T>(filePath: string): T[] {
+  if (!fs.existsSync(filePath)) return [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function getCookieValue(req: http.IncomingMessage, cookieName: string): string | undefined {
+  const rawCookieHeader = req.headers.cookie;
+  const cookieHeader = Array.isArray(rawCookieHeader) ? rawCookieHeader.join('; ') : rawCookieHeader;
+  if (!cookieHeader) return undefined;
+
+  for (const part of cookieHeader.split(';')) {
+    const [rawName, ...rawValueParts] = part.trim().split('=');
+    if (rawName === cookieName) return rawValueParts.join('=');
+  }
+  return undefined;
+}
+
+function anonymousContext(defaultWorkspaceId: string, reason: string): AccessContext {
+  return {
+    ...ANONYMOUS_ACCESS_CONTEXT,
+    workspaceId: defaultWorkspaceId,
+    reason,
+  };
+}
+
+function isRevoked(
+  revocations: readonly RevocationRecord[],
+  targetType: RevocationTargetType,
+  targetId: string | undefined,
+): boolean {
+  if (!targetId) return false;
+  return revocations.some((revocation) =>
+    revocation.targetType === targetType && revocation.targetId === targetId,
+  );
+}
+
+export function readInvitesStore(options: AccessStoreReadOptions = {}): InviteRecord[] {
+  return readJsonArray<InviteRecord>(accessStorePath('invites.json', options));
+}
+
+export function readSessionsStore(options: AccessStoreReadOptions = {}): SessionRecord[] {
+  return readJsonArray<SessionRecord>(accessStorePath('sessions.json', options));
+}
+
+export function readRevocationsStore(options: AccessStoreReadOptions = {}): RevocationRecord[] {
+  return readJsonArray<RevocationRecord>(accessStorePath('revocations.json', options));
+}
+
+export function validateFiveUserAccessStores(
+  invites: readonly InviteRecord[],
+  sessions: readonly SessionRecord[],
+  now = new Date(),
+): FiveUserAccessStoreValidationResult {
+  const activeInvites = countActiveInvites(invites, now);
+  const activeSessions = countActiveSessions(sessions, now);
+  if (activeInvites > MAX_ACTIVE_INVITES) {
+    return { ok: false, activeInvites, activeSessions, code: 'active_invite_cap_exceeded' };
+  }
+  if (activeSessions > MAX_ACTIVE_SESSIONS) {
+    return { ok: false, activeInvites, activeSessions, code: 'active_session_cap_exceeded' };
+  }
+  return { ok: true, activeInvites, activeSessions };
+}
+
 export function accessContextFromSession(session: SessionRecord): AccessContext {
   return {
-    mode: 'invite',
+    mode: 'invite_user',
     isAuthenticated: true,
     userId: session.userId,
     workspaceId: session.workspaceId,
     sessionId: session.sessionId,
     inviteId: session.inviteId,
   };
+}
+
+export function resolveAccessContextFromRequest(
+  req: http.IncomingMessage,
+  options: ResolveAccessContextOptions,
+): AccessContext {
+  const now = options.now ?? new Date();
+  const defaultWorkspaceId = options.defaultWorkspaceId ?? 'default';
+
+  if (!options.enabled) {
+    return anonymousContext(defaultWorkspaceId, 'multiuser_access_disabled');
+  }
+  if (!options.sessionSecret) {
+    return anonymousContext(defaultWorkspaceId, 'missing_session_secret');
+  }
+
+  const token = getCookieValue(req, ACCESS_SESSION_COOKIE_NAME);
+  const verification = verifySignedSessionCookie(token, options.sessionSecret, now);
+  if (!verification.ok) {
+    return anonymousContext(defaultWorkspaceId, verification.code);
+  }
+
+  const invites = readInvitesStore(options);
+  const sessions = readSessionsStore(options);
+  const revocations = readRevocationsStore(options);
+  const capValidation = validateFiveUserAccessStores(invites, sessions, now);
+  if (!capValidation.ok) {
+    return anonymousContext(defaultWorkspaceId, capValidation.code ?? 'five_user_cap_exceeded');
+  }
+
+  const payload = verification.payload;
+  const session = sessions.find((candidate) =>
+    candidate.sessionId === payload.sessionId
+    && candidate.userId === payload.userId
+    && candidate.workspaceId === payload.workspaceId
+    && candidate.inviteId === payload.inviteId,
+  );
+  if (!session || !isSessionActive(session, now)) {
+    return anonymousContext(defaultWorkspaceId, 'session_not_active');
+  }
+
+  const invite = invites.find((candidate) =>
+    candidate.inviteId === payload.inviteId
+    && candidate.userId === payload.userId
+    && candidate.workspaceId === payload.workspaceId,
+  );
+  if (!invite || !isInviteActive(invite, now)) {
+    return anonymousContext(defaultWorkspaceId, 'invite_not_active');
+  }
+
+  if (
+    isRevoked(revocations, 'session', session.sessionId)
+    || isRevoked(revocations, 'invite', invite.inviteId)
+    || isRevoked(revocations, 'user', session.userId)
+    || isRevoked(revocations, 'workspace', session.workspaceId)
+  ) {
+    return anonymousContext(defaultWorkspaceId, 'access_revoked');
+  }
+
+  return accessContextFromSession(session);
 }
