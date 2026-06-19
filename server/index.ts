@@ -149,6 +149,10 @@ import {
   type ByokDirectProviderErrorDiagnostics,
   type ByokDirectRequestOptions,
 } from './adapters/minimax-api/byok-direct.js';
+import {
+  ANONYMOUS_ACCESS_CONTEXT,
+  type AccessContext,
+} from './access.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -507,10 +511,26 @@ function buildByokDirectLiveIdempotencyKey(requestId: string, taskId?: string): 
   return `byok-direct-live:${requestId}:${taskId || 'no-task'}`;
 }
 
-function resolveCurrentWorkspaceId(_req: http.IncomingMessage): string {
-  // P3B scaffolding only: do not trust client header/query/cookie workspace selectors.
-  // P3C will bind authenticated sessions to workspaceId server-side.
-  return DEFAULT_WORKSPACE_ID;
+function resolveRouteAccessContext(
+  _req: http.IncomingMessage,
+  _config: ServerConfig,
+): AccessContext {
+  // P3C-2 scaffolding only: route workspace resolution now flows through
+  // AccessContext, but real invite/session stores are not enabled yet.
+  // P3B compatibility: do not trust client header/query/cookie workspace selectors.
+  // Do not trust client header/query/cookie/localStorage workspace selectors.
+  // Until a signed session store is wired in, anonymous requests remain on
+  // the default workspace, preserving current production behavior.
+  return {
+    ...ANONYMOUS_ACCESS_CONTEXT,
+    workspaceId: DEFAULT_WORKSPACE_ID,
+  };
+}
+
+function resolveCurrentWorkspaceId(req: http.IncomingMessage, config: ServerConfig): string {
+  const accessContext = resolveRouteAccessContext(req, config);
+  // P3B compatibility: anonymous/default access remains equivalent to return DEFAULT_WORKSPACE_ID.
+  return accessContext.workspaceId ?? DEFAULT_WORKSPACE_ID;
 }
 
 function isPrivateIpv4(ip: string): boolean {
@@ -1441,7 +1461,7 @@ async function handleGenerateSync(
   const { input, keyMode, region } = body;
   const requestId = `req_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   const backend = config.backend;
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, config);
   const trackStoragePaths = resolveTrackStoragePaths(config.outputDir, { workspaceId });
 
   const validation = validateMusicInput(input as Parameters<typeof validateMusicInput>[0]);
@@ -1623,7 +1643,7 @@ async function handleByokDirectLiveSaveToLibrary(
     return;
   }
 
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, config);
   const trackStoragePaths = resolveTrackStoragePaths(config.outputDir, { workspaceId });
 
   let body: ByokDirectLiveSaveRequest;
@@ -1854,7 +1874,7 @@ async function handleListTracks(
     return;
   }
   try {
-    const workspaceId = resolveCurrentWorkspaceId(req);
+    const workspaceId = resolveCurrentWorkspaceId(req, config);
     const manifest = loadManifest(config.outputDir, { workspaceId });
     sendJson(res, 200, {
       ok: true,
@@ -1878,7 +1898,7 @@ async function handleGetTrack(
   }
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)$/);
   if (!match) return;
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, config);
   const track = findTrackById(config.outputDir, match[1], { workspaceId });
   if (!track) {
     sendError(res, 'storage', '作品不存在', 404);
@@ -1894,7 +1914,7 @@ async function handleTrackAudio(
 ): Promise<void> {
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)\/audio$/);
   if (!match) return;
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, config);
   const track = findTrackById(config.outputDir, match[1], { workspaceId });
   if (!track) { res.writeHead(404); res.end('Not found'); return; }
   const filePath = getTrackFilePath(config.outputDir, track.audioFileName, { workspaceId });
@@ -1931,7 +1951,7 @@ async function handleTrackDownload(
 ): Promise<void> {
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)\/download$/);
   if (!match) return;
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, config);
   const track = findTrackById(config.outputDir, match[1], { workspaceId });
   if (!track) { res.writeHead(404); res.end('Not found'); return; }
   const filePath = getTrackFilePath(config.outputDir, track.audioFileName, { workspaceId });
@@ -1966,7 +1986,7 @@ async function handleDeleteTrack(
   const match = req.url!.match(/^\/api\/tracks\/([^/]+)$/);
   if (!match) return;
   const id = match[1];
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, config);
   const track = findTrackById(config.outputDir, id, { workspaceId });
   if (!track) {
     sendError(res, 'storage', '作品不存在', 404);
@@ -2024,7 +2044,7 @@ async function handleListJobs(
 
   const result = listJobs(filters);
   const total = getTotalJobCount();
-  const workspaceId = resolveCurrentWorkspaceId(req);
+  const workspaceId = resolveCurrentWorkspaceId(req, _config);
 
   // Attach full track object for succeeded jobs (Studio player handoff)
   const jobsWithTracks = result.map(job => {
@@ -2054,7 +2074,7 @@ async function handleGetJob(
   // Attach full track object if job has trackId (Studio player handoff)
   const jobWithTrack = { ...job };
   if (job.trackId) {
-    const workspaceId = resolveCurrentWorkspaceId(req);
+    const workspaceId = resolveCurrentWorkspaceId(req, _config);
     const track = findTrackById(_config.outputDir, job.trackId, { workspaceId });
     if (track) {
       (jobWithTrack as Record<string, unknown>).track = toTrackResponse(track);
