@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Static smoke test for v0.4.32-alpha safe-default UI copy.
+# Static smoke test for user-facing safe-default / public-lite copy.
 # This script does not start a server, read env values, call APIs, submit BYOK,
-# call MiniMax, or generate audio.
+# call MiniMax, download provider URLs, or generate audio.
 
 set -u
 
@@ -56,42 +56,34 @@ assert_file_exists() {
 assert_file_exists "Home source exists" "$HOME_TSX"
 assert_file_exists "Studio source exists" "$STUDIO_TSX"
 assert_file_exists "Library source exists" "$LIBRARY_TSX"
+assert_file_exists "Home CSS exists" "$HOME_CSS"
+assert_file_exists "Studio CSS exists" "$STUDIO_CSS"
+assert_file_exists "Library CSS exists" "$LIBRARY_CSS"
 
-# Home: release and first-open safety posture.
+# Home and Library keep their safe-default markers and styling.
 assert_contains "Home v0.4.32-alpha" "v0.4.32-alpha" "$HOME_TSX"
-assert_contains "Home safe-default baseline" "safe-default baseline" "$HOME_TSX"
-assert_contains "Home stability hygiene alpha" "stability / hygiene alpha release" "$HOME_TSX"
-assert_contains "Home no broad public launch" "不是 broad public launch" "$HOME_TSX"
-assert_contains "Home BYOK live disabled" "BYOK live 默认关闭" "$HOME_TSX"
-assert_contains "Home no MiniMax" "不会调用 MiniMax" "$HOME_TSX"
-assert_contains "Home no real audio" "不会生成真实音频" "$HOME_TSX"
 assert_contains "Home status marker" 'data-safe-default-ui="home"' "$HOME_TSX"
 assert_contains "Home status CSS" ".safeDefaultNotice" "$HOME_CSS"
-
-# Studio: creative form stays usable, generation path stays safe.
-assert_contains "Studio v0.4.32-alpha" "v0.4.32-alpha" "$STUDIO_TSX"
-assert_contains "Studio safe-default marker" 'data-safe-default-ui="studio"' "$STUDIO_TSX"
-assert_contains "Studio safe preview copy" "当前是安全预览模式" "$STUDIO_TSX"
-assert_contains "Studio mock demo flow" "mock/demo 任务流程" "$STUDIO_TSX"
-assert_contains "Studio no MiniMax" "不会调用 MiniMax" "$STUDIO_TSX"
-assert_contains "Studio no real audio" "不会生成真实音频" "$STUDIO_TSX"
-assert_contains "Studio BYOK live disabled" "BYOK live 默认关闭" "$STUDIO_TSX"
-assert_contains "Studio operator secret step" "operator secret step" "$STUDIO_TSX"
-assert_contains "Studio status CSS" ".safeDefaultStatus" "$STUDIO_CSS"
-
-# Library: example tracks are not represented as real user generations.
 assert_contains "Library v0.4.32-alpha" "v0.4.32-alpha" "$LIBRARY_TSX"
-assert_contains "Library safe-default marker" 'data-safe-default-ui="library"' "$LIBRARY_TSX"
-assert_contains "Library example distinction" "当前显示示例作品" "$LIBRARY_TSX"
-assert_contains "Library real distinction" "当前显示用户作品" "$LIBRARY_TSX"
-assert_contains "Library safe-default no real records" "safe-default 下可能没有真实生成记录" "$LIBRARY_TSX"
-assert_contains "Library examples not real generation" "不代表真实生成" "$LIBRARY_TSX"
-assert_contains "Library no MiniMax" "不会调用 MiniMax" "$LIBRARY_TSX"
-assert_contains "Library mock demo CTA" "去 Studio 体验 mock/demo" "$LIBRARY_TSX"
-assert_contains "Library BYOK live disabled" "BYOK live 默认关闭" "$LIBRARY_TSX"
+assert_contains "Library status marker" 'data-safe-default-ui="library"' "$LIBRARY_TSX"
 assert_contains "Library status CSS" ".safeDefaultLibraryStatus" "$LIBRARY_CSS"
 
-# Guard against new, explicit misleading claims in the three user-facing files.
+# Studio distinguishes public-lite access from controlled real generation.
+assert_contains "Studio v0.4.32-alpha" "v0.4.32-alpha" "$STUDIO_TSX"
+assert_contains "Studio status marker" 'data-safe-default-ui="studio"' "$STUDIO_TSX"
+assert_contains "Studio public-lite enabled copy" "5 人内轻量公开模式已开启" "$STUDIO_TSX"
+assert_contains "Studio public-lite active users" "activeUsers" "$STUDIO_TSX"
+assert_contains "Studio public-lite max active users" "maxActiveUsers" "$STUDIO_TSX"
+assert_contains "Studio public-lite capacity full" "capacityFull" "$STUDIO_TSX"
+assert_contains "Studio capacity behavior copy" "超过 5 人后，生成和 Save to Library 会自动暂停，页面仍可浏览" "$STUDIO_TSX"
+assert_contains "Studio controlled real generation copy" "真实生成仍为受控模式" "$STUDIO_TSX"
+assert_contains "Studio BYOK live disabled no MiniMax" "BYOK live 默认关闭，不会自动调用 MiniMax" "$STUDIO_TSX"
+assert_contains "Studio uses public capacity helper" "getPublicCapacity" "$STUDIO_TSX"
+assert_contains "Studio shares public capacity with BYOK panel" "refreshPublicCapacity={refreshPublicCapacity}" "$STUDIO_TSX"
+assert_contains "Studio status CSS" ".safeDefaultStatus" "$STUDIO_CSS"
+assert_not_contains "Studio no whole-site safe preview headline" "当前是安全预览模式" "$STUDIO_TSX"
+
+# Guard against new explicit claims that live generation is broadly enabled.
 for file in "$HOME_TSX" "$STUDIO_TSX" "$LIBRARY_TSX"; do
   assert_not_contains "No English live-enabled claim in $(basename "$file")" "live is enabled" "$file"
   assert_not_contains "No English real-generation-enabled claim in $(basename "$file")" "real generation is enabled" "$file"

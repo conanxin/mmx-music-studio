@@ -193,6 +193,11 @@ interface ByokPanelProps {
   // Phase Deploy-CF-E: when true AND a site key is configured, the submit
   // button is blocked until a fresh Turnstile token is present.
   turnstileByokRequired?: boolean;
+  // Phase Public-Lite-P3F status sharing: parent Studio can provide the
+  // read-only capacity snapshot so this panel does not create an extra
+  // anonymous capacity session on mount.
+  publicCapacity?: PublicCapacityInfo | null;
+  refreshPublicCapacity?: () => Promise<PublicCapacityInfo>;
   onStatusChange?: (
     status: 'idle' | 'submitting' | 'ok' | 'disabled' | 'error',
   ) => void;
@@ -450,8 +455,9 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [librarySaveResult, setLibrarySaveResult] =
     useState<SaveByokDirectLiveToLibraryResult | null>(null);
   const [librarySaveError, setLibrarySaveError] = useState<string>('');
-  const [publicCapacity, setPublicCapacity] =
+  const [localPublicCapacity, setLocalPublicCapacity] =
     useState<PublicCapacityInfo | null>(null);
+  const publicCapacity = props.publicCapacity ?? localPublicCapacity;
 
   // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the direct
   // live confirmation phrase. Empty by default. Never persisted to
@@ -481,14 +487,21 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     turnstileConfigured && props.turnstileByokRequired === true;
 
   const refreshPublicCapacity = useCallback(async (): Promise<PublicCapacityInfo> => {
-    const capacity = await getPublicCapacity();
-    setPublicCapacity(capacity);
+    const capacity = props.refreshPublicCapacity
+      ? await props.refreshPublicCapacity()
+      : await getPublicCapacity();
+    if (!props.refreshPublicCapacity) {
+      setLocalPublicCapacity(capacity);
+    }
     return capacity;
-  }, []);
+  }, [props.refreshPublicCapacity]);
 
   useEffect(() => {
+    if (props.refreshPublicCapacity) {
+      return;
+    }
     void refreshPublicCapacity();
-  }, [refreshPublicCapacity]);
+  }, [props.refreshPublicCapacity, refreshPublicCapacity]);
 
   // ── Mount / unmount: load Turnstile script + render widget ────────────────
   useEffect(() => {

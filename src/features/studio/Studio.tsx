@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Studio.module.css';
 // Phase BYOK-A: Public BYOK generation readiness panel
 import ByokPanel from './ByokPanel';
 import WaveformPlayer from '../../components/WaveformPlayer';
 import { useSettings } from '../../lib/settingsStore';
-import { getHealth, createGenerateJob, getJob, cancelJob, listTracks, listJobsFiltered } from '../../lib/serverApi';
-import type { TrackLike, GenerateJob } from '../../lib/serverApi';
+import { getHealth, getPublicCapacity, createGenerateJob, getJob, cancelJob, listTracks, listJobsFiltered } from '../../lib/serverApi';
+import type { TrackLike, GenerateJob, PublicCapacityInfo } from '../../lib/serverApi';
 import { STYLE_TAGS } from '../../mock/data';
 import type { GlobalPlayerTrack } from '../../lib/globalPlayerTrack';
 import {
@@ -475,6 +475,13 @@ export default function Studio({
     byokLiveAudioUsed?: number;
     byokLiveAudioRemaining?: number;
   } | null>(null);
+  const [publicCapacity, setPublicCapacity] = useState<PublicCapacityInfo | null>(null);
+
+  const refreshPublicCapacity = useCallback(async (): Promise<PublicCapacityInfo> => {
+    const capacity = await getPublicCapacity();
+    setPublicCapacity(capacity);
+    return capacity;
+  }, []);
 
   // Phase 5A: BYOK — runtimeModeHint is derived from health, not stored in state
   function getRuntimeModeHint(): string | null {
@@ -568,6 +575,10 @@ export default function Studio({
       setHealthInfo(h);
     });
   }, []);
+
+  useEffect(() => {
+    void refreshPublicCapacity();
+  }, [refreshPublicCapacity]);
 
   // Hydrate latest playable track into player on mount (cold start)
   useEffect(() => {
@@ -921,16 +932,20 @@ export default function Studio({
 
           <div className={styles.safeDefaultStatus} data-safe-default-ui="studio">
             <div className={styles.safeDefaultStatusMain}>
-              <span className={styles.safeDefaultKicker}>v0.4.32-alpha · safe-default</span>
-              <strong>当前是安全预览模式</strong>
+              <span className={styles.safeDefaultKicker}>v0.4.32-alpha · public-lite</span>
+              <strong>5 人内轻量公开模式已开启</strong>
               <p>
-                你可以体验创作表单、mock/demo 任务流程和本地预览；当前不会调用 MiniMax，也不会生成真实音频。
+                超过 5 人后，生成和 Save to Library 会自动暂停，页面仍可浏览。
+              </p>
+              <p>
+                <strong>真实生成仍为受控模式</strong>：BYOK live 默认关闭，不会自动调用 MiniMax。
               </p>
             </div>
             <div className={styles.safeDefaultStatusMeta}>
-              <span>BYOK live 默认关闭</span>
-              <span>不是 broad public launch</span>
-              <span>真实 BYOK live 仍需要 operator secret step 确认</span>
+              <span>activeUsers={publicCapacity?.activeUsers ?? '读取中'}</span>
+              <span>maxActiveUsers={publicCapacity?.maxActiveUsers ?? 5}</span>
+              <span>capacityFull={publicCapacity?.capacityFull === true ? 'YES' : 'NO'}</span>
+              <span>BYOK live 默认关闭，不会自动调用 MiniMax</span>
             </div>
           </div>
 
@@ -948,6 +963,8 @@ export default function Studio({
             byokLiveAudioRemaining={healthInfo?.byokLiveAudioRemaining}
             turnstileSiteKey={healthInfo?.turnstileSiteKey}
             turnstileByokRequired={healthInfo?.turnstileByokRequired}
+            publicCapacity={publicCapacity}
+            refreshPublicCapacity={refreshPublicCapacity}
           />
 
           {/* Mode tabs */}
