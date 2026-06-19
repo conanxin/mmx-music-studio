@@ -68,6 +68,16 @@
 }
 
 /* Phase BYOK-H2D: 通用 hint 文案（key 隐私 / turnstile 提示 / 敏感 prompt 提醒） */
+.capacityNotice {
+  padding: 10px 12px;
+  border: 1px solid var(--warning-border, #d4a72c);
+  border-radius: 6px;
+  background: var(--warning-bg, #fff4d6);
+  color: var(--warning-text, #6b4900);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .hint {
   margin: 0;
   font-size: 12px;

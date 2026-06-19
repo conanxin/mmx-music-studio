@@ -40,6 +40,15 @@ export function getApiBaseUrl(): string {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export interface PublicCapacityInfo {
+  ok: boolean;
+  mode?: 'public_lite';
+  maxActiveUsers?: number;
+  activeUsers?: number;
+  capacityFull?: boolean;
+  message?: string;
+}
+
 export interface HealthInfo {
   ok: boolean;
   service?: string;
@@ -395,6 +404,22 @@ async function apiFetch<T>(
 
 export async function getHealth(): Promise<HealthInfo> {
   return apiFetch<HealthInfo>('/api/health', { method: 'GET' });
+}
+
+export async function getPublicCapacity(): Promise<PublicCapacityInfo> {
+  try {
+    return await apiFetch<PublicCapacityInfo>('/api/public-capacity', {
+      method: 'GET',
+      noKey: true,
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      mode: 'public_lite',
+      capacityFull: false,
+      message: safeApiError(err).message,
+    };
+  }
 }
 
 export async function checkKey(params: {

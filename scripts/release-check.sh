@@ -21,7 +21,7 @@ skip() { echo "  ⏭️  $1"; SKIP_COUNT=$((SKIP_COUNT+1)); }
 fail() { echo "  ❌ $1"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 
 # ── 1. TypeScript check ────────────────────────────────────────────────────
-echo "[1/28] TypeScript check..."
+echo "[1/29] TypeScript check..."
 if npm run typecheck > /tmp/typecheck.out 2>&1; then
   pass "TypeScript: no errors"
 else
@@ -30,7 +30,7 @@ else
 fi
 
 # ── 2. Build ──────────────────────────────────────────────────────────────
-echo "[2/28] Vite build..."
+echo "[2/29] Vite build..."
 if npm run build > /tmp/build.out 2>&1; then
   pass "Build: success"
 else
@@ -39,7 +39,7 @@ else
 fi
 
 # ── 3. Manifest audit ────────────────────────────────────────────────────
-echo "[3/28] Manifest audit..."
+echo "[3/29] Manifest audit..."
 if npm run manifest:audit > /tmp/manifest.out 2>&1; then
   pass "Manifest: 0 issues"
 else
@@ -48,7 +48,7 @@ else
 fi
 
 # ── 4. Config smoke test ───────────────────────────────────────────────────
-echo "[4/28] Config smoke test..."
+echo "[4/29] Config smoke test..."
 if bash scripts/config-smoke-test.sh > /tmp/config-smoke.out 2>&1; then
   pass "Config smoke test: PASS"
 else
@@ -57,7 +57,7 @@ else
 fi
 
 # ── 5. Safe-default UI copy smoke test ────────────────────────────────────
-echo "[5/28] Safe-default UI copy smoke test..."
+echo "[5/29] Safe-default UI copy smoke test..."
 if bash scripts/safe-default-ui-copy-smoke-test.sh > /tmp/safe-default-ui-copy.out 2>&1; then
   pass "Safe-default UI copy smoke test: PASS"
 else
@@ -66,7 +66,7 @@ else
 fi
 
 # ── 6. Server smoke test ──────────────────────────────────────────────────
-echo "[6/28] BYOK live attempt consume guard smoke test..."
+echo "[6/29] BYOK live attempt consume guard smoke test..."
 if bash scripts/byok-live-attempt-consume-guard-smoke-test.sh > /tmp/byok-live-attempt-consume-guard.out 2>&1; then
   pass "BYOK live attempt consume guard smoke test: PASS"
 else
@@ -74,7 +74,7 @@ else
   cat /tmp/byok-live-attempt-consume-guard.out | tail -10
 fi
 
-echo "[7/28] BYOK live provider error observability smoke test..."
+echo "[7/29] BYOK live provider error observability smoke test..."
 if bash scripts/byok-live-provider-error-observability-smoke-test.sh > /tmp/byok-live-provider-error-observability.out 2>&1; then
   pass "BYOK live provider error observability smoke test: PASS"
 else
@@ -83,7 +83,7 @@ else
 fi
 
 # ── 8. Server smoke test ────────────────────────────────────────────────
-echo "[8/28] BYOK music-2.6 lyrics/instrumental param smoke test..."
+echo "[8/29] BYOK music-2.6 lyrics/instrumental param smoke test..."
 if bash scripts/byok-music26-lyrics-or-instrumental-param-smoke-test.sh > /tmp/byok-music26-lyrics-or-instrumental-param.out 2>&1; then
   pass "BYOK music-2.6 lyrics/instrumental param smoke test: PASS"
 else
@@ -91,7 +91,7 @@ else
   cat /tmp/byok-music26-lyrics-or-instrumental-param.out | tail -10
 fi
 
-echo "[9/28] BYOK self-use live window script smoke test..."
+echo "[9/29] BYOK self-use live window script smoke test..."
 if bash scripts/byok-self-use-live-window-script-smoke-test.sh > /tmp/byok-self-use-live-window-script.out 2>&1; then
   pass "BYOK self-use live window script smoke test: PASS"
 else
@@ -99,7 +99,7 @@ else
   cat /tmp/byok-self-use-live-window-script.out | tail -10
 fi
 
-echo "[10/28] BYOK self-use Library result handling smoke test..."
+echo "[10/29] BYOK self-use Library result handling smoke test..."
 if bash scripts/byok-self-use-library-result-handling-smoke-test.sh > /tmp/byok-self-use-library-result-handling.out 2>&1; then
   pass "BYOK self-use Library result handling smoke test: PASS"
 else
@@ -107,7 +107,7 @@ else
   cat /tmp/byok-self-use-library-result-handling.out | tail -10
 fi
 
-echo "[11/28] BYOK self-use Library persistence design smoke test..."
+echo "[11/29] BYOK self-use Library persistence design smoke test..."
 if bash scripts/byok-self-use-library-persistence-design-smoke-test.sh > /tmp/byok-self-use-library-persistence-design.out 2>&1; then
   pass "BYOK self-use Library persistence design smoke test: PASS"
 else
@@ -115,7 +115,7 @@ else
   cat /tmp/byok-self-use-library-persistence-design.out | tail -10
 fi
 
-echo "[12/28] BYOK self-use Library persist API smoke test..."
+echo "[12/29] BYOK self-use Library persist API smoke test..."
 if bash scripts/byok-self-use-library-persist-api-smoke-test.sh > /tmp/byok-self-use-library-persist-api.out 2>&1; then
   pass "BYOK self-use Library persist API smoke test: PASS"
 else
@@ -123,7 +123,7 @@ else
   cat /tmp/byok-self-use-library-persist-api.out | tail -10
 fi
 
-echo "[13/28] BYOK self-use Studio save-to-library UI smoke test..."
+echo "[13/29] BYOK self-use Studio save-to-library UI smoke test..."
 if bash scripts/byok-self-use-studio-save-to-library-ui-smoke-test.sh > /tmp/byok-self-use-studio-save-to-library-ui.out 2>&1; then
   pass "BYOK self-use Studio save-to-library UI smoke test: PASS"
 else
@@ -131,7 +131,7 @@ else
   cat /tmp/byok-self-use-studio-save-to-library-ui.out | tail -10
 fi
 
-echo "[14/28] BYOK multi-user P3A access/Library boundary smoke test..."
+echo "[14/29] BYOK multi-user P3A access/Library boundary smoke test..."
 if bash scripts/byok-multiuser-p3a-access-library-boundary-smoke-test.sh > /tmp/byok-multiuser-p3a-access-library-boundary.out 2>&1; then
   pass "BYOK multi-user P3A access/Library boundary smoke test: PASS"
 else
@@ -139,7 +139,7 @@ else
   cat /tmp/byok-multiuser-p3a-access-library-boundary.out | tail -10
 fi
 
-echo "[15/28] BYOK multi-user P3B Library workspace namespace smoke test..."
+echo "[15/29] BYOK multi-user P3B Library workspace namespace smoke test..."
 if bash scripts/byok-multiuser-p3b-library-workspace-namespace-smoke-test.sh > /tmp/byok-multiuser-p3b-library-workspace-namespace.out 2>&1; then
   pass "BYOK multi-user P3B Library workspace namespace smoke test: PASS"
 else
@@ -147,7 +147,7 @@ else
   cat /tmp/byok-multiuser-p3b-library-workspace-namespace.out | tail -10
 fi
 
-echo "[16/28] BYOK multi-user P3C session/workspace quota smoke test..."
+echo "[16/29] BYOK multi-user P3C session/workspace quota smoke test..."
 if bash scripts/byok-multiuser-p3c-session-workspace-quota-smoke-test.sh > /tmp/byok-multiuser-p3c-session-workspace-quota.out 2>&1; then
   pass "BYOK multi-user P3C session/workspace quota smoke test: PASS"
 else
@@ -155,7 +155,7 @@ else
   cat /tmp/byok-multiuser-p3c-session-workspace-quota.out | tail -10
 fi
 
-echo "[17/28] BYOK multi-user P3C1 five-user invite/session smoke test..."
+echo "[17/29] BYOK multi-user P3C1 five-user invite/session smoke test..."
 if bash scripts/byok-multiuser-p3c1-five-user-invite-session-smoke-test.sh > /tmp/byok-multiuser-p3c1-five-user-invite-session.out 2>&1; then
   pass "BYOK multi-user P3C1 five-user invite/session smoke test: PASS"
 else
@@ -163,7 +163,7 @@ else
   cat /tmp/byok-multiuser-p3c1-five-user-invite-session.out | tail -10
 fi
 
-echo "[18/28] BYOK multi-user P3C2 access context route gates smoke test..."
+echo "[18/29] BYOK multi-user P3C2 access context route gates smoke test..."
 if bash scripts/byok-multiuser-p3c2-access-context-route-gates-smoke-test.sh > /tmp/byok-multiuser-p3c2-access-context-route-gates.out 2>&1; then
   pass "BYOK multi-user P3C2 access context route gates smoke test: PASS"
 else
@@ -171,7 +171,7 @@ else
   cat /tmp/byok-multiuser-p3c2-access-context-route-gates.out | tail -10
 fi
 
-echo "[19/28] BYOK multi-user P3C3 session store mock gate smoke test..."
+echo "[19/29] BYOK multi-user P3C3 session store mock gate smoke test..."
 if bash scripts/byok-multiuser-p3c3-session-store-mock-gate-smoke-test.sh > /tmp/byok-multiuser-p3c3-session-store-mock-gate.out 2>&1; then
   pass "BYOK multi-user P3C3 session store mock gate smoke test: PASS"
 else
@@ -179,7 +179,7 @@ else
   cat /tmp/byok-multiuser-p3c3-session-store-mock-gate.out | tail -10
 fi
 
-echo "[20/28] BYOK multi-user P3C4 route gate enforcement smoke test..."
+echo "[20/29] BYOK multi-user P3C4 route gate enforcement smoke test..."
 if bash scripts/byok-multiuser-p3c4-route-gate-enforcement-smoke-test.sh > /tmp/byok-multiuser-p3c4-route-gate-enforcement.out 2>&1; then
   pass "BYOK multi-user P3C4 route gate enforcement smoke test: PASS"
 else
@@ -187,7 +187,7 @@ else
   cat /tmp/byok-multiuser-p3c4-route-gate-enforcement.out | tail -10
 fi
 
-echo "[21/28] BYOK multi-user P3C5 lightweight quota gates smoke test..."
+echo "[21/29] BYOK multi-user P3C5 lightweight quota gates smoke test..."
 if bash scripts/byok-multiuser-p3c5-lightweight-quota-gates-smoke-test.sh > /tmp/byok-multiuser-p3c5-lightweight-quota-gates.out 2>&1; then
   pass "BYOK multi-user P3C5 lightweight quota gates smoke test: PASS"
 else
@@ -195,7 +195,15 @@ else
   cat /tmp/byok-multiuser-p3c5-lightweight-quota-gates.out | tail -10
 fi
 
-echo "[22/28] Server smoke test..."
+echo "[22/29] BYOK public-lite five active user cap smoke test..."
+if bash scripts/byok-public-lite-five-active-user-cap-smoke-test.sh > /tmp/byok-public-lite-five-active-user-cap.out 2>&1; then
+  pass "BYOK public-lite five active user cap smoke test: PASS"
+else
+  fail "BYOK public-lite five active user cap smoke test: FAIL"
+  cat /tmp/byok-public-lite-five-active-user-cap.out | tail -10
+fi
+
+echo "[23/29] Server smoke test..."
 export REAL_GENERATION_ENABLED=false
 export MOCK_GENERATION_ENABLED=true
 export PUBLIC_DEMO_MODE=false
@@ -220,7 +228,7 @@ else
 fi
 
 # ── 7. Web API smoke test ────────────────────────────────────────────────
-echo "[23/28] Web API smoke test..."
+echo "[24/29] Web API smoke test..."
 if bash scripts/web-api-smoke-test.sh > /tmp/web-api.out 2>&1; then
   pass "Web API smoke test: PASS"
 else
@@ -229,7 +237,7 @@ else
 fi
 
 # ── 8. CLI adapter smoke test ────────────────────────────────────────────
-echo "[24/28] CLI adapter smoke test..."
+echo "[25/29] CLI adapter smoke test..."
 if bash scripts/cli-adapter-smoke-test.sh > /tmp/cli-adapter.out 2>&1; then
   pass "CLI adapter smoke test: PASS"
 else
@@ -238,7 +246,7 @@ else
 fi
 
 # ── 9. Existing CLI track verification ────────────────────────────────────
-echo "[25/28] Existing CLI track verification..."
+echo "[26/29] Existing CLI track verification..."
 if bash scripts/verify-existing-cli-track.sh > /tmp/cli-track.out 2>&1; then
   pass "CLI track verification: PASS"
 elif grep -q "PARTIAL_NO_CLI_TRACK" /tmp/cli-track.out 2>/dev/null; then
@@ -250,7 +258,7 @@ else
 fi
 
 # ── 10. Secret scan ────────────────────────────────────────────────────────
-echo "[26/28] Secret scan..."
+echo "[27/29] Secret scan..."
 if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
@@ -259,7 +267,7 @@ else
 fi
 
 # ── 11. Git status ─────────────────────────────────────────────────────────
-echo "[27/28] Git status..."
+echo "[28/29] Git status..."
 # Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
 if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
@@ -274,7 +282,7 @@ else
 fi
 
 # ── 12. Required files ─────────────────────────────────────────────────────
-echo "[28/28] Required files..."
+echo "[29/29] Required files..."
 REQUIRED_FILES=(
   "Dockerfile"
   "docker-compose.yml"

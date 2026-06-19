@@ -120,6 +120,18 @@ export interface ServerConfig {
   dailyGeneratePerWorkspace: number;
   dailySavePerUser: number;
   dailySavePerWorkspace: number;
+  /**
+   * P3F: public-lite anonymous active-user capacity gate.
+   * Default false to preserve current production behavior.
+   */
+  publicLiteModeEnabled: boolean;
+  publicLiteMaxActiveUsers: number;
+  publicLiteSessionTtlMinutes: number;
+  /**
+   * Optional server-only signing secret for anonymous public-lite sessions.
+   * Never expose through health, logs, manifests, or client responses.
+   */
+  publicLiteSessionSecret?: string;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';

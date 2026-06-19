@@ -163,6 +163,11 @@ import {
   type QuotaCheckResult,
   type QuotaLimits,
 } from './quota.js';
+import {
+  PUBLIC_LITE_MAX_ACTIVE_USERS,
+  PUBLIC_LITE_SESSION_TTL_MINUTES,
+  resolvePublicLiteCapacity,
+} from './publicAccess.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -287,6 +292,18 @@ function loadConfig(): ServerConfig {
       'MULTIUSER_DAILY_SAVE_PER_WORKSPACE',
       DEFAULT_MULTIUSER_QUOTA_LIMITS.dailySavePerWorkspace,
     ),
+    // P3F: public-lite anonymous active-user capacity gate. Default false so
+    // deployment keeps current production behavior until explicitly enabled.
+    publicLiteModeEnabled: readBoolEnv('PUBLIC_LITE_MODE_ENABLED', false),
+    publicLiteMaxActiveUsers: readPositiveIntEnv(
+      'PUBLIC_LITE_MAX_ACTIVE_USERS',
+      PUBLIC_LITE_MAX_ACTIVE_USERS,
+    ),
+    publicLiteSessionTtlMinutes: readPositiveIntEnv(
+      'PUBLIC_LITE_SESSION_TTL_MINUTES',
+      PUBLIC_LITE_SESSION_TTL_MINUTES,
+    ),
+    publicLiteSessionSecret: (process.env.PUBLIC_LITE_SESSION_SECRET ?? '').trim() || undefined,
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -693,6 +710,61 @@ function recordMultiuserQuotaUsageForAction(
       `[multiuser-quota] usage record failed action=${action}: ${error instanceof Error ? error.message : 'unknown'}`,
     );
   }
+}
+
+type PublicLiteProtectedAction = 'generate_byok' | 'save_to_library';
+
+function sendPublicCapacityFull(res: http.ServerResponse): void {
+  sendJson(res, 503, {
+    ok: false,
+    code: 'public_capacity_full',
+    stage: 'public_capacity_full',
+    message: 'The service is temporarily at capacity. Please try again later.',
+  });
+}
+
+function getPublicLiteCapacity(
+  req: http.IncomingMessage,
+  config: ServerConfig,
+) {
+  return resolvePublicLiteCapacity(req, {
+    enabled: config.publicLiteModeEnabled,
+    signingSecret: config.publicLiteSessionSecret,
+    maxActiveUsers: config.publicLiteMaxActiveUsers,
+    ttlMinutes: config.publicLiteSessionTtlMinutes,
+  });
+}
+
+function requirePublicLiteCapacityForAction(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+  _action: PublicLiteProtectedAction,
+): boolean {
+  if (config.publicLiteModeEnabled !== true) {
+    return true;
+  }
+  const result = getPublicLiteCapacity(req, config);
+  if (result.setCookie) {
+    res.setHeader('Set-Cookie', result.setCookie);
+  }
+  if (result.status.capacityFull) {
+    sendPublicCapacityFull(res);
+    return false;
+  }
+  return true;
+}
+
+function handlePublicCapacity(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  config: ServerConfig,
+): void {
+  const result = getPublicLiteCapacity(req, config);
+  if (result.setCookie) {
+    res.setHeader('Set-Cookie', result.setCookie);
+  }
+  sendJson(res, 200, result.status);
 }
 
 function isPrivateIpv4(ip: string): boolean {
@@ -2457,6 +2529,8 @@ async function routeHandler(
     await handleGenAccessUnlock(req, res, config);
   } else if (url === '/api/generation-access/logout') {
     await handleGenAccessLogout(req, res, config);
+  } else if (url === '/api/public-capacity' && req.method === 'GET') {
+    handlePublicCapacity(req, res, config);
   } else if (url === '/api/generate') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '请先解锁访问', 401);
@@ -2469,6 +2543,9 @@ async function routeHandler(
       sendError(res, 'security', '请先解锁访问', 401);
       return;
     }
+    if (!requirePublicLiteCapacityForAction(req, res, config, 'generate_byok')) {
+      return;
+    }
     const accessContext = requireInviteUserForAction(req, res, config, 'byok_generate');
     if (!accessContext) {
       return;
@@ -2477,6 +2554,9 @@ async function routeHandler(
   } else if (url === '/api/byok/direct-live/save-to-library' && req.method === 'POST') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '璇峰厛瑙ｉ攣璁块棶', 401);
+      return;
+    }
+    if (!requirePublicLiteCapacityForAction(req, res, config, 'save_to_library')) {
       return;
     }
     const accessContext = requireInviteUserForAction(req, res, config, 'byok_save_to_library');

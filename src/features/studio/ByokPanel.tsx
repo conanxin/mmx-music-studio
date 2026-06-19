@@ -61,7 +61,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './ByokPanel.module.css';
 import {
+  getPublicCapacity,
   saveByokDirectLiveToLibrary,
+  type PublicCapacityInfo,
   type SaveByokDirectLiveToLibraryResult,
 } from '../../lib/serverApi';
 
@@ -138,9 +140,11 @@ type ByokResponseCode =
   | 'turnstile_required'
   | 'turnstile_invalid'
   | 'turnstile_verification_error'
+  | 'public_capacity_full'
   | string;
 
 const STATUS_MESSAGES: Record<string, string> = {
+  public_capacity_full: '当前使用人数已满，请稍后再试',
   byok_generation_disabled: 'BYOK 暂未开放',
   byok_dry_run_only: 'BYOK 安全链路已就绪，但当前仍为 dry-run',
   byok_fake_relay_ok: 'BYOK relay 测试通过（fake 模式）',
@@ -248,6 +252,9 @@ function statusMessage(code: ByokResponseCode | undefined): string {
 }
 
 function byokLibrarySaveMessage(code?: string, fallback?: string): string {
+  if (code === 'public_capacity_full') {
+    return '当前使用人数已满，请稍后再试。网站处于 5 人内轻量公开模式。';
+  }
   if (code === 'byok_library_persist_disabled') {
     return 'Safe preview mode: Library persistence is disabled until the controlled live window is opened.';
   }
@@ -443,6 +450,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [librarySaveResult, setLibrarySaveResult] =
     useState<SaveByokDirectLiveToLibraryResult | null>(null);
   const [librarySaveError, setLibrarySaveError] = useState<string>('');
+  const [publicCapacity, setPublicCapacity] =
+    useState<PublicCapacityInfo | null>(null);
 
   // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the direct
   // live confirmation phrase. Empty by default. Never persisted to
@@ -470,6 +479,16 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const turnstileConfigured = normalizedTurnstileSiteKey.length > 0;
   const turnstileEnforced =
     turnstileConfigured && props.turnstileByokRequired === true;
+
+  const refreshPublicCapacity = useCallback(async (): Promise<PublicCapacityInfo> => {
+    const capacity = await getPublicCapacity();
+    setPublicCapacity(capacity);
+    return capacity;
+  }, []);
+
+  useEffect(() => {
+    void refreshPublicCapacity();
+  }, [refreshPublicCapacity]);
 
   // ── Mount / unmount: load Turnstile script + render widget ────────────────
   useEffect(() => {
@@ -563,6 +582,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
   const lyricsRequired = musicMode === 'with_lyrics';
   const trimmedLyrics = lyrics.trim();
+  const isPublicCapacityFull = publicCapacity?.capacityFull === true;
   const canSubmit =
     enabled &&
     !submitting &&
@@ -591,6 +611,15 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!canSubmit) {
+      if (enabled && !submitting && isPublicCapacityFull) {
+        setLastResult({
+          ok: false,
+          code: 'public_capacity_full',
+          message: '当前使用人数已满，请稍后再试。网站处于 5 人内轻量公开模式。',
+        });
+        props.onStatusChange?.('error');
+        return;
+      }
       if (enabled && !submitting && lyricsRequired && trimmedLyrics.length === 0) {
         setLastResult({
           ok: false,
@@ -599,6 +628,16 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
         });
         props.onStatusChange?.('error');
       }
+      return;
+    }
+    const capacity = await refreshPublicCapacity();
+    if (capacity.capacityFull === true) {
+      setLastResult({
+        ok: false,
+        code: 'public_capacity_full',
+        message: '当前使用人数已满，请稍后再试。网站处于 5 人内轻量公开模式。',
+      });
+      props.onStatusChange?.('error');
       return;
     }
     setSubmitting(true);
@@ -714,6 +753,13 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       return;
     }
 
+    const capacity = await refreshPublicCapacity();
+    if (capacity.capacityFull === true) {
+      setLibrarySaveState('error');
+      setLibrarySaveError('当前使用人数已满，请稍后再试。网站处于 5 人内轻量公开模式。');
+      return;
+    }
+
     setLibrarySaveState('saving');
     setLibrarySaveError('');
 
@@ -764,6 +810,17 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             : COPY.dryRunBadge}
         </p>
       </header>
+
+      {isPublicCapacityFull && (
+        <div
+          className={styles.capacityNotice}
+          role="status"
+          data-public-capacity="full"
+          data-public-lite-mode="five-user"
+        >
+          当前使用人数已满，请稍后再试。网站处于 5 人内轻量公开模式。
+        </div>
+      )}
 
       <form className={styles.form} onSubmit={handleSubmit} autoComplete="off">
         <label className={styles.label} htmlFor="byok-api-key">
