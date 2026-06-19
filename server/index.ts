@@ -155,6 +155,14 @@ import {
   resolveAccessContextFromRequest,
   type AccessContext,
 } from './access.js';
+import {
+  DEFAULT_MULTIUSER_QUOTA_LIMITS,
+  checkMultiuserQuota,
+  recordMultiuserQuotaUsage,
+  type QuotaAction,
+  type QuotaCheckResult,
+  type QuotaLimits,
+} from './quota.js';
 
 /**
  * Get a short client hash for auth guard and audit logging.
@@ -207,6 +215,11 @@ function readBoolEnv(name: string, defaultValue: boolean): boolean {
   return value.toLowerCase() === 'true';
 }
 
+function readPositiveIntEnv(name: string, defaultValue: number): number {
+  const value = Number(process.env[name] ?? '');
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : defaultValue;
+}
+
 type ValidBackend = 'mock' | 'api' | 'cli';
 
 function readBackendEnv(): BackendMode {
@@ -255,6 +268,25 @@ function loadConfig(): ServerConfig {
     multiuserSessionSecret: (process.env.MULTIUSER_SESSION_SECRET ?? '').trim() || undefined,
     multiuserAccessStoreDir: (process.env.MULTIUSER_ACCESS_STORE_DIR ?? '').trim() || undefined,
     multiuserRouteGateEnabled: readBoolEnv('MULTIUSER_ROUTE_GATE_ENABLED', false),
+    // P3C-5: lightweight five-user quota gates. Disabled by default and only
+    // records counters when explicitly enabled.
+    multiuserQuotaEnabled: readBoolEnv('MULTIUSER_QUOTA_ENABLED', false),
+    dailyGeneratePerUser: readPositiveIntEnv(
+      'MULTIUSER_DAILY_GENERATE_PER_USER',
+      DEFAULT_MULTIUSER_QUOTA_LIMITS.dailyGeneratePerUser,
+    ),
+    dailyGeneratePerWorkspace: readPositiveIntEnv(
+      'MULTIUSER_DAILY_GENERATE_PER_WORKSPACE',
+      DEFAULT_MULTIUSER_QUOTA_LIMITS.dailyGeneratePerWorkspace,
+    ),
+    dailySavePerUser: readPositiveIntEnv(
+      'MULTIUSER_DAILY_SAVE_PER_USER',
+      DEFAULT_MULTIUSER_QUOTA_LIMITS.dailySavePerUser,
+    ),
+    dailySavePerWorkspace: readPositiveIntEnv(
+      'MULTIUSER_DAILY_SAVE_PER_WORKSPACE',
+      DEFAULT_MULTIUSER_QUOTA_LIMITS.dailySavePerWorkspace,
+    ),
     maxRequestBodyMb: Number(process.env.MAX_REQUEST_BODY_MB || 80),
     previewAccess: buildPreviewAccessConfig(),
     generationAccess: buildGenerationAccessConfig(),
@@ -587,6 +619,80 @@ function requireInviteUserForAction(
   // Do not log or return cookies, signatures, session IDs, or secrets here.
   sendMultiuserInviteSessionRequired(res, action);
   return null;
+}
+
+function buildMultiuserQuotaLimits(config: ServerConfig): QuotaLimits {
+  return {
+    dailyGeneratePerUser: config.dailyGeneratePerUser,
+    dailyGeneratePerWorkspace: config.dailyGeneratePerWorkspace,
+    dailySavePerUser: config.dailySavePerUser,
+    dailySavePerWorkspace: config.dailySavePerWorkspace,
+  };
+}
+
+function multiuserProtectedActionForQuota(action: QuotaAction): MultiuserProtectedAction {
+  return action === 'generate_byok' ? 'byok_generate' : 'byok_save_to_library';
+}
+
+function sendMultiuserQuotaExceeded(
+  res: http.ServerResponse,
+  result: QuotaCheckResult,
+): void {
+  sendJson(res, 429, {
+    ok: false,
+    code: 'multiuser_quota_exceeded',
+    stage: 'multiuser_quota_exceeded',
+    action: result.action,
+    scope: result.scope,
+    limit: result.limit,
+    used: result.used,
+    remaining: result.remaining,
+    message: 'Daily quota exceeded for this action.',
+  });
+}
+
+function checkMultiuserQuotaForAction(
+  res: http.ServerResponse,
+  config: ServerConfig,
+  accessContext: AccessContext | undefined,
+  action: QuotaAction,
+): boolean {
+  if (config.multiuserQuotaEnabled !== true) {
+    return true;
+  }
+  if (!accessContext || !isInviteUserAccessContext(accessContext)) {
+    sendMultiuserInviteSessionRequired(res, multiuserProtectedActionForQuota(action));
+    return false;
+  }
+  const result = checkMultiuserQuota(accessContext, action, buildMultiuserQuotaLimits(config), {
+    enabled: true,
+    storeDir: config.multiuserAccessStoreDir,
+  });
+  if (!result.allowed) {
+    sendMultiuserQuotaExceeded(res, result);
+    return false;
+  }
+  return true;
+}
+
+function recordMultiuserQuotaUsageForAction(
+  config: ServerConfig,
+  accessContext: AccessContext | undefined,
+  action: QuotaAction,
+): void {
+  if (config.multiuserQuotaEnabled !== true || !accessContext || !isInviteUserAccessContext(accessContext)) {
+    return;
+  }
+  try {
+    recordMultiuserQuotaUsage(accessContext, action, {
+      enabled: true,
+      storeDir: config.multiuserAccessStoreDir,
+    });
+  } catch (error) {
+    console.warn(
+      `[multiuser-quota] usage record failed action=${action}: ${error instanceof Error ? error.message : 'unknown'}`,
+    );
+  }
 }
 
 function isPrivateIpv4(ip: string): boolean {
@@ -1670,6 +1776,7 @@ async function handleByokDirectLiveSaveToLibrary(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   config: ServerConfig,
+  accessContext?: AccessContext,
 ): Promise<void> {
   if (req.method !== 'POST') {
     sendByokLibraryPersistError(res, {
@@ -1810,6 +1917,10 @@ async function handleByokDirectLiveSaveToLibrary(
     return;
   }
 
+  if (!checkMultiuserQuotaForAction(res, config, accessContext, 'save_to_library')) {
+    return;
+  }
+
   const audioUrl = safeInputString(body.audioUrl);
   const validation = await validateProviderAudioUrl(audioUrl);
   if (!validation.ok) {
@@ -1905,6 +2016,8 @@ async function handleByokDirectLiveSaveToLibrary(
     });
     return;
   }
+
+  recordMultiuserQuotaUsageForAction(config, accessContext, 'save_to_library');
 
   sendJson(res, 200, {
     ok: true,
@@ -2356,19 +2469,21 @@ async function routeHandler(
       sendError(res, 'security', '请先解锁访问', 401);
       return;
     }
-    if (!requireInviteUserForAction(req, res, config, 'byok_generate')) {
+    const accessContext = requireInviteUserForAction(req, res, config, 'byok_generate');
+    if (!accessContext) {
       return;
     }
-    await handleByokGenerate(req, res, config);
+    await handleByokGenerate(req, res, config, accessContext);
   } else if (url === '/api/byok/direct-live/save-to-library' && req.method === 'POST') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '璇峰厛瑙ｉ攣璁块棶', 401);
       return;
     }
-    if (!requireInviteUserForAction(req, res, config, 'byok_save_to_library')) {
+    const accessContext = requireInviteUserForAction(req, res, config, 'byok_save_to_library');
+    if (!accessContext) {
       return;
     }
-    await handleByokDirectLiveSaveToLibrary(req, res, config);
+    await handleByokDirectLiveSaveToLibrary(req, res, config, accessContext);
   } else if (url === '/api/tracks' && req.method === 'GET') {
     if (!isPreviewUnlocked(req.headers as Record<string, string | string[] | undefined>, config.previewAccess)) {
       sendError(res, 'security', '请先解锁访问', 401);
@@ -2643,6 +2758,7 @@ async function handleByokGenerate(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   config: ServerConfig,
+  accessContext?: AccessContext,
 ): Promise<void> {
   // 0. Observability: log that a submit hit the server BEFORE any early
   //    returns. Distinguishes "browser never reached server" from
@@ -2850,6 +2966,10 @@ async function handleByokGenerate(
     generationIntent?: ByokGenerationIntent;
   };
   const byokProviderParams = normalizeByokProviderParams(byokInput);
+
+  if (!checkMultiuserQuotaForAction(res, config, accessContext, 'generate_byok')) {
+    return;
+  }
 
  const requestedModeForGuard = requestedMode;
  const isConfirmedByokLivePath =
@@ -3209,6 +3329,7 @@ if (config.byokLiveConfirmation !== BYOK_LIVE_CONFIRMATION_PHRASE) {
     terminal: true,
     responseCode: 'byok_direct_live_ok',
   });
+  recordMultiuserQuotaUsageForAction(config, accessContext, 'generate_byok');
   sendJson(res, 200, {
     ok: true,
     code: 'byok_direct_live_ok',
@@ -3364,6 +3485,9 @@ recordByokSubmit({
   apiKeyPresent: submitApiKeyPresent,
   promptPresent: true,
 });
+if (isLiveSuccess) {
+  recordMultiuserQuotaUsageForAction(config, accessContext, 'generate_byok');
+}
 sendJson(res, 200, {
    ok: true,
    code: adapterResult.code,

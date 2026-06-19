@@ -111,6 +111,15 @@ export interface ServerConfig {
    * Default false to preserve current production behavior.
    */
   multiuserRouteGateEnabled: boolean;
+  /**
+   * P3C-5: lightweight five-user quota gate for costly actions.
+   * Default false to preserve current production behavior.
+   */
+  multiuserQuotaEnabled: boolean;
+  dailyGeneratePerUser: number;
+  dailyGeneratePerWorkspace: number;
+  dailySavePerUser: number;
+  dailySavePerWorkspace: number;
 }
 
 export type GenerationSource = 'mock' | 'minimax' | 'mmx-cli' | 'byok-direct-live';
