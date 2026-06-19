@@ -90,6 +90,8 @@ export interface HealthInfo {
   byokEnabled?: boolean;
   // Phase H1: public BYOK kill-switch (boolean only).
   publicByokEnabled?: boolean;
+  // Public-lite queued BYOK mode (boolean only, no secrets).
+  publicByokQueueEnabled?: boolean;
   serverKeyFallback?: boolean;
   byokKeyStorage?: string;
   // Phase BYOK-H3B: Live gate fields (boolean/number only, no secrets)
@@ -167,6 +169,7 @@ export interface GenerateJob {
   id: string;
   status: JobStatus;
   progress?: number;
+  progressPercent?: number;
   progressMessage?: string;
   track?: TrackLike;
   error?: { type?: string; message: string; hint?: string };

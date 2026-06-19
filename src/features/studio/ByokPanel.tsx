@@ -61,8 +61,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './ByokPanel.module.css';
 import {
+  getJob,
   getPublicCapacity,
+  getTrackAudioUrl,
+  getTrackDownloadUrl,
   saveByokDirectLiveToLibrary,
+  type GenerateJob,
   type PublicCapacityInfo,
   type SaveByokDirectLiveToLibraryResult,
 } from '../../lib/serverApi';
@@ -75,16 +79,13 @@ const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api
 // 这些是 user-facing copy，单独抽出便于阅读与未来微调。
 const COPY = {
   headerSubtitle:
-    'Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: 当受控 live 窗口就绪时，前端会自动发送 ' +
-    'mode=direct-live，让服务端路由到真实 MiniMax 提供商。' +
-    '当 live 窗口未就绪时，前端发送 mode=fake，走 dry-run 安全链路。' +
-    'Key 仅在本次请求中发送到本站服务端，不写入浏览器本地存储或服务器持久化。' +
-    '正式 BYOK 启用后，费用由你自己的 MiniMax 账户承担。',
-  dryRunBadge: 'dry-run 阶段 · 不会生成音乐 · 不会调用 MiniMax',
+    '使用自己的 MiniMax API Key 生成音乐。生成任务将排队执行，本站一次只运行 1 个生成任务。' +
+    '本站不保存 API Key；Key 只在单次请求和队列任务内存中使用，不写入浏览器本地存储或服务器持久化。' +
+    '当前是最多 5 个活跃用户的轻量公开模式，费用由你自己的 MiniMax 账户承担。',
+  dryRunBadge: '5 人内轻量公开 BYOK 排队生成 · 一次只执行 1 个生成任务 · 本站不保存 API Key',
   apiKeyLabel: 'MiniMax API Key',
   apiKeyHint:
-    'H2D 测试时可填 fake key（例如 sk-FAKE-...）。正式 BYOK 启用后填入你自己的真实 Key。' +
-    'Key 只发往 /api/generate/byok 一次，不写入 localStorage / sessionStorage / IndexedDB / URL。',
+    '填入你自己的 MiniMax API Key。Key 只发往 /api/generate/byok 一次，不写入 localStorage / sessionStorage / IndexedDB / URL。',
   apiKeyNoSensitivePrompt: 'Prompt 内请勿填入敏感内容（Key、密码、身份证号等）。',
   turnstileLabel: 'Turnstile 验证',
   turnstileHumanOnly:
@@ -92,8 +93,8 @@ const COPY = {
   turnstileRetryHint: '验证失败时，可点击右上角刷新图标重试，或刷新整个页面。',
   turnstileTokenPrivacy: 'Token 不显示、不保存、不复用；每次提交后会自动重置。',
   confirmLabel: '我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。',
-  confirmLabelDryRun: '（当前为 dry-run，不会产生真实费用）',
-  submitIdleDryRun: '使用我的 Key 试调一次（默认 fake / dry-run）',
+  confirmLabelDryRun: '（本站不保存 API Key；生成任务将排队执行）',
+  submitIdleDryRun: '使用我的 Key 排队生成',
   submitIdleLive: '使用我的 Key 进行受控 live 测试（仅本窗口一次）',
   resultDryRunExplain:
     '安全链路已通过（Turnstile + Key 形状校验）。当前为 dry-run，' +
@@ -136,6 +137,9 @@ type ByokResponseCode =
   | 'byok_lyrics_required'
   | 'byok_non_json_response'
   | 'byok_direct_live_ok'
+  | 'byok_job_queued'
+  | 'byok_queue_not_enabled'
+  | 'byok_queue_generation_not_ready'
   | 'byok_invalid_input'
   | 'turnstile_required'
   | 'turnstile_invalid'
@@ -165,6 +169,9 @@ const STATUS_MESSAGES: Record<string, string> = {
   byok_lyrics_required: 'Lyrics are required for with_lyrics mode',
   byok_non_json_response: '服务端返回非 JSON 错误',
   byok_direct_live_ok: 'BYOK direct API 测试通过',
+  byok_job_queued: '任务已排队',
+  byok_queue_not_enabled: 'BYOK 排队生成尚未启用',
+  byok_queue_generation_not_ready: 'BYOK 排队生成配置尚未就绪',
   byok_provider_error: 'MiniMax 返回错误，已隐藏敏感信息',
   byok_provider_auth_failed: 'MiniMax 拒绝了该 Key（认证失败）',
   byok_provider_timeout: 'MiniMax 响应超时',
@@ -181,6 +188,9 @@ interface ByokPanelProps {
   // Optional: parent can pass whether BYOK is currently allowed.
   // Default: treat as disabled (PUBLIC_BYOK_ENABLED=false) for safety.
   publicByokEnabled?: boolean;
+  // Public-lite queued BYOK mode. The UI only offers real queued generation
+  // when this server-side boolean is true.
+  publicByokQueueEnabled?: boolean;
   // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: live gate health fields.
   // When all are true/positive, the frontend sends mode='direct-live'.
   byokLiveEnabled?: boolean;
@@ -229,6 +239,12 @@ interface ByokOkResponse {
     saved?: boolean;
     status?: string;
     reason?: string;
+  };
+  job?: GenerateJob;
+  queue?: {
+    queuedJobs?: number;
+    workerBusy?: boolean;
+    concurrency?: number;
   };
   requestId?: string;
 }
@@ -423,8 +439,11 @@ type ByokLibrarySaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // Default to DISABLED. Only enabled if parent explicitly says so.
-  // This matches server's PUBLIC_BYOK_ENABLED=false default.
-  const enabled = props.publicByokEnabled === true;
+  // This matches server's PUBLIC_BYOK_ENABLED=false and
+  // PUBLIC_BYOK_QUEUE_ENABLED=false defaults.
+  const enabled =
+    props.publicByokEnabled === true &&
+    props.publicByokQueueEnabled === true;
 
   // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: live-ready check.
   // When all live gate health fields are true/positive, the frontend
@@ -450,6 +469,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [confirmed, setConfirmed] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<ByokResponse | null>(null);
+  const [queuedJob, setQueuedJob] = useState<GenerateJob | null>(null);
   const [librarySaveState, setLibrarySaveState] =
     useState<ByokLibrarySaveState>('idle');
   const [librarySaveResult, setLibrarySaveResult] =
@@ -468,6 +488,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   // the request body during that one window.
   const [directLiveConfirmation, setDirectLiveConfirmation] =
     useState<string>('');
+  const queuedJobPollRef = useRef<number | null>(null);
 
   // Phase Deploy-CF-E: Turnstile widget runtime state.
   // Token lives ONLY in React state and a ref — never persisted.
@@ -502,6 +523,32 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     }
     void refreshPublicCapacity();
   }, [props.refreshPublicCapacity, refreshPublicCapacity]);
+
+  const stopQueuedJobPolling = useCallback(() => {
+    if (queuedJobPollRef.current !== null) {
+      window.clearInterval(queuedJobPollRef.current);
+      queuedJobPollRef.current = null;
+    }
+  }, []);
+
+  const startQueuedJobPolling = useCallback((jobId: string) => {
+    stopQueuedJobPolling();
+    queuedJobPollRef.current = window.setInterval(() => {
+      void getJob(jobId).then((job) => {
+        if (!job) return;
+        setQueuedJob(job);
+        if (
+          job.status === 'succeeded' ||
+          job.status === 'failed' ||
+          job.status === 'cancelled'
+        ) {
+          stopQueuedJobPolling();
+        }
+      });
+    }, 2000);
+  }, [stopQueuedJobPolling]);
+
+  useEffect(() => stopQueuedJobPolling, [stopQueuedJobPolling]);
 
   // ── Mount / unmount: load Turnstile script + render widget ────────────────
   useEffect(() => {
@@ -603,6 +650,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     prompt.trim().length > 0 &&
     (!lyricsRequired || trimmedLyrics.length > 0) &&
     confirmed &&
+    !isPublicCapacityFull &&
     // If Turnstile is enforced, the user must have a fresh verified token.
     (!turnstileEnforced || (turnstileUiState === 'verified' && turnstileToken.length > 0));
 
@@ -655,6 +703,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     }
     setSubmitting(true);
     setLastResult(null);
+    setQueuedJob(null);
+    stopQueuedJobPolling();
     setLibrarySaveState('idle');
     setLibrarySaveResult(null);
     setLibrarySaveError('');
@@ -683,9 +733,9 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
               ? turnstileToken
               : undefined,
           // Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: send explicit mode.
-          // When live-ready, send 'direct-live' so the server routes to
-          // the live provider. Otherwise send 'fake' (default safe path).
-          mode: isByokLiveReady ? 'direct-live' : 'fake',
+          // Public-lite BYOK uses queued mode: the server stores the key
+          // only in an in-memory job secret and runs one job at a time.
+          mode: 'queued',
           // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX:
           // include the operator-supplied direct-live confirmation
           // phrase ONLY when (a) the request mode is 'direct-live' and
@@ -703,6 +753,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       });
       const data = await readByokResponse(r);
       setLastResult(data);
+      if (data.ok === true && data.job?.id) {
+        setQueuedJob(data.job);
+        startQueuedJobPolling(data.job.id);
+      }
       if (!r.ok || data.ok === false) {
         props.onStatusChange?.(r.status === 403 ? 'disabled' : 'error');
       } else {
@@ -735,6 +789,16 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   }
 
   const okResult = lastResult?.ok ? lastResult : null;
+  const queuedJobResult = okResult?.code === 'byok_job_queued'
+    ? queuedJob ?? okResult.job ?? null
+    : null;
+  const queuedTrack = queuedJobResult?.track;
+  const queuedTrackAudioUrl = queuedTrack
+    ? queuedTrack.audioUrl ?? getTrackAudioUrl(queuedTrack.id)
+    : undefined;
+  const queuedTrackDownloadUrl = queuedTrack
+    ? queuedTrack.downloadUrl ?? getTrackDownloadUrl(queuedTrack.id)
+    : undefined;
   const directLiveAudioUrl =
     okResult?.audioResult?.audioUrl ?? okResult?.audioUrl;
   const directLiveDownloadUrl =
@@ -808,7 +872,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   return (
     <section className={styles.byokPanel} aria-label="BYOK 自带 Key 模式">
       <header className={styles.header}>
-        <h2 className={styles.title}>使用自己的 MiniMax Key</h2>
+        <h2 className={styles.title}>使用自己的 MiniMax API Key 生成</h2>
         <p className={styles.subtitle}>{COPY.headerSubtitle}</p>
         {/* Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: dynamic status badge.
             When live-ready, show live window badge.
@@ -1065,7 +1129,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             className={styles.submit}
             disabled={!canSubmit}
           >
-            {submitting ? '提交中…' : (isByokLiveReady ? COPY.submitIdleLive : COPY.submitIdleDryRun)}
+            {submitting ? '提交排队中…' : COPY.submitIdleDryRun}
           </button>
         )}
       </form>
@@ -1086,6 +1150,77 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
               <code>{lastResult.code}</code>
               <br />
               <span className={styles.resultMsg}>{lastResult.message}</span>
+              {queuedJobResult && (
+                <div
+                  className={styles.saveToLibraryCard}
+                  data-byok-queued-job="status"
+                  data-byok-job-status={queuedJobResult.status}
+                >
+                  <div className={styles.saveHeader}>
+                    <div>
+                      <strong>任务已排队 / 当前有任务正在生成时会等待</strong>
+                      <p className={styles.saveDescription}>
+                        jobId: <code>{queuedJobResult.id}</code> · status:{' '}
+                        <code>{queuedJobResult.status}</code>
+                        {typeof okResult?.queue?.concurrency === 'number' && (
+                          <> · concurrency: <code>{okResult.queue.concurrency}</code></>
+                        )}
+                      </p>
+                    </div>
+                    <span className={`${styles.saveStatusBadge} ${styles.saveStatusIdle}`}>
+                      {queuedJobResult.status}
+                    </span>
+                  </div>
+                  {queuedJobResult.progressMessage && (
+                    <small className={styles.resultHint}>
+                      {queuedJobResult.progressMessage}
+                      {typeof queuedJobResult.progressPercent === 'number' && (
+                        <> · {queuedJobResult.progressPercent}%</>
+                      )}
+                    </small>
+                  )}
+                  {queuedJobResult.status === 'failed' && queuedJobResult.error?.message && (
+                    <small className={styles.saveError}>
+                      {queuedJobResult.error.message}
+                    </small>
+                  )}
+                  {queuedTrack && queuedTrackAudioUrl && (
+                    <div className={styles.audioPreviewBlock}>
+                      <audio
+                        className={styles.audioPreview}
+                        controls
+                        src={queuedTrackAudioUrl}
+                      />
+                      <div className={styles.saveActions}>
+                        <a
+                          className={styles.localTrackLink}
+                          href={queuedTrackAudioUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open local track
+                        </a>
+                        {queuedTrackDownloadUrl && (
+                          <a
+                            className={styles.localTrackLink}
+                            href={queuedTrackDownloadUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Download
+                          </a>
+                        )}
+                        <a
+                          className={styles.localTrackLink}
+                          href={`/library?track=${encodeURIComponent(queuedTrack.id)}`}
+                        >
+                          Go to Library
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {isDirectLiveRelayResult && (
                 <>
                   <br />

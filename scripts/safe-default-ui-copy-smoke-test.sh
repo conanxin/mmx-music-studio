@@ -68,7 +68,8 @@ assert_contains "Library v0.4.32-alpha" "v0.4.32-alpha" "$LIBRARY_TSX"
 assert_contains "Library status marker" 'data-safe-default-ui="library"' "$LIBRARY_TSX"
 assert_contains "Library status CSS" ".safeDefaultLibraryStatus" "$LIBRARY_CSS"
 
-# Studio distinguishes public-lite access from controlled real generation.
+# Studio distinguishes public-lite access from queued BYOK generation and the
+# still-closed legacy BYOK live direct relay.
 assert_contains "Studio v0.4.32-alpha" "v0.4.32-alpha" "$STUDIO_TSX"
 assert_contains "Studio status marker" 'data-safe-default-ui="studio"' "$STUDIO_TSX"
 assert_contains "Studio public-lite enabled copy" "5 人内轻量公开模式已开启" "$STUDIO_TSX"
@@ -76,8 +77,11 @@ assert_contains "Studio public-lite active users" "activeUsers" "$STUDIO_TSX"
 assert_contains "Studio public-lite max active users" "maxActiveUsers" "$STUDIO_TSX"
 assert_contains "Studio public-lite capacity full" "capacityFull" "$STUDIO_TSX"
 assert_contains "Studio capacity behavior copy" "超过 5 人后，生成和 Save to Library 会自动暂停，页面仍可浏览" "$STUDIO_TSX"
-assert_contains "Studio controlled real generation copy" "真实生成仍为受控模式" "$STUDIO_TSX"
-assert_contains "Studio BYOK live disabled no MiniMax" "BYOK live 默认关闭，不会自动调用 MiniMax" "$STUDIO_TSX"
+assert_contains "Studio own API key generation copy" "使用自己的 MiniMax API Key 生成" "$STUDIO_TSX"
+assert_contains "Studio queued generation copy" "生成任务将排队执行" "$STUDIO_TSX"
+assert_contains "Studio API key not saved copy" "本站不保存 API Key" "$STUDIO_TSX"
+assert_contains "Studio BYOK live disabled copy" "BYOK live 默认关闭" "$STUDIO_TSX"
+assert_contains "Studio queue concurrency copy" "jobQueue concurrency=1" "$STUDIO_TSX"
 assert_contains "Studio uses public capacity helper" "getPublicCapacity" "$STUDIO_TSX"
 assert_contains "Studio shares public capacity with BYOK panel" "refreshPublicCapacity={refreshPublicCapacity}" "$STUDIO_TSX"
 assert_contains "Studio status CSS" ".safeDefaultStatus" "$STUDIO_CSS"

@@ -256,6 +256,9 @@ function loadConfig(): ServerConfig {
     // endpoint /api/generate/byok. Distinct from BYOK_ENABLED (admin internal).
     // Default false.
     publicByokEnabled: readBoolEnv('PUBLIC_BYOK_ENABLED', false),
+    // Public-lite queued BYOK mode. When enabled, /api/generate/byok creates
+    // an async API-backend job with the user key stored only in memory.
+    publicByokQueueEnabled: readBoolEnv('PUBLIC_BYOK_QUEUE_ENABLED', false),
     byokDryRunOnly: readBoolEnv('BYOK_DRY_RUN_ONLY', true),
     byokLiveEnabled: readBoolEnv('BYOK_LIVE_ENABLED', false),
     byokLiveConfirmation: (process.env.BYOK_LIVE_CONFIRMATION ?? '').trim(),
@@ -712,7 +715,7 @@ function recordMultiuserQuotaUsageForAction(
   }
 }
 
-type PublicLiteProtectedAction = 'generate_byok' | 'save_to_library';
+type PublicLiteProtectedAction = 'generate' | 'generate_byok' | 'save_to_library';
 
 function sendPublicCapacityFull(res: http.ServerResponse): void {
   sendJson(res, 503, {
@@ -1379,6 +1382,8 @@ async function handleHealth(
     // Phase H1: public BYOK kill-switch (mirrors PUBLIC_BYOK_ENABLED env var).
     // Boolean only — never carries secrets, tokens, or keys.
     publicByokEnabled: config.publicByokEnabled,
+    // Public-lite queued BYOK mode: boolean only, never exposes keys.
+    publicByokQueueEnabled: config.publicByokQueueEnabled,
     serverKeyFallback: config.serverKeyFallback,
     byokKeyStorage: config.byokKeyStorage,
     // Phase BYOK-H3B-CODE-FOLLOWUP: live gate runtime introspection.
@@ -2536,6 +2541,9 @@ async function routeHandler(
       sendError(res, 'security', '请先解锁访问', 401);
       return;
     }
+    if (!requirePublicLiteCapacityForAction(req, res, config, 'generate')) {
+      return;
+    }
     await handleGenerate(req, res, config);
   } else if (url === '/api/generate/byok' && req.method === 'POST') {
     // Phase BYOK-A: public BYOK relay endpoint. Default disabled.
@@ -2779,7 +2787,7 @@ interface ByokGenerateRequest {
   apiKey?: string;
   input?: unknown;
   region?: 'cn' | 'global';
-  mode?: 'fake' | 'live' | 'direct-live';
+  mode?: 'fake' | 'live' | 'direct-live' | 'queued';
   directLiveConfirmation?: string;
   /** Phase Deploy-CF-D: Turnstile token for abuse control */
   turnstileToken?: string;
@@ -2832,6 +2840,49 @@ function normalizeByokProviderParams(input: ByokProviderInput): ByokProviderPara
     isInstrumental: generationIntent === 'instrumental',
     musicModeForAdapter: generationIntent === 'with_lyrics' ? 'lyrics' : 'instrumental',
   };
+}
+
+function buildQueuedByokJobInput(
+  input: ByokProviderInput,
+  params: ByokProviderParams,
+): MusicGenerationInput {
+  const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
+  const model =
+    input.model === 'music-2.6' || input.model === 'music-2.6-free'
+      ? input.model
+      : 'music-2.6-free';
+
+  if (params.generationIntent === 'with_lyrics') {
+    return {
+      mode: 'lyrics',
+      prompt,
+      lyrics: params.lyrics ?? '',
+      model,
+      outputFormat: 'url',
+    };
+  }
+
+  return {
+    mode: 'instrumental',
+    prompt,
+    model,
+    outputFormat: 'url',
+  };
+}
+
+function sendByokQueueNotReady(
+  res: http.ServerResponse,
+  requestId: string,
+  code: 'byok_queue_not_enabled' | 'byok_queue_generation_not_ready',
+  message: string,
+): void {
+  sendJson(res, 403, {
+    ok: false,
+    code,
+    stage: code,
+    message,
+    requestId,
+  });
 }
 
 async function handleByokGenerate(
@@ -3103,6 +3154,111 @@ async function handleByokGenerate(
     return;
   }
   } // end else: launch guard applies to non-BYOK-live path
+
+  // 5b. Public-lite queued BYOK mode.
+  // This is the fast 5-active-user path: users bring their own MiniMax key,
+  // the key is kept only in the in-memory job secret store, and the existing
+  // job worker executes one provider call at a time. It deliberately does not
+  // require the old BYOK live/direct-live confirmation window.
+  if (requestedMode === 'queued' || config.publicByokQueueEnabled === true) {
+    if (config.publicByokQueueEnabled !== true) {
+      recordByokSubmit({
+        requestId: submitRequestId,
+        stage: 'byok_queue_not_enabled',
+        outcome: 'blocked_killswitch_off',
+        modeCandidate: submitModeCandidate,
+        turnstilePresent: postParseTurnstilePresent,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: true,
+        terminal: true,
+        responseCode: 'byok_queue_not_enabled',
+      });
+      sendByokQueueNotReady(
+        res,
+        requestId,
+        'byok_queue_not_enabled',
+        'BYOK queued generation is not enabled.',
+      );
+      return;
+    }
+
+    if (
+      config.byokEnabled !== true ||
+      config.realGenerationEnabled !== true ||
+      config.backend !== 'api'
+    ) {
+      recordByokSubmit({
+        requestId: submitRequestId,
+        stage: 'byok_queue_generation_not_ready',
+        outcome: 'blocked_killswitch_off',
+        modeCandidate: submitModeCandidate,
+        turnstilePresent: postParseTurnstilePresent,
+        apiKeyPresent: submitApiKeyPresent,
+        promptPresent: true,
+        terminal: true,
+        responseCode: 'byok_queue_generation_not_ready',
+      });
+      sendByokQueueNotReady(
+        res,
+        requestId,
+        'byok_queue_generation_not_ready',
+        'BYOK queued generation requires BYOK_ENABLED=true, REAL_GENERATION_ENABLED=true, and MINIMAX_BACKEND=api.',
+      );
+      return;
+    }
+
+    const queuedInput = buildQueuedByokJobInput(byokInput, byokProviderParams);
+    const job = createJob(queuedInput, 'api', undefined, 'session');
+    try {
+      setJobApiKey(job.id, body.apiKey ?? '');
+    } catch {
+      cancelJob(job.id);
+      sendError(res, 'storage', 'Session key storage failed. Please retry.', 500);
+      return;
+    }
+
+    recordByokSubmit({
+      requestId: submitRequestId,
+      stage: 'byok_job_queued',
+      outcome: 'allowed',
+      modeCandidate: 'live',
+      turnstilePresent: postParseTurnstilePresent,
+      apiKeyPresent: true,
+      promptPresent: true,
+      terminal: true,
+      responseCode: 'byok_job_queued',
+    });
+    auditGenerationRequested('/api/generate/byok', getClientHashShort(req), getUserAgent(req), {
+      mode: queuedInput.mode,
+      jobId: job.id,
+      byok: true,
+      keyPresent: true,
+      keyLengthBucket: getKeyLengthBucket(body.apiKey ?? ''),
+    });
+    recordMultiuserQuotaUsageForAction(config, accessContext, 'generate_byok');
+
+    sendJson(res, 202, {
+      ok: true,
+      code: 'byok_job_queued',
+      message: 'BYOK generation job queued. The server will run one generation task at a time.',
+      stage: 'byok_job_queued',
+      requestId,
+      job: {
+        id: job.id,
+        status: job.status,
+        progressMessage: job.progressMessage,
+        createdAt: job.createdAt,
+      },
+      queue: {
+        queuedJobs: getQueuedCount(),
+        workerBusy: isWorkerBusy(),
+        concurrency: 1,
+      },
+    });
+
+    enqueueAndRun('session', undefined, body.region ?? config.minimaxRegion);
+    return;
+  }
 
   // 6. Phase BYOK-B mode machine.
  // 6a. dry-run: PUBLIC_BYOK_ENABLED=true && BYOK_DRY_RUN_ONLY=true.

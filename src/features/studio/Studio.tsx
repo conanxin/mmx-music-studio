@@ -445,6 +445,8 @@ export default function Studio({
     byokEnabled?: boolean;
     // Phase H1: public BYOK kill-switch (boolean only).
     publicByokEnabled?: boolean;
+    // Public-lite queued BYOK mode (boolean only).
+    publicByokQueueEnabled?: boolean;
     // Phase 5B-C: Real API Attempt Guard
     realApiAttemptLimitEnabled?: boolean;
     realApiDailyAttemptLimit?: number;
@@ -938,14 +940,18 @@ export default function Studio({
                 超过 5 人后，生成和 Save to Library 会自动暂停，页面仍可浏览。
               </p>
               <p>
-                <strong>真实生成仍为受控模式</strong>：BYOK live 默认关闭，不会自动调用 MiniMax。
+                <strong>使用自己的 MiniMax API Key 生成</strong>：生成任务将排队执行；本站不保存 API Key。
+              </p>
+              <p>
+                <strong>BYOK live 直连窗口仍关闭</strong>：真实生成只通过自带 Key 队列提交，不配置本站统一 MiniMax Key。
               </p>
             </div>
             <div className={styles.safeDefaultStatusMeta}>
               <span>activeUsers={publicCapacity?.activeUsers ?? '读取中'}</span>
               <span>maxActiveUsers={publicCapacity?.maxActiveUsers ?? 5}</span>
               <span>capacityFull={publicCapacity?.capacityFull === true ? 'YES' : 'NO'}</span>
-              <span>BYOK live 默认关闭，不会自动调用 MiniMax</span>
+              <span>jobQueue concurrency=1</span>
+              <span>BYOK live 默认关闭</span>
             </div>
           </div>
 
@@ -957,6 +963,7 @@ export default function Studio({
               (boolean only, mirrors server config PUBLIC_BYOK_ENABLED). */}
           <ByokPanel
             publicByokEnabled={healthInfo?.publicByokEnabled}
+            publicByokQueueEnabled={healthInfo?.publicByokQueueEnabled}
             byokLiveEnabled={healthInfo?.byokLiveEnabled}
             byokLiveConfirmationConfigured={healthInfo?.byokLiveConfirmationConfigured}
             byokLiveAttemptsRemaining={healthInfo?.byokLiveAttemptsRemaining}

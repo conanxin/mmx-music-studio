@@ -46,6 +46,11 @@ export interface ServerConfig {
    * 403 byok_generation_disabled.
    */
   publicByokEnabled: boolean;
+  /**
+   * Public-lite queued BYOK mode. When true, /api/generate/byok creates an
+   * async API-backend job using the per-request user key. Default false.
+   */
+  publicByokQueueEnabled: boolean;
  /**
  * BYOK_DRY_RUN_ONLY — when true, /api/generate/byok returns
  * 200 byok_dry_run_only instead of calling the provider. Default true

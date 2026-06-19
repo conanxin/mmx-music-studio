@@ -211,7 +211,15 @@ else
   cat /tmp/byok-public-lite-status-copy.out | tail -10
 fi
 
-echo "[24/30] Server smoke test..."
+echo "[24/31] BYOK public-lite queue generation smoke test..."
+if bash scripts/byok-public-lite-queue-generation-smoke-test.sh > /tmp/byok-public-lite-queue-generation.out 2>&1; then
+  pass "BYOK public-lite queue generation smoke test: PASS"
+else
+  fail "BYOK public-lite queue generation smoke test: FAIL"
+  cat /tmp/byok-public-lite-queue-generation.out | tail -10
+fi
+
+echo "[25/31] Server smoke test..."
 export REAL_GENERATION_ENABLED=false
 export MOCK_GENERATION_ENABLED=true
 export PUBLIC_DEMO_MODE=false
@@ -236,7 +244,7 @@ else
 fi
 
 # ── 7. Web API smoke test ────────────────────────────────────────────────
-echo "[25/30] Web API smoke test..."
+echo "[26/31] Web API smoke test..."
 if bash scripts/web-api-smoke-test.sh > /tmp/web-api.out 2>&1; then
   pass "Web API smoke test: PASS"
 else
@@ -245,7 +253,7 @@ else
 fi
 
 # ── 8. CLI adapter smoke test ────────────────────────────────────────────
-echo "[26/30] CLI adapter smoke test..."
+echo "[27/31] CLI adapter smoke test..."
 if bash scripts/cli-adapter-smoke-test.sh > /tmp/cli-adapter.out 2>&1; then
   pass "CLI adapter smoke test: PASS"
 else
@@ -254,7 +262,7 @@ else
 fi
 
 # ── 9. Existing CLI track verification ────────────────────────────────────
-echo "[27/30] Existing CLI track verification..."
+echo "[28/31] Existing CLI track verification..."
 if bash scripts/verify-existing-cli-track.sh > /tmp/cli-track.out 2>&1; then
   pass "CLI track verification: PASS"
 elif grep -q "PARTIAL_NO_CLI_TRACK" /tmp/cli-track.out 2>/dev/null; then
@@ -266,7 +274,7 @@ else
 fi
 
 # ── 10. Secret scan ────────────────────────────────────────────────────────
-echo "[28/30] Secret scan..."
+echo "[29/31] Secret scan..."
 if python3 scripts/ci-secret-scan.py > /tmp/secret-scan.out 2>&1; then
   pass "Secret scan: CLEAN"
 else
@@ -275,7 +283,7 @@ else
 fi
 
 # ── 11. Git status ─────────────────────────────────────────────────────────
-echo "[29/30] Git status..."
+echo "[30/31] Git status..."
 # Only fail if real .env is staged/tracked (not .env.example, .env.demo.example, etc.)
 if git status --porcelain | grep -E '^.?M .env$' | grep -v '.env.'; then
   fail ".env is staged or tracked"
@@ -290,7 +298,7 @@ else
 fi
 
 # ── 12. Required files ─────────────────────────────────────────────────────
-echo "[30/30] Required files..."
+echo "[31/31] Required files..."
 REQUIRED_FILES=(
   "Dockerfile"
   "docker-compose.yml"
