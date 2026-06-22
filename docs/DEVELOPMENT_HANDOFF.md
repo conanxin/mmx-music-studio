@@ -7,6 +7,20 @@
 
 ## Current release line
 
+## Current status: Public-Lite BYOK queued generation
+
+Public-Lite BYOK queued generation is available for small-scale alpha use.
+
+- Current stage: alpha, not a broad public launch.
+- Access model: lightweight public mode for up to 5 active users.
+- Generation model: users provide their own MiniMax API Key.
+- Key handling: API Keys are kept only in server memory while the queued job runs, then deleted after completion, failure, cancellation, or TTL expiry. They are not written to disk, browser storage, the Library, manifest, logs, or Git.
+- Queue behavior: generation tasks run through a single-worker queue, one generation at a time.
+- Scope: no public sign-up, no account system, no admin dashboard, and no 5-way concurrent MiniMax generation.
+- Studio UX: the public page now presents one BYOK music creation flow instead of exposing engineering test state in the primary view.
+
+---
+
 > 文档版本：v0.4.31-alpha · 2026-06-12
 
 **v0.4.31-alpha** — Phase Release v0.4.31-alpha: Turnstile widget runtime for BYOK release.
@@ -577,11 +591,23 @@ npm run weapp:build      # 小程序构建
 ```bash
 # mock 模式（不消耗额度）
 npm run dev:server
-npm run dev:web
+npm run dev
 
 # 或
 npm run dev:full
 ```
+
+Windows / Codex Desktop fallback:
+
+```bash
+# Terminal 1
+npm run dev:server
+
+# Terminal 2
+npm run dev
+```
+
+`npm run dev:full` now uses the cross-platform Node launcher `scripts/dev-full.mjs`; the split-terminal path remains the recommended fallback when a desktop shell has process-tree or port conflicts.
 
 ### 5. Mock 预览（公网访问用）
 

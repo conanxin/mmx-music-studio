@@ -11,6 +11,21 @@
 
 ---
 
+## Current Status: Public-Lite BYOK queued generation
+
+Public-Lite BYOK queued generation is available for small-scale alpha use.
+
+- Current stage: alpha, not a broad public launch.
+- Access model: lightweight public mode for up to 5 active users.
+- Generation model: users provide their own MiniMax API Key.
+- Key handling: API Keys are kept only in server memory while the queued job runs, then deleted after completion, failure, cancellation, or TTL expiry. They are not written to disk, browser storage, the Library, manifest, logs, or Git.
+- Queue behavior: generation tasks run through a single-worker queue, one generation at a time.
+- Scope: no public sign-up, no account system, no admin dashboard, and no 5-way concurrent MiniMax generation.
+
+The Studio page now presents this as a single BYOK music creation flow instead of an engineering test panel.
+
+---
+
 ## 快速开始
 
 ### Docker（推荐，最快）
@@ -31,6 +46,18 @@ npm run dev:full
 # Web: http://localhost:5174
 # API:  http://localhost:8787
 ```
+
+Windows / Codex Desktop fallback:
+
+```bash
+# Terminal 1
+npm run dev:server
+
+# Terminal 2
+npm run dev
+```
+
+Use `http://localhost:5174` for the Vite dev UI, or `http://localhost:8787` for the API/server-hosted build path after `npm run build`.
 
 ### 生产构建
 
