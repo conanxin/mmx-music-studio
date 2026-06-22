@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ByokPanel — Phase BYOK-B: Controlled BYOK relay test modes.
  *
  * 安全约束 (DO NOT CHANGE without review):
@@ -940,7 +940,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
               ? '例如：参考 90 年代港风流行质感，保留温暖合成器和中速律动'
               : '例如：深夜城市里的温柔电子乐，带一点钢琴和低频律动'
           }
-          rows={3}
+          rows={2}
           maxLength={500}
           required
           disabled={!enabled || submitting}
@@ -969,40 +969,45 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           当前选择：{selectedCreationMode.label}。生成完成后可以播放、下载 MP3，并保存到作品库。
         </p>
 
-        <label className={styles.label} htmlFor="byok-model">
-          模型
-        </label>
-        <select
-          id="byok-model"
-          className={styles.select}
-          value={model}
-          onChange={(e) =>
-            setModel(e.target.value as 'music-2.6-free' | 'music-2.6')
-          }
-          disabled={!enabled || submitting}
-        >
-          <option value="music-2.6-free">music-2.6-free</option>
-          <option value="music-2.6">music-2.6</option>
-        </select>
+        <div className={styles.credentialGrid}>
+          <div className={styles.fieldStack}>
+            <label className={styles.label} htmlFor="byok-model">
+              模型
+            </label>
+            <select
+              id="byok-model"
+              className={styles.select}
+              value={model}
+              onChange={(e) =>
+                setModel(e.target.value as 'music-2.6-free' | 'music-2.6')
+              }
+              disabled={!enabled || submitting}
+            >
+              <option value="music-2.6-free">music-2.6-free</option>
+              <option value="music-2.6">music-2.6</option>
+            </select>
+          </div>
 
-        <label className={styles.label} htmlFor="byok-api-key">
-          {COPY.apiKeyLabel}
-        </label>
-        <input
-          id="byok-api-key"
-          className={styles.input}
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="sk-FAKE-... 或 eyJhbGciOi..."
-          autoComplete="off"
-          spellCheck={false}
-          minLength={20}
-          maxLength={256}
-          required
-          disabled={!enabled || submitting}
-        />
-        {/* Phase BYOK-H2D: Key 隐私说明 + 敏感 prompt 提醒 */}
+          <div className={styles.fieldStack}>
+            <label className={styles.label} htmlFor="byok-api-key">
+              {COPY.apiKeyLabel}
+            </label>
+            <input
+              id="byok-api-key"
+              className={styles.input}
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-FAKE-... 或 eyJhbGciOi..."
+              autoComplete="off"
+              spellCheck={false}
+              minLength={20}
+              maxLength={256}
+              required
+              disabled={!enabled || submitting}
+            />
+          </div>
+        </div>        {/* Phase BYOK-H2D: Key 隐私说明 + 敏感 prompt 提醒 */}
         <p className={styles.hint} data-h2d="api-key-hint">
           {COPY.apiKeyHint}
         </p>
