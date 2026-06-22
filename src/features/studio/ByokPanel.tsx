@@ -84,7 +84,7 @@ const COPY = {
   dryRunBadge: '本站不保存 API Key 到磁盘 · 生成任务会排队执行 · 最多 5 个活跃用户',
   apiKeyLabel: 'MiniMax API Key',
   apiKeyHint:
-    '需要先填写 MiniMax API Key 才能生成。Key 仅临时用于本次排队任务；不写入磁盘、浏览器存储、作品库、manifest、日志或 Git，任务结束或过期后删除。',
+    '需要先填写 MiniMax API Key 才能生成。Key 会在本次排队任务期间临时保存在服务器内存中；任务完成、失败、取消或过期后删除，不写入磁盘或浏览器存储。',
   apiKeyNoSensitivePrompt: 'Prompt 内请勿填入敏感内容（Key、密码、身份证号等）。',
   turnstileLabel: 'Turnstile 验证',
   turnstileHumanOnly:
@@ -100,7 +100,7 @@ const COPY = {
     '所以没有调用 MiniMax，也没有生成音乐。',
   resultErrorPrefix: '请求未通过：',
   h2dFooterLine:
-    '当前仍是 alpha 版本；生成任务单并发排队执行，Key 不写入磁盘或浏览器存储，任务结束或过期后删除。',
+    '当前仍是 alpha 版本；生成任务单并发排队执行，Key 会在本次排队任务期间临时保存在服务器内存中，任务完成、失败、取消或过期后删除。',
   // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the live
   // confirmation phrase is operator-supplied. The frontend does NOT
   // embed the phrase, never persists it, never logs it, and never
