@@ -591,11 +591,23 @@ npm run weapp:build      # 小程序构建
 ```bash
 # mock 模式（不消耗额度）
 npm run dev:server
-npm run dev:web
+npm run dev
 
 # 或
 npm run dev:full
 ```
+
+Windows / Codex Desktop fallback:
+
+```bash
+# Terminal 1
+npm run dev:server
+
+# Terminal 2
+npm run dev
+```
+
+`npm run dev:full` now uses the cross-platform Node launcher `scripts/dev-full.mjs`; the split-terminal path remains the recommended fallback when a desktop shell has process-tree or port conflicts.
 
 ### 5. Mock 预览（公网访问用）
 

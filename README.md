@@ -47,6 +47,18 @@ npm run dev:full
 # API:  http://localhost:8787
 ```
 
+Windows / Codex Desktop fallback:
+
+```bash
+# Terminal 1
+npm run dev:server
+
+# Terminal 2
+npm run dev
+```
+
+Use `http://localhost:5174` for the Vite dev UI, or `http://localhost:8787` for the API/server-hosted build path after `npm run build`.
+
 ### 生产构建
 
 ```bash
