@@ -18,7 +18,7 @@ Public-Lite BYOK queued generation is available for small-scale alpha use.
 - Current stage: alpha, not a broad public launch.
 - Access model: lightweight public mode for up to 5 active users.
 - Generation model: users provide their own MiniMax API Key.
-- Key handling: API Keys are kept only in server memory while the queued job runs, then deleted after completion, failure, cancellation, or TTL expiry. They are not written to disk, browser storage, the Library, manifest, logs, or Git.
+- Key handling: API Keys are temporarily kept in server memory during the queued job, then deleted after completion, failure, cancellation, or TTL expiry. They are not written to disk, browser storage, the Library, manifest, logs, or Git.
 - Queue behavior: generation tasks run through a single-worker queue, one generation at a time.
 - Scope: no public sign-up, no account system, no admin dashboard, and no 5-way concurrent MiniMax generation.
 
