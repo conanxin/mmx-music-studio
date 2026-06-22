@@ -173,7 +173,7 @@ type ErrorType =
 const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
   byok_missing: {
     title: '需要填写 MiniMax API Key',
-    hint: '需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。',
+    hint: '需要先填写 MiniMax API Key 才能生成。Key 仅临时用于本次排队任务；不写入磁盘、浏览器存储、作品库、manifest、日志或 Git，任务结束或过期后删除。',
   },
   quota_exhausted: {
     title: '今日生成次数已用完',
@@ -464,7 +464,7 @@ export default function Studio({
   function getRuntimeModeHint(): string | null {
     if (!healthInfo) return null;
     const isByokApi = healthInfo.byokEnabled && healthInfo.backend === 'api';
-    if (isByokApi && !settings.apiKey) return '需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。';
+    if (isByokApi && !settings.apiKey) return '需要先填写 MiniMax API Key 才能生成。Key 仅临时用于本次排队任务；不写入磁盘、浏览器存储、作品库、manifest、日志或 Git，任务结束或过期后删除。';
     if (isByokApi && settings.apiKey) return '将使用你的 MiniMax API Key 生成，费用由你的 MiniMax 账户承担。';
     if (isByokApi && healthInfo.realApiAttemptLimitEnabled && healthInfo.remainingRealApiAttempts === 0) {
       return '本地真实 API 测试次数已用完（项目保护限制，不代表 MiniMax 官方额度）';
@@ -685,7 +685,7 @@ export default function Studio({
 
     // Phase 5B-D-A: Block if BYOK API mode but no key provided
     if (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey) {
-      setGenError('需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。');
+      setGenError('需要先填写 MiniMax API Key 才能生成。Key 仅临时用于本次排队任务；不写入磁盘、浏览器存储、作品库、manifest、日志或 Git，任务结束或过期后删除。');
       return;
     }
 
@@ -911,7 +911,7 @@ export default function Studio({
           </div>
 
           <div className={styles.productNotice} data-safe-default-ui="studio">
-            <span>本站不保存 API Key</span>
+            <span>本站不保存 API Key 到磁盘</span>
             <span>生成任务会排队执行</span>
             <span>最多 5 个活跃用户</span>
           </div>
@@ -1249,7 +1249,7 @@ export default function Studio({
             <div className={styles.realApiWarning}>
               生成状态：{
                 healthInfo.byokEnabled && !settings.apiKey ? (
-                  <>需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。 <button type="button" className={styles.inlineTextButton} onClick={() => document.getElementById('byok-api-key')?.focus()}>填写 API Key</button></>
+                  <>需要先填写 MiniMax API Key 才能生成。Key 仅临时用于本次排队任务；不写入磁盘、浏览器存储、作品库、manifest、日志或 Git，任务结束或过期后删除。 <button type="button" className={styles.inlineTextButton} onClick={() => document.getElementById('byok-api-key')?.focus()}>填写 API Key</button></>
                 ) : isGenerating || (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) ? (
                   <>🔄 正在生成中，请勿重复提交</>
                 ) : (healthInfo.backend === 'api' && healthInfo.realApiAttemptLimitEnabled && (healthInfo.remainingRealApiAttempts ?? 1) <= 0) ? (

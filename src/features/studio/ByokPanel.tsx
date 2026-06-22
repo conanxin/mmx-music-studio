@@ -5,7 +5,8 @@
  * - Password input is never persisted to localStorage / sessionStorage / IndexedDB
  * - Password input is never put in the URL query
  * - Password input is never copied to a clipboard helper
- * - Password input is sent only to /api/generate/byok in a one-shot request body
+ * - Password input is sent only to /api/generate/byok in a request body.
+ *   The queued path may hold it temporarily in server memory for the job.
  * - When PUBLIC_BYOK_ENABLED is false (default), the panel renders in
  *   "BYOK 暂未开放" disabled state.
  * - The endpoint default response is `byok_dry_run_only` (no real generation).
@@ -50,7 +51,7 @@
  *
  * Phase BYOK-H2D (UX/copy polish only, no logic change):
  * - Dry-run 状态徽章: 提示用户当前为 dry-run，不会生成音乐
- * - API Key 隐私说明: fake key 示例 + 不写入本地存储 / 服务器持久化
+ * - API Key 隐私说明: fake key 示例 + 仅排队期间服务器内存临时保存
  * - Turnstile 提示: 强调是「人机验证」不是「MiniMax 登录」
  * - byok_dry_run_only 结果解释: 安全链路已通过，但当前为 dry-run
  * - 所有文案为保守补充，不改变 API 行为，不改变 live/dry-run gate，
@@ -80,10 +81,10 @@ const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api
 const COPY = {
   headerSubtitle:
     '输入一句音乐描述，使用自己的 MiniMax API Key 生成一首可播放、可下载的音乐。',
-  dryRunBadge: '本站不保存 API Key · 生成任务会排队执行 · 最多 5 个活跃用户',
+  dryRunBadge: '本站不保存 API Key 到磁盘 · 生成任务会排队执行 · 最多 5 个活跃用户',
   apiKeyLabel: 'MiniMax API Key',
   apiKeyHint:
-    '需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。',
+    '需要先填写 MiniMax API Key 才能生成。Key 仅临时用于本次排队任务；不写入磁盘、浏览器存储、作品库、manifest、日志或 Git，任务结束或过期后删除。',
   apiKeyNoSensitivePrompt: 'Prompt 内请勿填入敏感内容（Key、密码、身份证号等）。',
   turnstileLabel: 'Turnstile 验证',
   turnstileHumanOnly:
@@ -91,7 +92,7 @@ const COPY = {
   turnstileRetryHint: '验证失败时，可点击右上角刷新图标重试，或刷新整个页面。',
   turnstileTokenPrivacy: 'Token 不显示、不保存、不复用；每次提交后会自动重置。',
   confirmLabel: '我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。',
-  confirmLabelDryRun: '（本站不保存 API Key；生成任务将排队执行）',
+  confirmLabelDryRun: '（Key 仅在排队任务期间临时保存在服务器内存中）',
   submitIdleDryRun: '生成音乐',
   submitIdleLive: '生成音乐',
   resultDryRunExplain:
@@ -99,7 +100,7 @@ const COPY = {
     '所以没有调用 MiniMax，也没有生成音乐。',
   resultErrorPrefix: '请求未通过：',
   h2dFooterLine:
-    '当前仍是 alpha 版本；生成任务单并发排队执行，本站不保存 API Key。',
+    '当前仍是 alpha 版本；生成任务单并发排队执行，Key 不写入磁盘或浏览器存储，任务结束或过期后删除。',
   // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the live
   // confirmation phrase is operator-supplied. The frontend does NOT
   // embed the phrase, never persists it, never logs it, and never

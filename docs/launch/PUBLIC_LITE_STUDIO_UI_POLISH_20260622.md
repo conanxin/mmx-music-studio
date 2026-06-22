@@ -60,7 +60,7 @@ The intended user flow is:
 - No 5-way concurrent generation was added.
 - No real MiniMax API call was made during validation.
 - No API key, token, secret, Authorization header, confirmation phrase, or provider URL is committed.
-- API Key copy states that the key is only used for the current request and is not saved.
+- API Key copy states that queued generation temporarily keeps the key in server memory for the job, then deletes it after completion, failure, cancellation, or expiry; it is not written to disk, browser storage, the Library, manifest, logs, or Git.
 - Public-Lite remains alpha and is not a broad public launch.
 - Public-Lite remains scoped to up to 5 active users, with single-worker queued generation.
 
