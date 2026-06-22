@@ -11,6 +11,21 @@
 
 ---
 
+## Current Status: Public-Lite BYOK queued generation
+
+Public-Lite BYOK queued generation is available for small-scale alpha use.
+
+- Current stage: alpha, not a broad public launch.
+- Access model: lightweight public mode for up to 5 active users.
+- Generation model: users provide their own MiniMax API Key.
+- Key handling: this site does not save API Keys; keys are used only for the current request / in-memory queued job path.
+- Queue behavior: generation tasks run through a single-worker queue, one generation at a time.
+- Scope: no public sign-up, no account system, no admin dashboard, and no 5-way concurrent MiniMax generation.
+
+The Studio page now presents this as a single BYOK music creation flow instead of an engineering test panel.
+
+---
+
 ## 快速开始
 
 ### Docker（推荐，最快）

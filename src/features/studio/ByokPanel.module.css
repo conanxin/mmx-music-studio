@@ -1,12 +1,12 @@
 .byokPanel {
-  margin-top: 24px;
-  padding: 16px 18px;
-  border: 1px solid var(--border-color, #d6dee5);
-  border-radius: 12px;
-  background: var(--panel-bg, #fafbfc);
+  margin-top: 0;
+  padding: 22px;
+  border: 1px solid rgba(184, 255, 106, 0.18);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(184, 255, 106, 0.07), rgba(255, 255, 255, 0.025));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .header {
@@ -16,17 +16,17 @@
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   margin: 0;
-  color: var(--text-primary, #1f2933);
+  color: var(--color-text-primary, var(--text-primary, #1f2933));
 }
 
 .subtitle {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   margin: 0;
-  color: var(--text-secondary, #52606d);
+  color: var(--color-text-secondary, var(--text-secondary, #52606d));
 }
 
 /* Phase BYOK-H2D: 醒目 dry-run 状态徽章 */
@@ -98,7 +98,56 @@
 .form {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.modeFieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.modeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.modeOption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid var(--border-color, #cbd2d9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary, var(--text-primary, #1f2933));
+  text-align: left;
+  cursor: pointer;
+}
+
+.modeOption span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.modeOption small {
+  color: var(--color-text-secondary, var(--text-secondary, #52606d));
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.modeOptionActive {
+  border-color: var(--color-accent, var(--accent-color, #5b8def));
+  background: rgba(184, 255, 106, 0.12);
+}
+
+.modeHelp {
+  margin: 0;
+  color: var(--color-text-secondary, var(--text-secondary, #52606d));
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .label {
@@ -149,13 +198,13 @@
 
 .submit {
   margin-top: 8px;
-  padding: 10px 14px;
-  font-size: 14px;
+  padding: 14px 16px;
+  font-size: 15px;
   font-weight: 600;
-  background: var(--accent-color, #5b8def);
-  color: #fff;
+  background: var(--color-accent, var(--accent-color, #5b8def));
+  color: #090A0C;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   cursor: pointer;
 }
 
@@ -368,6 +417,17 @@
   gap: 8px;
 }
 
+.inlineActionButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-color, #315fce);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .localTrackLink {
   color: var(--accent-color, #315fce);
   font-weight: 700;
@@ -497,6 +557,10 @@
 
 /* Mobile: prevent overflow of the widget iframe on narrow viewports. */
 @media (max-width: 639px) {
+  .modeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .turnstileBlock {
     padding: 8px;
   }

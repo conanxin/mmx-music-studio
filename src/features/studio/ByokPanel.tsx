@@ -79,13 +79,11 @@ const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api
 // 这些是 user-facing copy，单独抽出便于阅读与未来微调。
 const COPY = {
   headerSubtitle:
-    '使用自己的 MiniMax API Key 生成音乐。生成任务将排队执行，本站一次只运行 1 个生成任务。' +
-    '本站不保存 API Key；Key 只在单次请求和队列任务内存中使用，不写入浏览器本地存储或服务器持久化。' +
-    '当前是最多 5 个活跃用户的轻量公开模式，费用由你自己的 MiniMax 账户承担。',
-  dryRunBadge: '5 人内轻量公开 BYOK 排队生成 · 一次只执行 1 个生成任务 · 本站不保存 API Key',
+    '输入一句音乐描述，使用自己的 MiniMax API Key 生成一首可播放、可下载的音乐。',
+  dryRunBadge: '本站不保存 API Key · 生成任务会排队执行 · 最多 5 个活跃用户',
   apiKeyLabel: 'MiniMax API Key',
   apiKeyHint:
-    '填入你自己的 MiniMax API Key。Key 只发往 /api/generate/byok 一次，不写入 localStorage / sessionStorage / IndexedDB / URL。',
+    '需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。',
   apiKeyNoSensitivePrompt: 'Prompt 内请勿填入敏感内容（Key、密码、身份证号等）。',
   turnstileLabel: 'Turnstile 验证',
   turnstileHumanOnly:
@@ -94,14 +92,14 @@ const COPY = {
   turnstileTokenPrivacy: 'Token 不显示、不保存、不复用；每次提交后会自动重置。',
   confirmLabel: '我确认使用自己的 MiniMax Key，并理解费用由自己的账户承担。',
   confirmLabelDryRun: '（本站不保存 API Key；生成任务将排队执行）',
-  submitIdleDryRun: '使用我的 Key 排队生成',
-  submitIdleLive: '使用我的 Key 进行受控 live 测试（仅本窗口一次）',
+  submitIdleDryRun: '生成音乐',
+  submitIdleLive: '生成音乐',
   resultDryRunExplain:
     '安全链路已通过（Turnstile + Key 形状校验）。当前为 dry-run，' +
     '所以没有调用 MiniMax，也没有生成音乐。',
   resultErrorPrefix: '请求未通过：',
   h2dFooterLine:
-    'Phase BYOK-H2D · dry-run UX/copy polish · 未启用 BYOK live · 未发起 broad public launch',
+    '当前仍是 alpha 版本；生成任务单并发排队执行，本站不保存 API Key。',
   // Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX: the live
   // confirmation phrase is operator-supplied. The frontend does NOT
   // embed the phrase, never persists it, never logs it, and never
@@ -113,6 +111,19 @@ const COPY = {
     '前端不会内置、不会自动填入、不会写入 localStorage / sessionStorage。',
   directLiveConfirmationPlaceholder: '受控窗口期由 operator 提供',
 } as const;
+
+type CreationMode = 'instrumental' | 'auto_song' | 'lyrics' | 'reference';
+
+const CREATION_MODES: Array<{
+  value: CreationMode;
+  label: string;
+  hint: string;
+}> = [
+  { value: 'instrumental', label: '纯音乐', hint: '适合氛围、BGM、配乐' },
+  { value: 'auto_song', label: '自动成歌', hint: '用描述生成完整歌曲方向' },
+  { value: 'lyrics', label: '歌词成歌', hint: '填写歌词并生成歌曲' },
+  { value: 'reference', label: '参考改编', hint: '描述想参考的风格或歌曲质感' },
+];
 
 // All server-side response codes the UI is allowed to surface.
 // Keep this list in sync with server/index.ts handleByokGenerate.
@@ -268,8 +279,8 @@ interface ByokErrorResponse {
 type ByokResponse = ByokDryRunResponse | ByokOkResponse | ByokErrorResponse;
 
 function statusMessage(code: ByokResponseCode | undefined): string {
-  if (!code) return '请求未通过';
-  return STATUS_MESSAGES[code] ?? `请求未通过（${code}）`;
+  if (!code) return '生成未开始';
+  return STATUS_MESSAGES[code] ?? '生成未开始，请检查输入后重试';
 }
 
 function byokLibrarySaveMessage(code?: string, fallback?: string): string {
@@ -462,6 +473,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   const [model, setModel] = useState<'music-2.6-free' | 'music-2.6'>(
     'music-2.6-free',
   );
+  const [creationMode, setCreationMode] =
+    useState<CreationMode>('instrumental');
   const [musicMode, setMusicMode] =
     useState<ByokGenerationIntent>('instrumental');
   const [prompt, setPrompt] = useState<string>('');
@@ -642,6 +655,8 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
 
   const lyricsRequired = musicMode === 'with_lyrics';
   const trimmedLyrics = lyrics.trim();
+  const selectedCreationMode = CREATION_MODES.find((item) => item.value === creationMode)
+    ?? CREATION_MODES[0];
   const isPublicCapacityFull = publicCapacity?.capacityFull === true;
   const canSubmit =
     enabled &&
@@ -668,6 +683,11 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     }
     setTurnstileUiState('ready');
   }, []);
+
+  function handleCreationModeChange(nextMode: CreationMode): void {
+    setCreationMode(nextMode);
+    setMusicMode(nextMode === 'lyrics' ? 'with_lyrics' : 'instrumental');
+  }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -870,22 +890,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
   }
 
   return (
-    <section className={styles.byokPanel} aria-label="BYOK 自带 Key 模式">
+    <section className={styles.byokPanel} aria-label="MiniMax API Key 音乐生成">
       <header className={styles.header}>
         <h2 className={styles.title}>使用自己的 MiniMax API Key 生成</h2>
         <p className={styles.subtitle}>{COPY.headerSubtitle}</p>
-        {/* Phase BYOK-H3B-FRONTEND-MODE-FOLLOWUP: dynamic status badge.
-            When live-ready, show live window badge.
-            When not live-ready, show dry-run badge. */}
-        <p
-          className={isByokLiveReady ? styles.liveWindowBadge : styles.dryRunBadge}
-          role="status"
-          data-h2d={isByokLiveReady ? 'live-window-badge' : 'dry-run-badge'}
-        >
-          {isByokLiveReady
-            ? '受控 live 窗口已就绪 · 仅一次提交 · 费用由你的 MiniMax 账户承担'
-            : COPY.dryRunBadge}
-        </p>
       </header>
 
       {isPublicCapacityFull && (
@@ -900,6 +908,83 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       )}
 
       <form className={styles.form} onSubmit={handleSubmit} autoComplete="off">
+        <fieldset className={styles.modeFieldset} disabled={!enabled || submitting}>
+          <legend className={styles.label}>选择模式</legend>
+          <div className={styles.modeGrid}>
+            {CREATION_MODES.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={`${styles.modeOption} ${
+                  creationMode === item.value ? styles.modeOptionActive : ''
+                }`}
+                onClick={() => handleCreationModeChange(item.value)}
+              >
+                <span>{item.label}</span>
+                <small>{item.hint}</small>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <label className={styles.label} htmlFor="byok-prompt">
+          音乐描述
+        </label>
+        <textarea
+          id="byok-prompt"
+          className={styles.textarea}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder={
+            creationMode === 'reference'
+              ? '例如：参考 90 年代港风流行质感，保留温暖合成器和中速律动'
+              : '例如：深夜城市里的温柔电子乐，带一点钢琴和低频律动'
+          }
+          rows={3}
+          maxLength={500}
+          required
+          disabled={!enabled || submitting}
+        />
+
+        {lyricsRequired && (
+          <>
+            <label className={styles.label} htmlFor="byok-lyrics">
+              歌词
+            </label>
+            <textarea
+              id="byok-lyrics"
+              className={styles.textarea}
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder="[Verse]\n写下你的歌词，或先用一句主题扩展成歌词草稿"
+              rows={4}
+              maxLength={3000}
+              required
+              disabled={!enabled || submitting}
+            />
+          </>
+        )}
+
+        <p className={styles.modeHelp}>
+          当前选择：{selectedCreationMode.label}。生成完成后可以播放、下载 MP3，并保存到作品库。
+        </p>
+
+        <label className={styles.label} htmlFor="byok-model">
+          模型
+        </label>
+        <select
+          id="byok-model"
+          className={styles.select}
+          value={model}
+          onChange={(e) =>
+            setModel(e.target.value as 'music-2.6-free' | 'music-2.6')
+          }
+          disabled={!enabled || submitting}
+        >
+          <option value="music-2.6-free">music-2.6-free</option>
+          <option value="music-2.6">music-2.6</option>
+        </select>
+
         <label className={styles.label} htmlFor="byok-api-key">
           {COPY.apiKeyLabel}
         </label>
@@ -924,72 +1009,6 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
         <p className={styles.hint} data-h2d="prompt-no-sensitive">
           {COPY.apiKeyNoSensitivePrompt}
         </p>
-
-        <label className={styles.label} htmlFor="byok-model">
-          模型
-        </label>
-        <select
-          id="byok-model"
-          className={styles.select}
-          value={model}
-          onChange={(e) =>
-            setModel(e.target.value as 'music-2.6-free' | 'music-2.6')
-          }
-          disabled={!enabled || submitting}
-        >
-          <option value="music-2.6-free">music-2.6-free</option>
-          <option value="music-2.6">music-2.6</option>
-        </select>
-
-        <label className={styles.label} htmlFor="byok-music-mode">
-          模式
-        </label>
-        <select
-          id="byok-music-mode"
-          className={styles.select}
-          value={musicMode}
-          onChange={(e) =>
-            setMusicMode(e.target.value as ByokGenerationIntent)
-          }
-          disabled={!enabled || submitting}
-        >
-          <option value="instrumental">instrumental（纯音乐）</option>
-          <option value="with_lyrics">with_lyrics（带歌词）</option>
-        </select>
-
-        <label className={styles.label} htmlFor="byok-prompt">
-          Prompt
-        </label>
-        <textarea
-          id="byok-prompt"
-          className={styles.textarea}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="例如：深夜编程，lo-fi 钢琴，节奏缓慢"
-          rows={2}
-          maxLength={500}
-          required
-          disabled={!enabled || submitting}
-        />
-
-        {musicMode === 'with_lyrics' && (
-          <>
-            <label className={styles.label} htmlFor="byok-lyrics">
-              Lyrics
-            </label>
-            <textarea
-              id="byok-lyrics"
-              className={styles.textarea}
-              value={lyrics}
-              onChange={(e) => setLyrics(e.target.value)}
-              placeholder="[Verse]\n..."
-              rows={4}
-              maxLength={3000}
-              required
-              disabled={!enabled || submitting}
-            />
-          </>
-        )}
 
         {/* Phase BYOK-H3B-FRONTEND-DIRECT-LIVE-CONFIRMATION-FIX:
             Operator confirmation input. Rendered ONLY when the server
@@ -1039,9 +1058,6 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           />
           <span>
             {COPY.confirmLabel}
-            <span className={styles.confirmDryRunNote}>
-              {COPY.confirmLabelDryRun}
-            </span>
           </span>
         </label>
 
@@ -1056,18 +1072,10 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             {turnstileConfigured ? (
               <>
                 <span className={styles.turnstileLabel}>
-                  {COPY.turnstileLabel}
+                  完成人机验证
                   {turnstileEnforced && (
                     <span className={styles.turnstileRequired}>（必填）</span>
                   )}
-                </span>
-                {/* Phase BYOK-H2D: 强调是「人机验证」非「MiniMax 登录」 */}
-                <span className={styles.hint} data-h2d="turnstile-human-only">
-                  {COPY.turnstileHumanOnly}
-                </span>
-                {/* Phase BYOK-H2D: 重试 / token 隐私提示 */}
-                <span className={styles.hint} data-h2d="turnstile-retry-hint">
-                  {COPY.turnstileRetryHint}
                 </span>
                 <span className={styles.hint} data-h2d="turnstile-token-privacy">
                   {COPY.turnstileTokenPrivacy}
@@ -1087,7 +1095,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                 />
                 {turnstileUiState === 'loading' && (
                   <span className={styles.turnstileHint}>
-                    正在加载 Turnstile…
+                    正在加载验证组件…
                   </span>
                 )}
                 {turnstileUiState === 'ready' && (
@@ -1097,23 +1105,23 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                 )}
                 {turnstileUiState === 'verified' && (
                   <span className={styles.turnstileHintOk}>
-                    ✓ Turnstile 已验证
+                    ✓ 已完成验证
                   </span>
                 )}
                 {turnstileUiState === 'expired' && (
                   <span className={styles.turnstileHintWarn}>
-                    ⚠ 验证已过期，请重新验证
+                    验证已过期，请重新验证
                   </span>
                 )}
                 {turnstileUiState === 'error' && (
                   <span className={styles.turnstileHintErr}>
-                    ✗ 验证加载失败，请刷新页面重试
+                    验证加载失败，请刷新页面重试
                   </span>
                 )}
               </>
             ) : (
               <span className={styles.turnstileNotConfigured}>
-                Turnstile 尚未配置 — 当前为非阻断模式
+                人机验证暂不可用，当前为非阻断模式
               </span>
             )}
           </div>
@@ -1129,7 +1137,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             className={styles.submit}
             disabled={!canSubmit}
           >
-            {submitting ? '提交排队中…' : COPY.submitIdleDryRun}
+            {submitting ? '正在提交…' : COPY.submitIdleDryRun}
           </button>
         )}
       </form>
@@ -1147,9 +1155,11 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
             <>
               <strong>{statusMessage(lastResult.code)}</strong>
               <br />
-              <code>{lastResult.code}</code>
-              <br />
-              <span className={styles.resultMsg}>{lastResult.message}</span>
+              <span className={styles.resultMsg}>
+                {lastResult.code === 'byok_job_queued'
+                  ? '生成任务已进入队列。当前有任务正在生成时，会自动等待。'
+                  : lastResult.message}
+              </span>
               {queuedJobResult && (
                 <div
                   className={styles.saveToLibraryCard}
@@ -1158,17 +1168,33 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                 >
                   <div className={styles.saveHeader}>
                     <div>
-                      <strong>任务已排队 / 当前有任务正在生成时会等待</strong>
+                      <strong>
+                        {queuedJobResult.status === 'succeeded'
+                          ? '生成完成'
+                          : queuedJobResult.status === 'running'
+                          ? '正在生成'
+                          : queuedJobResult.status === 'failed'
+                          ? '生成失败'
+                          : '任务已排队'}
+                      </strong>
                       <p className={styles.saveDescription}>
-                        jobId: <code>{queuedJobResult.id}</code> · status:{' '}
-                        <code>{queuedJobResult.status}</code>
-                        {typeof okResult?.queue?.concurrency === 'number' && (
-                          <> · concurrency: <code>{okResult.queue.concurrency}</code></>
-                        )}
+                        {queuedJobResult.status === 'succeeded'
+                          ? '音乐已经生成，可以试听、下载或保存到作品库。'
+                          : queuedJobResult.status === 'running'
+                          ? '正在生成音乐，通常需要等待一会儿。'
+                          : queuedJobResult.status === 'failed'
+                          ? '生成没有完成，请查看提示后再试。'
+                          : '任务会按顺序执行，请保持页面打开。'}
                       </p>
                     </div>
                     <span className={`${styles.saveStatusBadge} ${styles.saveStatusIdle}`}>
-                      {queuedJobResult.status}
+                      {queuedJobResult.status === 'succeeded'
+                        ? '已完成'
+                        : queuedJobResult.status === 'running'
+                        ? '生成中'
+                        : queuedJobResult.status === 'failed'
+                        ? '失败'
+                        : '排队中'}
                     </span>
                   </div>
                   {queuedJobResult.progressMessage && (
@@ -1198,7 +1224,7 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                           target="_blank"
                           rel="noreferrer"
                         >
-                          Open local track
+                          播放
                         </a>
                         {queuedTrackDownloadUrl && (
                           <a
@@ -1207,15 +1233,26 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            Download
+                            下载 MP3
                           </a>
                         )}
                         <a
                           className={styles.localTrackLink}
                           href={`/library?track=${encodeURIComponent(queuedTrack.id)}`}
                         >
-                          Go to Library
+                          保存到作品库
                         </a>
+                        <button
+                          type="button"
+                          className={styles.inlineActionButton}
+                          onClick={() => {
+                            setLastResult(null);
+                            setQueuedJob(null);
+                            setLibrarySaveState('idle');
+                          }}
+                        >
+                          再生成相似风格
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1442,11 +1479,6 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
       )}
 
       <footer className={styles.footer}>
-        <small>
-          Phase Deploy-CF-E · Turnstile widget runtime 已就位 · 服务端 Siteverify 仍为最终判断 · Token 不写入 localStorage / sessionStorage / IndexedDB / URL query · 不代表 broad public BYOK launch
-        </small>
-        <br />
-        {/* Phase BYOK-H2D: 显式声明当前为 UX/copy polish，未启用 BYOK live */}
         <small data-h2d="footer-line">{COPY.h2dFooterLine}</small>
       </footer>
     </section>

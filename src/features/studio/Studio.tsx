@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Studio.module.css';
 // Phase BYOK-A: Public BYOK generation readiness panel
@@ -172,8 +172,8 @@ type ErrorType =
 
 const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
   byok_missing: {
-    title: '请先在设置中输入 BYOK Key',
-    hint: 'BYOK 模式需要你提供自己的 MiniMax Token Plan Key，去设置页面填写后再试。',
+    title: '需要填写 MiniMax API Key',
+    hint: '需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。',
   },
   quota_exhausted: {
     title: '今日生成次数已用完',
@@ -212,31 +212,6 @@ const ERROR_TYPE_LABELS: Record<ErrorType, { title: string; hint: string }> = {
     hint: '遇到未知错误，请稍后重试。如果问题持续，请检查服务器日志。',
   },
 };
-
-function getBackendLabel(backend?: string): string {
-  switch (backend) {
-    case 'cli': return 'MMX CLI';
-    case 'api': return 'API Adapter';
-    case 'mock': return '本地模拟';
-    default: return backend ?? 'API Adapter';
-  }
-}
-
-function deriveRuntimeModeLabel(health?: {
-  previewAccessEnabled?: boolean;
-  realGenerationEnabled?: boolean;
-  mockGenerationEnabled?: boolean;
-  backend?: string;
-  byokEnabled?: boolean;
-} | null): string {
-  if (!health) return '连接中…';
-  if (health.previewAccessEnabled) return '访问保护';
-  if (health.backend === 'cli' && health.realGenerationEnabled) return 'MMX CLI 模式';
-  if (health.byokEnabled && health.backend === 'api') return 'BYOK API 模式';
-  if (health.backend === 'api' && health.realGenerationEnabled) return 'API 实验模式';
-  if (!health.realGenerationEnabled && health.backend === 'mock' && health.mockGenerationEnabled) return '本地预览';
-  return '自定义模式';
-}
 
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -489,8 +464,8 @@ export default function Studio({
   function getRuntimeModeHint(): string | null {
     if (!healthInfo) return null;
     const isByokApi = healthInfo.byokEnabled && healthInfo.backend === 'api';
-    if (isByokApi && !settings.apiKey) return '请先在设置页填写你的 MiniMax Token Plan Key，否则无法生成';
-    if (isByokApi && settings.apiKey) return '将使用你的 Token Plan Key，生成会消耗你的额度';
+    if (isByokApi && !settings.apiKey) return '需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。';
+    if (isByokApi && settings.apiKey) return '将使用你的 MiniMax API Key 生成，费用由你的 MiniMax 账户承担。';
     if (isByokApi && healthInfo.realApiAttemptLimitEnabled && healthInfo.remainingRealApiAttempts === 0) {
       return '本地真实 API 测试次数已用完（项目保护限制，不代表 MiniMax 官方额度）';
     }
@@ -710,7 +685,7 @@ export default function Studio({
 
     // Phase 5B-D-A: Block if BYOK API mode but no key provided
     if (healthInfo?.byokEnabled && healthInfo?.backend === 'api' && !settings.apiKey) {
-      setGenError('请先在设置中填写你的 MiniMax Token Plan Key，BYOK 模式需要用户提供自己的 Key。');
+      setGenError('需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。');
       return;
     }
 
@@ -930,37 +905,17 @@ export default function Studio({
 
           <div className={styles.header}>
             <h1 className={styles.pageTitle}>今天想创作什么音乐？</h1>
+            <p className={styles.pageSubtitle}>
+              输入一句描述，使用自己的 MiniMax API Key 生成一首可播放、可下载的音乐。
+            </p>
           </div>
 
-          <div className={styles.safeDefaultStatus} data-safe-default-ui="studio">
-            <div className={styles.safeDefaultStatusMain}>
-              <span className={styles.safeDefaultKicker}>v0.4.32-alpha · public-lite</span>
-              <strong>5 人内轻量公开模式已开启</strong>
-              <p>
-                超过 5 人后，生成和 Save to Library 会自动暂停，页面仍可浏览。
-              </p>
-              <p>
-                <strong>使用自己的 MiniMax API Key 生成</strong>：生成任务将排队执行；本站不保存 API Key。
-              </p>
-              <p>
-                <strong>BYOK live 直连窗口仍关闭</strong>：真实生成只通过自带 Key 队列提交，不配置本站统一 MiniMax Key。
-              </p>
-            </div>
-            <div className={styles.safeDefaultStatusMeta}>
-              <span>activeUsers={publicCapacity?.activeUsers ?? '读取中'}</span>
-              <span>maxActiveUsers={publicCapacity?.maxActiveUsers ?? 5}</span>
-              <span>capacityFull={publicCapacity?.capacityFull === true ? 'YES' : 'NO'}</span>
-              <span>jobQueue concurrency=1</span>
-              <span>BYOK live 默认关闭</span>
-            </div>
+          <div className={styles.productNotice} data-safe-default-ui="studio">
+            <span>本站不保存 API Key</span>
+            <span>生成任务会排队执行</span>
+            <span>最多 5 个活跃用户</span>
           </div>
 
-          {/* Phase BYOK-A: Public BYOK readiness panel (default disabled)
-              Phase Deploy-CF-E: Pass Turnstile props from /api/health.
-              turnstileSiteKey is a public key designed to be exposed in HTML/JS;
-              the secret key is NEVER sent to the client.
-              Phase H1: Wire publicByokEnabled from the matching /api/health field
-              (boolean only, mirrors server config PUBLIC_BYOK_ENABLED). */}
           <ByokPanel
             publicByokEnabled={healthInfo?.publicByokEnabled}
             publicByokQueueEnabled={healthInfo?.publicByokQueueEnabled}
@@ -973,6 +928,20 @@ export default function Studio({
             publicCapacity={publicCapacity}
             refreshPublicCapacity={refreshPublicCapacity}
           />
+
+          <details className={styles.systemStatus}>
+            <summary>系统状态</summary>
+            <div className={styles.systemStatusGrid}>
+              <span>当前容量：{publicCapacity?.capacityFull ? '已满' : '可生成'}</span>
+              <span>活跃用户：{publicCapacity?.activeUsers ?? '读取中'} / {publicCapacity?.maxActiveUsers ?? 5}</span>
+              <span>任务执行：单任务排队</span>
+              <span>生成方式：自带 MiniMax API Key</span>
+            </div>
+          </details>
+
+          <details className={styles.legacyComposer}>
+            <summary>灵感与高级设置</summary>
+            <div className={styles.legacyComposerBody}>
 
           {/* Mode tabs */}
           <div className={styles.modeTabs}>
@@ -1278,9 +1247,9 @@ export default function Studio({
           {/* Phase API-Debug-C: Submit disabled reason diagnostic */}
           {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
             <div className={styles.realApiWarning}>
-              提交状态：{
+              生成状态：{
                 healthInfo.byokEnabled && !settings.apiKey ? (
-                  <>❌ 请先在设置中输入 BYOK Key</>
+                  <>需要先填写 MiniMax API Key 才能生成。你的 Key 只会用于本次请求，不会保存。 <button type="button" className={styles.inlineTextButton} onClick={() => document.getElementById('byok-api-key')?.focus()}>填写 API Key</button></>
                 ) : isGenerating || (currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')) ? (
                   <>🔄 正在生成中，请勿重复提交</>
                 ) : (healthInfo.backend === 'api' && healthInfo.realApiAttemptLimitEnabled && (healthInfo.remainingRealApiAttempts ?? 1) <= 0) ? (
@@ -1420,6 +1389,9 @@ export default function Studio({
             );
           })()}
 
+            </div>
+          </details>
+
           {/* Mobile: player below form */}
           <div className={styles.mobilePlayer}>
             {currentTrack ? (
@@ -1465,7 +1437,7 @@ export default function Studio({
                       <polyline points="1 20 1 14 7 14"/>
                       <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
-                    清除
+                    再生成相似风格
                   </button>
                 </div>
               </div>
@@ -1475,7 +1447,8 @@ export default function Studio({
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M9 8l6 4-6 4V8z"/>
                 </svg>
-                <span>生成音乐后即可试听</span>
+                <strong>还没有生成作品</strong>
+                <span>生成完成后即可试听和下载。</span>
               </div>
             )}
           </div>
@@ -1510,20 +1483,14 @@ export default function Studio({
           <div className={styles.statusBar}>
             <span className={styles.statusDot} />
             <span className={styles.runtimeMode}>
-              {deriveRuntimeModeLabel(healthInfo)}
+              {currentJob && (currentJob.status === 'queued' || currentJob.status === 'running')
+                ? '生成进行中'
+                : currentTrack
+                ? '作品已生成'
+                : '准备创作'}
             </span>
-            {healthInfo?.backend === 'api' && healthInfo?.realGenerationEnabled && (
-              <span className={styles.statusWarn}>⚠️ 会消耗额度</span>
-            )}
-            {healthInfo?.backend === 'api' && healthInfo?.realApiAttemptLimitEnabled && healthInfo?.remainingRealApiAttempts !== undefined && (
-              <span className={styles.statusWarn}>
-                真实测试剩余 {healthInfo.remainingRealApiAttempts} 次
-              </span>
-            )}
             <span className={styles.statusSep}>·</span>
-            <span>{getBackendLabel(healthInfo?.backend)}</span>
-            <span className={styles.statusSep}>·</span>
-            <span>{settings.region === 'cn' ? '中国区' : 'Global'}</span>
+            <span>自带 Key 生成</span>
           </div>
 
           {/* Player */}
@@ -1571,7 +1538,7 @@ export default function Studio({
                       <polyline points="1 20 1 14 7 14"/>
                       <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
                     </svg>
-                    清除
+                    再生成相似风格
                   </button>
                   <Link to="/jobs" className={`${styles.actionBtn} ${styles.secondary}`}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1588,7 +1555,8 @@ export default function Studio({
                   <circle cx="12" cy="12" r="10"/>
                   <path d="M9 8l6 4-6 4V8z"/>
                 </svg>
-                <span>生成音乐后即可试听</span>
+                <strong>还没有生成作品</strong>
+                <span>填写描述和 MiniMax API Key，生成后会在这里播放和下载。</span>
               </div>
             )}
           </div>
