@@ -1,3 +1,20 @@
+## v0.4.33-alpha
+
+### Highlights
+
+* Public-Lite Studio productization alpha release.
+* `/studio` now presents a clearer BYOK music creation flow instead of an engineering test panel.
+* Vite dev `/api/*` proxy fixed for localhost Studio smoke.
+* BYOK API Key copy now explicitly mentions temporary server-memory retention during queued jobs.
+* Windows / Codex Desktop `npm run dev:full` startup fixed with a Node launcher.
+
+### Notes
+
+* Not a broad public launch.
+* No real MiniMax API call was made for release validation.
+* No BYOK live direct window was opened.
+* Production feature deployment has already been verified stable for 24 hours.
+
 ## v0.4.31-alpha
 
 ### Highlights
