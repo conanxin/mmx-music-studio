@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Static smoke test for Studio public-lite status copy.
+# Static smoke test for Studio public-lite product/status copy.
 # It does not start a server, call APIs, open BYOK live, call MiniMax,
 # download provider URLs, generate audio, or write storage.
 
@@ -54,16 +54,34 @@ assert_file_exists "Studio source exists" "$STUDIO_TSX"
 assert_file_exists "ByokPanel source exists" "$BYOK_PANEL_TSX"
 assert_file_exists "serverApi source exists" "$SERVER_API_TS"
 
-assert_contains "Studio says public-lite is open" "5 人内轻量公开模式已开启" "$STUDIO_TSX"
-assert_contains "Studio shows activeUsers" "activeUsers" "$STUDIO_TSX"
-assert_contains "Studio shows maxActiveUsers" "maxActiveUsers" "$STUDIO_TSX"
-assert_contains "Studio shows capacityFull" "capacityFull" "$STUDIO_TSX"
-assert_contains "Studio explains capacity behavior" "超过 5 人后，生成和 Save to Library 会自动暂停，页面仍可浏览" "$STUDIO_TSX"
-assert_contains "Studio says own API key generation" "使用自己的 MiniMax API Key 生成" "$STUDIO_TSX"
-assert_contains "Studio says generation is queued" "生成任务将排队执行" "$STUDIO_TSX"
+# Productized Studio first-screen flow.
+assert_contains "Studio productized title" "今天想创作什么音乐？" "$STUDIO_TSX"
+assert_contains "Studio productized subtitle mentions own key" "使用自己的 MiniMax API Key" "$STUDIO_TSX"
+assert_contains "Studio generate button copy" "生成音乐" "$STUDIO_TSX"
+assert_contains "Studio API key label" "MiniMax API Key" "$STUDIO_TSX"
+assert_contains "Studio Turnstile copy" "Turnstile" "$STUDIO_TSX"
+assert_contains "Studio result empty state" "还没有生成作品" "$STUDIO_TSX"
+
+# Public-Lite hints are present, but runtime detail is folded under system status.
 assert_contains "Studio says API key is not saved" "本站不保存 API Key" "$STUDIO_TSX"
-assert_contains "Studio says BYOK live stays closed" "BYOK live 默认关闭" "$STUDIO_TSX"
-assert_contains "Studio shows queue concurrency" "jobQueue concurrency=1" "$STUDIO_TSX"
+assert_contains "Studio says generation is queued" "生成任务会排队执行" "$STUDIO_TSX"
+assert_contains "Studio says max 5 active users" "最多 5 个活跃用户" "$STUDIO_TSX"
+assert_contains "Studio has system status disclosure" "<summary>系统状态</summary>" "$STUDIO_TSX"
+assert_contains "Studio folded capacity detail" "当前容量" "$STUDIO_TSX"
+assert_contains "Studio folded active user detail" "活跃用户" "$STUDIO_TSX"
+assert_contains "Studio folded single queue detail" "任务执行：单任务排队" "$STUDIO_TSX"
+
+# API Key retention copy must match the queued-job in-memory behavior.
+assert_contains "Studio API key retention server memory" "服务器内存" "$STUDIO_TSX"
+assert_contains "Studio API key retention queued task" "本次排队任务" "$STUDIO_TSX"
+assert_contains "Studio API key retention deletion" "完成、失败、取消或过期后删除" "$STUDIO_TSX"
+assert_contains "Studio API key retention no disk" "不写入磁盘" "$STUDIO_TSX"
+assert_contains "Studio API key retention browser storage" "浏览器存储" "$STUDIO_TSX"
+assert_contains "ByokPanel API key retention server memory" "服务器内存" "$BYOK_PANEL_TSX"
+assert_contains "ByokPanel API key retention queued task" "本次排队任务" "$BYOK_PANEL_TSX"
+
+# Studio fetches capacity once and passes the state into ByokPanel to avoid
+# duplicate public-lite session creation on the same page.
 assert_contains "Studio imports public capacity helper" "getPublicCapacity" "$STUDIO_TSX"
 assert_contains "Studio stores public capacity state" "PublicCapacityInfo" "$STUDIO_TSX"
 assert_contains "Studio passes public capacity to ByokPanel" "publicCapacity={publicCapacity}" "$STUDIO_TSX"

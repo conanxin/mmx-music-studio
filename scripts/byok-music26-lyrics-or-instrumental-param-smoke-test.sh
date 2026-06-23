@@ -82,10 +82,22 @@ need "$BYOK_PANEL" "const lyricsRequired = musicMode === 'with_lyrics';" \
   "frontend requires lyrics only for with_lyrics"
 need "$BYOK_PANEL" "code: 'byok_lyrics_required'" \
   "frontend exposes stable missing-lyrics error code"
-need "$BYOK_PANEL" "<option value=\"with_lyrics\">" \
-  "frontend has with_lyrics selection"
+need "$BYOK_PANEL" "type CreationMode = 'instrumental' | 'auto_song' | 'lyrics' | 'reference';" \
+  "frontend uses productized creation mode model"
+need "$BYOK_PANEL" "label: '纯音乐'" \
+  "frontend exposes instrumental mode label"
+need "$BYOK_PANEL" "label: '自动成歌'" \
+  "frontend exposes auto-song mode label"
+need "$BYOK_PANEL" "label: '歌词成歌'" \
+  "frontend exposes lyrics mode label"
+need "$BYOK_PANEL" "setMusicMode(nextMode === 'lyrics' ? 'with_lyrics' : 'instrumental')" \
+  "frontend maps productized lyrics mode to BYOK with_lyrics intent"
+need "$BYOK_PANEL" "CREATION_MODES.map((item) =>" \
+  "frontend renders current mode buttons instead of legacy select options"
+reject "$BYOK_PANEL" "<option value=\"with_lyrics\">" \
+  "frontend no longer requires legacy with_lyrics option DOM"
 reject "$BYOK_PANEL" "<option value=\"auto\">" \
-  "frontend no longer defaults BYOK live through auto"
+  "frontend no longer defaults BYOK live through legacy auto option"
 
 need "$SERVER_INDEX" "type ByokGenerationIntent = 'instrumental' | 'with_lyrics';" \
   "server declares explicit generation intent"

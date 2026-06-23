@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.31--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.31-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.4.33--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.33-alpha)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -15,6 +15,7 @@
 
 Public-Lite BYOK queued generation is available for small-scale alpha use.
 
+- Current release: v0.4.33-alpha — Public-Lite Studio productization ([release notes](docs/release/RELEASE_NOTES_v0.4.33-alpha.md)).
 - Current stage: alpha, not a broad public launch.
 - Access model: lightweight public mode for up to 5 active users.
 - Generation model: users provide their own MiniMax API Key.
@@ -142,7 +143,7 @@ DOMAIN=music.yourdomain.com bash scripts/weapp-domain-readiness-check.sh
 | MMX CLI backend | ✅ **Recommended** | Same route as Telegram |
 | BYOK API Adapter | ✅ Verified once / Experimental | Real `direct_audio` success; not production-ready |
 
-**Current release**: v0.4.31-alpha — Turnstile widget runtime for BYOK
+**Current release**: v0.4.33-alpha — Public-Lite Studio productization
 
 | Phase Deploy-CF-D: Turnstile gate added for `/api/generate/byok` (server-side Siteverify, default non-blocking). |
 | Phase Deploy-CF-E: Front-end Turnstile widget runtime integration. `turnstileSiteKey` exposed by `/api/health`; secret never returned. Token not persisted, not logged, not displayed. |
@@ -241,24 +242,20 @@ These guardrails are for public alpha protection. They are not a replacement for
 
 **完整状态与换电脑继续开发指南**：[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md)
 
-## Latest Release: v0.4.27-alpha
+## Latest Release: v0.4.33-alpha
 
-- **BYOK-A readiness**: PASS
-- **BYOK-B fake/live relay modes**: PASS
-- **BYOK-C protocol**: `PROTOCOL_READY_NO_LIVE_CALL`
-- **Real MiniMax live call**: **not executed**
-- **BYOK default**: disabled / dry-run
-- **Broad public BYOK launch**: not enabled
-- **Redaction**: PASS
-- **ByokPanel UI**: PASS
-- **BYOK-A/B/C smoke**: PASS
-- **Cloudflare Access for Ops**: PASS
+- **Public-Lite Studio productization**: PASS
+- **BYOK queued generation product flow**: PASS
+- **Vite dev `/api/*` proxy smoke**: PASS
+- **Windows / Codex Desktop `npm run dev:full` startup**: PASS
+- **Production observation**: stable for 24 hours
+- **Broad public launch**: not enabled
 
-完整 release notes 见 [`docs/release/RELEASE_NOTES_v0.4.27-alpha.md`](docs/release/RELEASE_NOTES_v0.4.27-alpha.md).
+完整 release notes 见 [`docs/release/RELEASE_NOTES_v0.4.33-alpha.md`](docs/release/RELEASE_NOTES_v0.4.33-alpha.md).
 
 **关键口径**:
 
-> v0.4.27-alpha 发布 BYOK readiness / controlled relay / single-live-call protocol，但真实 MiniMax live call 尚未执行，BYOK 未 broad public launch。
+> v0.4.33-alpha 发布 Public-Lite Studio 产品化收口；仍是 alpha，不是 broad public launch，用户使用自己的 MiniMax API Key。
 
 ## Phase BYOK-H2A: Dry-Run Pilot Planning (current focus)
 
