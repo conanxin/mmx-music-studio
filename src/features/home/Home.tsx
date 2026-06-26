@@ -23,7 +23,13 @@ function isRealPlayableTrack(track: TrackLike): boolean {
   if (!track.id) return false
   if (track.visibility === 'demo') return false
   if (track.generationSource === 'mock') return false
-  return Boolean(track.audioUrl || track.status === 'ready' || track.status === 'succeeded' || track.status === 'completed')
+  return Boolean(
+    track.audioUrl ||
+    track.status === 'ready' ||
+    track.status === 'success' ||
+    track.status === 'succeeded' ||
+    track.status === 'completed',
+  )
 }
 
 function pickLatestRealTrack(tracks: TrackLike[]): TrackLike | null {
