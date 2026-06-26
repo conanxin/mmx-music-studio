@@ -13,17 +13,20 @@
 
 ## Current Status: Public-Lite BYOK queued generation
 
-Public-Lite BYOK queued generation is available for small-scale alpha use.
+Public-Lite BYOK queued generation is available for small-scale alpha use, and the production site now includes a Demo Ready Pack for first-time users.
 
 - Current release: v0.4.33-alpha — Public-Lite Studio productization ([release notes](docs/release/RELEASE_NOTES_v0.4.33-alpha.md)).
+- Current version posture: 5 人内轻量公开 BYOK 排队生成版.
 - Current stage: alpha, not a broad public launch.
 - Access model: lightweight public mode for up to 5 active users.
 - Generation model: users provide their own MiniMax API Key.
 - Key handling: API Keys are temporarily kept in server memory during the queued job, then deleted after completion, failure, cancellation, or TTL expiry. They are not written to disk, browser storage, the Library, manifest, logs, or Git.
 - Queue behavior: generation tasks run through a single-worker queue, one generation at a time.
+- Usage: open Studio, pick a template or write a music prompt, enter your own MiniMax API Key, complete Turnstile when required, then submit and wait in the queue.
+- Cost model: MiniMax generation costs are charged to the user's own MiniMax API Key/account; server hosting costs are covered by the site maintainer.
 - Scope: no public sign-up, no account system, no admin dashboard, and no 5-way concurrent MiniMax generation.
 
-The Studio page now presents this as a single BYOK music creation flow instead of an engineering test panel.
+The Studio page now presents this as a single BYOK music creation flow instead of an engineering test panel. It includes a three-step guide, five one-click prompt templates, and clearer player/Library actions after generation.
 
 ---
 

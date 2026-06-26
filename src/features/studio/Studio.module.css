@@ -39,6 +39,50 @@
   line-height: 1.65;
 }
 
+.quickGuide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid rgba(184, 255, 106, 0.16);
+  border-radius: var(--radius-md);
+  background: rgba(184, 255, 106, 0.045);
+}
+
+.quickGuideItem {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.quickGuideNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #090A0C;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.quickGuideItem strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.quickGuideItem p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .productNotice {
   display: flex;
   flex-wrap: wrap;
@@ -1260,6 +1304,11 @@
 
   .systemStatusGrid {
     grid-template-columns: 1fr;
+  }
+
+  .quickGuide {
+    grid-template-columns: 1fr;
+    padding: var(--space-3);
   }
 
   .modeTabs {

@@ -126,6 +126,51 @@ const CREATION_MODES: Array<{
   { value: 'reference', label: '参考改编', hint: '描述想参考的风格或歌曲质感' },
 ];
 
+const DEMO_PROMPT_TEMPLATES: Array<{
+  title: string;
+  label: string;
+  mode: CreationMode;
+  intent: ByokGenerationIntent;
+  prompt: string;
+  lyrics?: string;
+}> = [
+  {
+    title: 'Lo-fi study beat',
+    label: '纯音乐',
+    mode: 'instrumental',
+    intent: 'instrumental',
+    prompt: 'Lo-fi study beat，温暖电钢琴、轻柔鼓点、低频柔和，适合夜晚写代码和专注学习，约一分钟，不要人声。',
+  },
+  {
+    title: '赛博朋克电子乐',
+    label: '纯音乐',
+    mode: 'instrumental',
+    intent: 'instrumental',
+    prompt: '赛博朋克电子乐，霓虹城市、合成器 arpeggio、强节奏鼓组，未来感但旋律清晰，适合短视频开场，不要人声。',
+  },
+  {
+    title: '国风器乐',
+    label: '纯音乐',
+    mode: 'instrumental',
+    intent: 'instrumental',
+    prompt: '国风器乐，古筝、笛子与低沉弦乐融合，画面感温柔开阔，适合东方幻想场景，不要人声。',
+  },
+  {
+    title: '儿童绘本背景音乐',
+    label: '自动成歌',
+    mode: 'auto_song',
+    intent: 'instrumental',
+    prompt: '儿童绘本背景音乐，木琴、钟琴、轻快拨弦和柔和节拍，温暖、明亮、有童话感，适合讲故事，不要人声。',
+  },
+  {
+    title: '史诗电影预告片配乐',
+    label: '参考改编',
+    mode: 'reference',
+    intent: 'instrumental',
+    prompt: '史诗电影预告片配乐，低沉鼓点、铜管、弦乐上行、巨大转场，逐步推向高潮，适合片头预告，不要人声。',
+  },
+];
+
 // All server-side response codes the UI is allowed to surface.
 // Keep this list in sync with server/index.ts handleByokGenerate.
 type ByokResponseCode =
@@ -690,6 +735,17 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
     setMusicMode(nextMode === 'lyrics' ? 'with_lyrics' : 'instrumental');
   }
 
+  function handleApplyDemoTemplate(template: typeof DEMO_PROMPT_TEMPLATES[number]): void {
+    setCreationMode(template.mode);
+    setMusicMode(template.intent);
+    setPrompt(template.prompt);
+    setLyrics(template.lyrics ?? '');
+    setLastResult(null);
+    setQueuedJob(null);
+    setLibrarySaveState('idle');
+    setLibrarySaveError('');
+  }
+
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!canSubmit) {
@@ -946,6 +1002,27 @@ export default function ByokPanel(props: ByokPanelProps): JSX.Element {
           required
           disabled={!enabled || submitting}
         />
+
+        <div className={styles.templateStrip} aria-label="一键生成模板">
+          <div className={styles.templateStripHeader}>
+            <span>一键生成模板</span>
+            <small>点击只会填入描述，不会自动提交</small>
+          </div>
+          <div className={styles.templateButtons}>
+            {DEMO_PROMPT_TEMPLATES.map((template) => (
+              <button
+                key={template.title}
+                type="button"
+                className={styles.templateButton}
+                onClick={() => handleApplyDemoTemplate(template)}
+                disabled={!enabled || submitting}
+              >
+                <span>{template.title}</span>
+                <small>{template.label}</small>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {lyricsRequired && (
           <>

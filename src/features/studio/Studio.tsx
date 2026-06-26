@@ -910,6 +910,30 @@ export default function Studio({
             </p>
           </div>
 
+          <section className={styles.quickGuide} aria-label="三步使用说明">
+            <div className={styles.quickGuideItem}>
+              <span className={styles.quickGuideNumber}>1</span>
+              <div>
+                <strong>准备自己的 MiniMax API Key</strong>
+                <p>费用由你的 MiniMax 账户承担；本站不会把 Key 写入磁盘或浏览器存储。</p>
+              </div>
+            </div>
+            <div className={styles.quickGuideItem}>
+              <span className={styles.quickGuideNumber}>2</span>
+              <div>
+                <strong>输入 API Key 和音乐描述</strong>
+                <p>也可以先点一个模板，自动填入 prompt 和模式，再按需修改。</p>
+              </div>
+            </div>
+            <div className={styles.quickGuideItem}>
+              <span className={styles.quickGuideNumber}>3</span>
+              <div>
+                <strong>提交后排队生成</strong>
+                <p>任务完成后可播放、下载 MP3，并在作品库查看。</p>
+              </div>
+            </div>
+          </section>
+
           <div className={styles.productNotice} data-safe-default-ui="studio">
             <span>本站不保存 API Key 到磁盘</span>
             <span>生成任务会排队执行</span>

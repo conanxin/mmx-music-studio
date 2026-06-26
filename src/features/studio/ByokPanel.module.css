@@ -293,6 +293,73 @@
   cursor: not-allowed;
 }
 
+.templateStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.templateStripHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--color-text-primary, #1f2933);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.templateStripHeader small {
+  color: var(--color-text-secondary, #52606d);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.templateButtons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.templateButton {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 54px;
+  padding: 8px 9px;
+  border: 1px solid rgba(184, 255, 106, 0.18);
+  border-radius: 8px;
+  background: rgba(184, 255, 106, 0.06);
+  color: var(--color-text-primary, #1f2933);
+  text-align: left;
+  cursor: pointer;
+}
+
+.templateButton:hover:not(:disabled) {
+  border-color: rgba(184, 255, 106, 0.42);
+  background: rgba(184, 255, 106, 0.1);
+}
+
+.templateButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.templateButton span {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.templateButton small {
+  color: var(--color-text-secondary, #52606d);
+  font-size: 11px;
+}
+
 .resultHint {
   display: block;
   margin-top: 4px;
@@ -573,6 +640,15 @@
 @media (max-width: 639px) {
   .modeGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .templateStripHeader {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .templateButtons {
+    grid-template-columns: 1fr;
   }
 
   .credentialGrid {
