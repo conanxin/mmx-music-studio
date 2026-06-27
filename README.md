@@ -2,7 +2,7 @@
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mmx--music--studio-blue?logo=github)](https://github.com/conanxin/mmx-music-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Phase](https://img.shields.io/badge/Phase-v0.4.33--alpha-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.4.33-alpha)
+[![Phase](https://img.shields.io/badge/Phase-v0.5.0--public--lite--byok-red.svg)](https://github.com/conanxin/mmx-music-studio/releases/tag/v0.5.0-public-lite-byok)
 [![CI](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/conanxin/mmx-music-studio/actions/workflows/ci.yml)
 
 **开源、自托管、BYOK 的 MiniMax 音乐生成网站**
@@ -15,7 +15,7 @@
 
 Public-Lite BYOK queued generation is available for small-scale alpha use, and the production site now includes a Demo Ready Pack for first-time users.
 
-- Current release: v0.4.33-alpha — Public-Lite Studio productization ([release notes](docs/release/RELEASE_NOTES_v0.4.33-alpha.md)).
+- Current release: v0.5.0-public-lite-byok — Public-Lite BYOK demo release ([release note](docs/launch/V0_5_0_PUBLIC_LITE_BYOK_RELEASE.md)).
 - Current version posture: 5 人内轻量公开 BYOK 排队生成版.
 - Current stage: alpha, not a broad public launch.
 - Access model: lightweight public mode for up to 5 active users.
@@ -27,6 +27,18 @@ Public-Lite BYOK queued generation is available for small-scale alpha use, and t
 - Scope: no public sign-up, no account system, no admin dashboard, and no 5-way concurrent MiniMax generation.
 
 The Studio page now presents this as a single BYOK music creation flow instead of an engineering test panel. It includes a three-step guide, five one-click prompt templates, and clearer player/Library actions after generation.
+
+---
+
+## Current Demo
+
+- Online site: https://music.conanxin.com/
+- Studio: https://music.conanxin.com/studio
+- Release note: [docs/launch/V0_5_0_PUBLIC_LITE_BYOK_RELEASE.md](docs/launch/V0_5_0_PUBLIC_LITE_BYOK_RELEASE.md)
+- Share copy: [docs/launch/SHARE_COPY_PUBLIC_LITE_BYOK.md](docs/launch/SHARE_COPY_PUBLIC_LITE_BYOK.md)
+- Feedback checklist: [docs/launch/FEEDBACK_CHECKLIST_PUBLIC_LITE_BYOK.md](docs/launch/FEEDBACK_CHECKLIST_PUBLIC_LITE_BYOK.md)
+
+This demo is for small-circle feedback. Users provide their own MiniMax API Key; MiniMax usage costs are paid by that user account, while server hosting is maintained by the site owner.
 
 ---
 
