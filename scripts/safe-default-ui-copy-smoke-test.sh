@@ -16,6 +16,9 @@ LIBRARY_CSS="$REPO/src/features/library/Library.module.css"
 README_MD="$REPO/README.md"
 CHANGELOG_MD="$REPO/CHANGELOG.md"
 RELEASE_NOTES="$REPO/docs/release/RELEASE_NOTES_v0.4.33-alpha.md"
+PUBLIC_LITE_RELEASE="$REPO/docs/launch/V0_5_0_PUBLIC_LITE_BYOK_RELEASE.md"
+PUBLIC_LITE_SHARE_COPY="$REPO/docs/launch/SHARE_COPY_PUBLIC_LITE_BYOK.md"
+PUBLIC_LITE_FEEDBACK="$REPO/docs/launch/FEEDBACK_CHECKLIST_PUBLIC_LITE_BYOK.md"
 
 PASS=0
 FAIL=0
@@ -63,13 +66,24 @@ assert_file_exists "Home CSS exists" "$HOME_CSS"
 assert_file_exists "Studio CSS exists" "$STUDIO_CSS"
 assert_file_exists "Library CSS exists" "$LIBRARY_CSS"
 assert_file_exists "Release notes exist" "$RELEASE_NOTES"
+assert_file_exists "Public Lite release doc exists" "$PUBLIC_LITE_RELEASE"
+assert_file_exists "Public Lite share copy exists" "$PUBLIC_LITE_SHARE_COPY"
+assert_file_exists "Public Lite feedback checklist exists" "$PUBLIC_LITE_FEEDBACK"
 
-# Release wording tracks the current productized Public-Lite alpha.
-assert_contains "README v0.4.33-alpha" "v0.4.33-alpha" "$README_MD"
-assert_contains "README release title" "Public-Lite Studio productization" "$README_MD"
-assert_contains "README release notes link" "docs/release/RELEASE_NOTES_v0.4.33-alpha.md" "$README_MD"
+# Release wording tracks the current productized Public-Lite BYOK demo.
+assert_contains "README v0.5.0-public-lite-byok" "v0.5.0-public-lite-byok" "$README_MD"
+assert_contains "README release title" "Public Lite BYOK MiniMax music generation demo" "$README_MD"
+assert_contains "README release notes link" "docs/launch/V0_5_0_PUBLIC_LITE_BYOK_RELEASE.md" "$README_MD"
+assert_contains "README Chinese link" "README.zh-CN.md" "$README_MD"
+assert_not_contains "README no old v0.4.2 current release" "Current release**: v0.4.2-alpha" "$README_MD"
+assert_not_contains "README no old v0.4.31 current release" "Current release**: v0.4.31-alpha" "$README_MD"
+assert_not_contains "README no long phase table" "| Phase BYOK-H" "$README_MD"
 assert_contains "CHANGELOG v0.4.33-alpha" "## v0.4.33-alpha" "$CHANGELOG_MD"
 assert_contains "Release notes v0.4.33-alpha" "# mmx-music-studio v0.4.33-alpha" "$RELEASE_NOTES"
+assert_contains "Public Lite release version" "# v0.5.0-public-lite-byok" "$PUBLIC_LITE_RELEASE"
+assert_contains "Public Lite release one-line summary" "5 人内轻量公开 BYOK AI 音乐生成 demo" "$PUBLIC_LITE_RELEASE"
+assert_contains "Public Lite share copy version" "v0.5.0-public-lite-byok" "$PUBLIC_LITE_SHARE_COPY"
+assert_contains "Public Lite feedback checklist question" "你最希望下一步增加什么？" "$PUBLIC_LITE_FEEDBACK"
 
 # Home and Library keep their safe-default markers and styling.
 assert_contains "Home status marker" 'data-safe-default-ui="home"' "$HOME_TSX"

@@ -14,7 +14,7 @@ set -euo pipefail
 
 SERVER="${SERVER:-http://localhost:8787}"
 TRACKS_JSON=$(curl -sf "$SERVER/api/tracks" 2>/dev/null) || {
-  echo "FAIL: Cannot reach $SERVER/api/tracks"
+  echo "PARTIAL_NO_CLI_TRACK_SERVER_UNAVAILABLE: Cannot reach $SERVER/api/tracks"
   exit 2
 }
 
